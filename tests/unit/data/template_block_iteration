@@ -1,0 +1,5 @@
+[%CFEngine BEGIN %]
+This is a block of text
+That contains list variables: $(foo.list)
+With text before and after.
+[%CFEngine END %]

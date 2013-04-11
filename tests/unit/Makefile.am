@@ -67,7 +67,8 @@ check_PROGRAMS = \
 	string_expressions_test \
 	var_expressions_test \
 	process_terminate_unix_test \
-	exec-config-test
+	exec-config-test \
+	files_templates_test
 
 #	ipaddress_test
 
@@ -215,3 +216,7 @@ process_terminate_unix_test_LDADD = libtest.la ../../libutils/libutils.la
 exec_config_test_SOURCES = exec-config-test.c \
 	../../cf-execd/exec-config.c
 exec_config_test_LDADD = libtest.la ../../libpromises/libpromises.la
+
+files_templates_test_SOURCES = files_templates_test.c \
+	../../cf-agent/files_templates.c
+files_templates_test_LDADD = libtest.la ../../libpromises/libpromises.la

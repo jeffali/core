@@ -1,0 +1,14 @@
+This is
+
+a template
+
+
+[%CFEngine linux:: %]
+on Linux
+
+
+[%CFEngine BEGIN %]
+with newlines.
+[%CFEngine END %]
+
+something at the end.

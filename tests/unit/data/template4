@@ -1,0 +1,3 @@
+[%CFEngine BEGIN %]
+First $(one) second$(foo.two) third$(invalid) fourth$(invalid:foo.one)
+[%CFEngine END %]

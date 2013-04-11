@@ -1035,7 +1035,6 @@ void PromiseTypeDestroy(PromiseType *promise_type)
 
         SeqDestroy(promise_type->promises);
 
-
         free(promise_type->name);
         free(promise_type);
     }

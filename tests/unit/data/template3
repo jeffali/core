@@ -1,0 +1,5 @@
+This is a string
+[%CFEngine invalid_class:: %]
+This is not a string
+[%CFEngine any:: %]
+This is a string

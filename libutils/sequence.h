@@ -71,6 +71,12 @@ Seq *SeqNew(size_t initial_capacity, void (*ItemDestroy) ());
   */
 void SeqDestroy(Seq *seq);
 
+
+/**
+ * @brief Destroy all elements in the Sequence, but not the container itself
+ */
+void SeqClear(Seq *seq);
+
 /**
   @brief
   Function to compare two items in a Sequence.

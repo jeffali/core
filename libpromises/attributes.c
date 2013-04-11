@@ -88,10 +88,10 @@ Attributes GetFilesAttributes(const EvalContext *ctx, const Promise *pp)
     attr.edits = GetEditDefaults(ctx, pp);
 
     if (attr.template)
-       {
-       attr.edits.empty_before_use = true;
-       attr.edits.inherit = true;
-       }
+    {
+        attr.edits.empty_before_use = true;
+        attr.edits.inherit = true;
+    }
 
 /* Files, multiple use */
 
