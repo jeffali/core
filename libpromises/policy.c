@@ -2788,3 +2788,23 @@ static void ConstraintPostCheck(const char *bundle_subtype, const char *lval, Rv
         }
     }
 }
+
+#ifndef DBG0
+void DumpPolicyBundles(Policy *policy) {
+    for (size_t i = 0; i < SeqLength(policy->bundles); i++)
+    {
+        Bundle *bp = SeqAt(policy->bundles, i);
+	printf("[BNDL] type=%s name=%s ns=%s\n", bp->type, bp->name, bp->ns);
+
+    }
+}
+
+void DumpPolicyBodies(Policy *policy) {
+    for (size_t i = 0; i < SeqLength(policy->bodies); i++)
+    {
+        Body *bp = SeqAt(policy->bodies, i);
+
+	printf("[BODY] type=%s name=%s ns=%s\n", bp->type, bp->name, bp->ns);
+    }
+}
+#endif

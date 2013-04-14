@@ -208,7 +208,7 @@ static void Cleanup(void)
 {
     char cmd[CF_BUFSIZE];
     snprintf(cmd, CF_BUFSIZE, "rm -rf '%s'", CFWORKDIR);
-    system(cmd);
+    //system(cmd);
 }
 
 int main(int argc, char **argv)
