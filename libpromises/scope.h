@@ -111,7 +111,7 @@ int ScopeMapBodyArgs(EvalContext *ctx, const char *scopeid, Rlist *give, const R
 void SplitScopeName(const char *scope_name, char namespace_out[CF_MAXVARSIZE], char bundle_out[CF_MAXVARSIZE]);
 void JoinScopeName(const char *ns, const char *bundle, char scope_out[CF_MAXVARSIZE]);
 
-#ifndef DBG0
+#ifdef DBG0
 void DumpScopes(void);
 #endif
 

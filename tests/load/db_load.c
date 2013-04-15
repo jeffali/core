@@ -36,6 +36,10 @@ static void DBWriteTestData(CF_DB *db);
 static void TestReadWriteData(CF_DB *db);
 static void TestCursorIteration(CF_DB *db);
 
+//TODO:
+// - option against rand() => fixed count
+// - option against rand() => flip then flop
+// - option not to rm -rd at the end
 void *contend(void *param)
 {
     CF_DB *db;

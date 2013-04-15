@@ -973,9 +973,27 @@ void JoinScopeName(const char *ns, const char *bundle, char scope_out[CF_MAXVARS
     }
 }
 
-#ifndef DBG0
-DumpCFSTCK() {
+#ifdef DBG0
+void DumpCFSTCK() {
+  if(CF_STCK==NULL) return;
+  Rlist *rp;
+  Scope *scp;
+  AssocHashTableIterator i;
+  CfAssoc *assoc;
 
+  for(rp=CF_STCK; rp; rp=rp->next) {
+    //look also into item->hashtable and item->next
+    //if(rp->type==CF_STACK) {
+      scp = (Scope *)rp->item;
+      printf("[SF] %s\n", (char *)(scp->scope));
+	    i = HashIteratorInit(scp->hashtable);
+	    while ((assoc = HashIteratorNext(&i)))
+            {
+               printf("\tglurp\n");
+            }
+
+    //}
+  }
 }
 /*******************************************************************/
 void DumpScopes(void) {
