@@ -314,3 +314,32 @@ bool DeleteDBCursor(DBHandle *handle, DBCursor *cursor)
     free(cursor);
     return true;
 }
+
+bool DiagnoseDB(dbid id)
+{
+    DBHandle *handle = DBHandleGet(id);
+    pthread_mutex_lock(&handle->lock);
+    printf("path=%s == %s\n",db_handles[id].filename, handle->filename);
+    bool rc = DBPrivDiagnose(handle->filename);
+    pthread_mutex_unlock(&handle->lock);
+    return rc;
+}
+
+bool DiagnoseAllDBs()
+{
+    bool rc = true;
+    struct stat st;
+    for (int id = 0; id < dbid_max; ++id)
+    {
+	if (db_handles[id].filename == NULL)
+	{
+		db_handles[id].filename = DBIdToPath(id);
+	}
+	printf("[did=%d] %s\n", id, db_handles[id].filename);
+	if(stat(db_handles[id].filename, &st)  == 0) 
+	{
+		DiagnoseDB(id);
+	}
+    }
+    return rc;
+}

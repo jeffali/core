@@ -211,6 +211,8 @@ void NoteEfficiency(double e)
 int main(int argc, char *argv[])
 {
     int ret = 0;
+    DiagnoseAllDBs();
+    return 0; 
 
     EvalContext *ctx = EvalContextNew();
     GenericAgentConfig *config = CheckOpts(ctx, argc, argv);

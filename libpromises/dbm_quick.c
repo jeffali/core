@@ -354,4 +354,14 @@ void DBPrivCloseCursor(DBCursorPriv *cursor)
     UnlockCursor(db);
 }
 
+/*
+ * XXXX
+ * YYYY
+ */
+bool DBPrivDiagnose(const char *path)
+{
+    bool ret = true;
+    return ret;
+}
+
 #endif

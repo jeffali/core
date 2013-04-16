@@ -83,5 +83,7 @@ bool NextDB(CF_DB *dbp, CF_DBC *dbcp, char **key, int *ksize, void **value, int 
 bool DBCursorDeleteEntry(CF_DBC *cursor);
 bool DBCursorWriteEntry(CF_DBC *cursor, const void *value, int value_size);
 bool DeleteDBCursor(CF_DB *dbp, CF_DBC *dbcp);
+bool DiagnoseDB(dbid db);
+bool DiagnoseAllDBs();
 
 #endif  /* NOT CFENGINE_DBM_API_H */
