@@ -389,9 +389,20 @@ bool DBPrivDiagnose(const char *path)
     printf("sz %d OFFSET=%u\n", size, 56);
     ret=fread(&hbuf, 256, 1, fd);
     uint64_t llnum = 0;
-    memcpy(&llnum, hbuf + 64, sizeof(uint64_t));
+    memcpy(&llnum, hbuf + 56, sizeof(uint64_t));
     printf("ret=%d size = %llu xsize=%llx\n", ret, llnum, llnum);
     printf("ret=%d size = %llu xsize=%llx\n", ret, SWAB64(llnum), SWAB64(llnum));
+    if(llnum!=size) {
+      memcpy(&llnum, hbuf + 60, sizeof(uint64_t));
+      llnum = SWAB64(llnum);
+      if (llnum!=size) {
+        return 3;
+      } else {
+        return 2;
+      }
+    }
+    return 0;
+
     //check magic string
     //get file size reported in the header
     //get actual file size
