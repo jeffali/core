@@ -58,6 +58,6 @@ bool DBPrivDeleteCursorEntry(DBCursorPriv *cursor);
 bool DBPrivWriteCursorEntry(DBCursorPriv *cursor, const void *value, int value_size);
 void DBPrivCloseCursor(DBCursorPriv *cursor);
 
-bool DBPrivDiagnose(const char *path);
+int DBPrivDiagnose(const char *path);
 
 #endif

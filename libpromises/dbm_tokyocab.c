@@ -348,106 +348,75 @@ void DBPrivCloseCursor(DBCursorPriv *cursor)
 }
 
 /*
- * XXXX
- * YYYY
+ * check magic string
+ * get file size reported in the header
+ * get actual file size
+ * if actual == reprted great
+ * else
+ *   check for indianness
+ *   if different indianness, then indianness problem
+ *   else corruption problem
  */
 
-#define SWAB64(TC_num) \
+#define SWAB64(num) \
   ( \
-   ((TC_num & 0x00000000000000ffULL) << 56) | \
-   ((TC_num & 0x000000000000ff00ULL) << 40) | \
-   ((TC_num & 0x0000000000ff0000ULL) << 24) | \
-   ((TC_num & 0x00000000ff000000ULL) << 8) | \
-   ((TC_num & 0x000000ff00000000ULL) >> 8) | \
-   ((TC_num & 0x0000ff0000000000ULL) >> 24) | \
-   ((TC_num & 0x00ff000000000000ULL) >> 40) | \
-   ((TC_num & 0xff00000000000000ULL) >> 56) \
+   ((num & 0x00000000000000ffULL) << 56) | \
+   ((num & 0x000000000000ff00ULL) << 40) | \
+   ((num & 0x0000000000ff0000ULL) << 24) | \
+   ((num & 0x00000000ff000000ULL) << 8) | \
+   ((num & 0x000000ff00000000ULL) >> 8) | \
+   ((num & 0x0000ff0000000000ULL) >> 24) | \
+   ((num & 0x00ff000000000000ULL) >> 40) | \
+   ((num & 0xff00000000000000ULL) >> 56) \
   )
 
-static int mentol() {
-  FILE *fd;
-  fd = fopen("/cf_classes.tcdb", "r");
-  printf("fd=%d\n", fd);
-  uint64_t i;
-  while(fread(&i, sizeof(uint64_t),1,fd) == 1) {
-    printf("where=%u valx=%llx vald=%llu\n", ftell(fd), SWAB64(i), SWAB64(i)); 
-    if(ftell(fd)>96) break;
-  }
-  close(fd);
-  return 0;
-}
-
-bool DBPrivDiagnose(const char *path)
+int DBPrivDiagnose(const char *path)
 {
-    FILE *fd;
-    char hbuf[256];
-    int ret;
-    fd=fopen(path,"r");
-    //check size is > minimal
-    fseek(fd, 0, SEEK_END);
-    int size = ftell(fd);
-    printf("sz %d OFFSET=%u\n", size, 56);
-    ret=fread(&hbuf, 256, 1, fd);
-    uint64_t llnum = 0;
-    memcpy(&llnum, hbuf + 56, sizeof(uint64_t));
-    printf("ret=%d size = %llu xsize=%llx\n", ret, llnum, llnum);
-    printf("ret=%d size = %llu xsize=%llx\n", ret, SWAB64(llnum), SWAB64(llnum));
-    if(llnum!=size) {
-      memcpy(&llnum, hbuf + 60, sizeof(uint64_t));
-      llnum = SWAB64(llnum);
-      if (llnum!=size) {
-        return 3;
-      } else {
-        return 2;
-      }
+  FILE *fd;
+  int ret = 0;
+  uint64_t size = 0;
+  char *MAGIC="ToKyO CaBiNeT";
+
+  fd = fopen(path/*"/tmp/a.tcdb"*/, "r");
+  if(!fd) {printf("error opening\n"); ret=9; goto clean;}
+  ret=fseek(fd, 0, SEEK_END);
+  if(ret!=0) {printf("error seeking\n"); ret=8; goto clean;} 
+  size = ftell(fd);
+  //printf("size=%ld len=%ld\n", size, strlen(MAGIC));
+  if(size<256) {printf("BIG EXCEPTIOn (minimal size)\n"); ret=1; goto clean;}
+  char hbuf[256];
+  memset(hbuf, 0, (size_t)256);
+  ret=fseek(fd, 0, SEEK_SET);
+  if(ret!=0) {printf("error seeking\n"); ret=7; goto clean;} 
+  if(1==fread(&hbuf, 256, 1, fd)) {
+   hbuf[14]='\0';
+   printf("%s\n", hbuf);
+  } else {
+    printf("error reading\n"); ret=6; goto clean;
+  }
+  //
+  if(strncmp(hbuf, MAGIC, strlen(MAGIC))!=0) {
+    printf("BIG EXCEPTIOn (magic string)\n"); ret=2; goto clean;
+  }
+  //
+  uint64_t sz = 0;
+  memcpy(&sz, hbuf+56, sizeof(uint64_t));
+  printf("%llu\n", sz);
+  if(sz==size) {
+    printf("OK (seems to be valid)\n");
+  } else {
+    sz = SWAB64(sz);
+    printf("%llu\n", sz);
+    if(sz==size) {
+      printf("BIG EXCEPTIOn (indianness mismatch)\n"); ret=3; goto clean;
+    } else {
+      printf("BIG EXCEPTIOn (size mismatch)\n"); ret=4; goto clean;
     }
-    return 0;
-
-    //check magic string
-    //get file size reported in the header
-    //get actual file size
-    //if actual == reprted great
-    //else
-    //  check for indianness
-    //  if different indianness, then indianness problem
-    //  else corruption problem
-    return ret;
-#if 0
-  char hbuf[HDBHEADSIZ];
-  memset(hbuf, 0, HDBHEADSIZ);
-  sprintf(hbuf, "%s\n%s:%d\n", HDBMAGICDATA, _TC_FORMATVER, _TC_LIBVER);
-  memcpy(hbuf + HDBTYPEOFF, &(hdb->type), sizeof(hdb->type));
-  memcpy(hbuf + HDBFLAGSOFF, &(hdb->flags), sizeof(hdb->flags));
-  memcpy(hbuf + HDBAPOWOFF, &(hdb->apow), sizeof(hdb->apow));
-  memcpy(hbuf + HDBFPOWOFF, &(hdb->fpow), sizeof(hdb->fpow));
-  memcpy(hbuf + HDBOPTSOFF, &(hdb->opts), sizeof(hdb->opts));
-  uint64_t llnum;
-  llnum = hdb->bnum;
-  llnum = TCHTOILL(llnum);
-  memcpy(hbuf + HDBBNUMOFF, &llnum, sizeof(llnum));
-  llnum = hdb->rnum;
-  llnum = TCHTOILL(llnum);
-  memcpy(hbuf + HDBRNUMOFF, &llnum, sizeof(llnum));
-  llnum = hdb->fsiz;
-  llnum = TCHTOILL(llnum);
-  memcpy(hbuf + HDBFSIZOFF, &llnum, sizeof(llnum));
-  llnum = hdb->frec;
-  llnum = TCHTOILL(llnum);
-  memcpy(hbuf + HDBFRECOFF, &llnum, sizeof(llnum));
-typedef struct {
-  uint8_t type;                          /* database type */
-  uint8_t flags;                         /* additional flags */
-  uint64_t bnum;                         /* number of the bucket array */
-  uint8_t apow;                          /* power of record alignment */
-  uint8_t fpow;                          /* power of free block pool number */
-  uint8_t opts;                          /* options */
-  uint32_t omode;                        /* open mode */
-  uint64_t rnum;                         /* number of the records */
-  uint64_t fsiz;                         /* size of the database file */
-  uint64_t frec;                         /* offset of the first record */
-} walo;
-#endif
-
+  }
+clean:
+  ret=fclose(fd);
+  if(ret!=0) {printf("problem closing file: %s\n", strerror(errno)); ret=5;}
+  return ret;
 }
-
 #endif
+

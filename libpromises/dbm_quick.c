@@ -358,10 +358,9 @@ void DBPrivCloseCursor(DBCursorPriv *cursor)
  * XXXX
  * YYYY
  */
-bool DBPrivDiagnose(const char *path)
+int DBPrivDiagnose(const char *path)
 {
-    bool ret = true;
-    return ret;
+    return 0;
 }
 
 #endif
