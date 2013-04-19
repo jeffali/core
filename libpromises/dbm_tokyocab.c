@@ -388,20 +388,20 @@ int DBPrivDiagnose(const char *path)
 
   fd = fopen(path, "r");
   if(!fd) {
-    printf("Error opening file: %s\n", strerror(errno)); 
+    CfOut(OUTPUT_LEVEL_ERROR, "", "Error opening file: %s\n", strerror(errno)); 
     ret=9; 
     goto clean;
   }
   ret=fseek(fd, 0, SEEK_END);
   if(ret!=0) {
-    printf("Error seeking : %s\n", strerror(errno)); 
+    CfOut(OUTPUT_LEVEL_ERROR, "", "Error seeking : %s\n", strerror(errno)); 
     ret=8; 
     goto clean;
   } 
   size = ftell(fd);
-  printf("Actual DB file size=%lld\n", size);
+  CfOut(OUTPUT_LEVEL_VERBOSE, "", "Actual DB file size=%lld\n", size);
   if(size<256) {
-    printf("Big exception (minimal size)\n"); 
+    CfOut(OUTPUT_LEVEL_ERROR, "", "Big exception (minimal size)\n"); 
     ret=1; 
     goto clean;
   }
@@ -410,43 +410,43 @@ int DBPrivDiagnose(const char *path)
   memset(hbuf, 0, (size_t)256);
   ret=fseek(fd, 0, SEEK_SET);
   if(ret!=0) {
-    printf("Error seeking : %s\n", strerror(errno)); 
+    CfOut(OUTPUT_LEVEL_ERROR, "", "Error seeking : %s\n", strerror(errno)); 
     ret=7; 
     goto clean;
   } 
   if(1!=fread(&hbuf, 256, 1, fd)) {
-    printf("Error reading : %s\n", strerror(errno)); 
+    CfOut(OUTPUT_LEVEL_ERROR, "", "Error reading : %s\n", strerror(errno)); 
     ret=6; 
     goto clean;
   }
 
   if(strncmp(hbuf, MAGIC, strlen(MAGIC))!=0) {
-    printf("Big exception (magic string mismatch)\n"); 
+    CfOut(OUTPUT_LEVEL_ERROR, "", "Big exception (magic string mismatch)\n"); 
     ret=2; 
     goto clean;
   }
 
   uint64_t sz = 0;
   memcpy(&sz, hbuf+56, sizeof(uint64_t));
-  printf("Declared size : %llu\n", sz);
+  CfOut(OUTPUT_LEVEL_VERBOSE, "", "Declared size : %llu\n", sz);
   if(sz==size) {
-    printf("OK (seems to be valid)\n");
+    CfOut(OUTPUT_LEVEL_VERBOSE, "", "OK (seems to be valid)\n");
   } else {
     sz = SWAB64(sz);
-    printf("Declared size (SWABed) : %llu\n", sz);
+    CfOut(OUTPUT_LEVEL_VERBOSE, "", "Declared size (SWABed) : %llu\n", sz);
     if(sz==size) {
-      printf("Big exception (indianness mismatch)\n"); 
+      CfOut(OUTPUT_LEVEL_ERROR, "", "Big exception (indianness mismatch)\n"); 
       ret=3; 
       goto clean;
     } else {
-      printf("Big exception (size mismatch)\n"); 
+      CfOut(OUTPUT_LEVEL_ERROR, "", "Big exception (size mismatch)\n"); 
       ret=4; 
       goto clean;
     }
   }
 clean:
   if(fclose(fd)) {
-    printf("problem closing file: %s\n", strerror(errno)); 
+    CfOut(OUTPUT_LEVEL_ERROR, "", "problem closing file: %s\n", strerror(errno)); 
     ret=5;
   }
   return ret;

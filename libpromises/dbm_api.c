@@ -411,13 +411,13 @@ bool DiagnoseAllDBs(const char *workdir)
 	if(path) free(path);
         xasprintf(&path,
                   "%s" FILE_SEPARATOR_STR "%s", workdir, db_handles[id].filename);
-	printf("[did=%d] Checking DB file : %s\n", id, path);
+	CfOut(OUTPUT_LEVEL_VERBOSE, "", "[did=%d] Checking DB file : %s\n", id, path);
  
 	if(stat(path, &st)  == 0) 
 	{
 		res = DiagnoseDB(path, id);
 		rc &= (res ? false : true);
-		printf("rc=%u res=%d\n", rc, res);
+		CfOut(OUTPUT_LEVEL_VERBOSE, "", "rc=%u res=%d\n", rc, res);
 	}
     }
     return rc;
