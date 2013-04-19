@@ -84,4 +84,10 @@ bool DBCursorDeleteEntry(CF_DBC *cursor);
 bool DBCursorWriteEntry(CF_DBC *cursor, const void *value, int value_size);
 bool DeleteDBCursor(CF_DBC *dbcp);
 
+/*
+ * Check whether key/value stores are in a coherent/stable state
+ */
+int DiagnoseDB(const char *path, const dbid id);
+bool DiagnoseAllDBs(const char *workdir);
+
 #endif  /* NOT CFENGINE_DBM_API_H */

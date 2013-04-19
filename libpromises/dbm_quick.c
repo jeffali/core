@@ -353,4 +353,13 @@ void DBPrivCloseCursor(DBCursorPriv *cursor)
     UnlockCursor(db);
 }
 
+/*
+ * Check whether a QDBM store is valid and coherent
+ * (Not implemented yet)
+ */
+int DBPrivDiagnose(const char *path)
+{
+    return 0;
+}
+
 #endif

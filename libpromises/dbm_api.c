@@ -378,3 +378,47 @@ static void DBPathMoveBroken(const char *filename)
 
     free(filename_broken);
 }
+/*
+ * @desc   : Check whether a key/value store is valid and in good shape
+ * @return : 0 if OK, KO otherwise
+ */
+int DiagnoseDB(const char *path, const dbid id)
+{
+    DBHandle *handle = DBHandleGet(id);
+    pthread_mutex_lock(&handle->lock);
+    int rc = DBPrivDiagnose(path);
+    pthread_mutex_unlock(&handle->lock);
+    return rc;
+}
+
+/*
+ * @desc   : Loop over all existing key/value store files and call a
+             routine to check whether they are valid
+ * @return : true if OK, false otherwise
+ */
+bool DiagnoseAllDBs(const char *workdir)
+{
+    bool rc = true;
+    int res;
+    struct stat st;
+    char *path;
+    for (int id = 0; id < dbid_max; ++id)
+    {
+	if (db_handles[id].filename == NULL)
+	{
+		db_handles[id].filename = DBIdToPath(id);
+	}
+	if(path) free(path);
+        xasprintf(&path,
+                  "%s" FILE_SEPARATOR_STR "%s", workdir, db_handles[id].filename);
+	printf("[did=%d] Checking DB file : %s\n", id, path);
+ 
+	if(stat(path, &st)  == 0) 
+	{
+		res = DiagnoseDB(path, id);
+		rc &= (res ? false : true);
+		printf("rc=%u res=%d\n", rc, res);
+	}
+    }
+    return rc;
+}

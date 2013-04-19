@@ -343,4 +343,113 @@ void DBPrivCloseCursor(DBCursorPriv *cursor)
     UnlockCursor(db);
 }
 
+/*
+ * @desc : Ensure that basic features and coherence factors are
+ *         present in a given Tokyo Cabinet file
+ * @algorithm :
+ * - check magic string
+ * - get file size reported in the header
+ * - get actual file size
+ * - if actual == reported great
+ * - else
+ *   check for indianness
+ *   if different indianness, then indianness problem
+ *   else corruption problem
+ * @return :
+ *   0 -> OK
+ *   1 -> (Functional error) - Minimal file size not achieved
+ *   2 -> (Functional error) - Does not seem to be a TC file
+ *   3 -> (Functional error) - Indianness mismatch (--enable-swab)
+ *   4 -> (Functional error) - File size declared != actual file size
+ *   9       -> (Technical error) - File opening error
+ *   7 and 8 -> (Technical error) - File seeking error
+ *   6       -> (Technical error) - File reading error
+ *   5       -> (Technical error) - File closing error
+ */
+
+#define SWAB64(num) \
+  ( \
+   ((num & 0x00000000000000ffULL) << 56) | \
+   ((num & 0x000000000000ff00ULL) << 40) | \
+   ((num & 0x0000000000ff0000ULL) << 24) | \
+   ((num & 0x00000000ff000000ULL) << 8) | \
+   ((num & 0x000000ff00000000ULL) >> 8) | \
+   ((num & 0x0000ff0000000000ULL) >> 24) | \
+   ((num & 0x00ff000000000000ULL) >> 40) | \
+   ((num & 0xff00000000000000ULL) >> 56) \
+  )
+
+int DBPrivDiagnose(const char *path)
+{
+  FILE *fd;
+  int ret = 0;
+  uint64_t size = 0;
+  char *MAGIC="ToKyO CaBiNeT";
+
+  fd = fopen(path, "r");
+  if(!fd) {
+    printf("Error opening file: %s\n", strerror(errno)); 
+    ret=9; 
+    goto clean;
+  }
+  ret=fseek(fd, 0, SEEK_END);
+  if(ret!=0) {
+    printf("Error seeking : %s\n", strerror(errno)); 
+    ret=8; 
+    goto clean;
+  } 
+  size = ftell(fd);
+  printf("Actual DB file size=%lld\n", size);
+  if(size<256) {
+    printf("Big exception (minimal size)\n"); 
+    ret=1; 
+    goto clean;
+  }
+
+  char hbuf[256];
+  memset(hbuf, 0, (size_t)256);
+  ret=fseek(fd, 0, SEEK_SET);
+  if(ret!=0) {
+    printf("Error seeking : %s\n", strerror(errno)); 
+    ret=7; 
+    goto clean;
+  } 
+  if(1!=fread(&hbuf, 256, 1, fd)) {
+    printf("Error reading : %s\n", strerror(errno)); 
+    ret=6; 
+    goto clean;
+  }
+
+  if(strncmp(hbuf, MAGIC, strlen(MAGIC))!=0) {
+    printf("Big exception (magic string mismatch)\n"); 
+    ret=2; 
+    goto clean;
+  }
+
+  uint64_t sz = 0;
+  memcpy(&sz, hbuf+56, sizeof(uint64_t));
+  printf("Declared size : %llu\n", sz);
+  if(sz==size) {
+    printf("OK (seems to be valid)\n");
+  } else {
+    sz = SWAB64(sz);
+    printf("Declared size (SWABed) : %llu\n", sz);
+    if(sz==size) {
+      printf("Big exception (indianness mismatch)\n"); 
+      ret=3; 
+      goto clean;
+    } else {
+      printf("Big exception (size mismatch)\n"); 
+      ret=4; 
+      goto clean;
+    }
+  }
+clean:
+  if(fclose(fd)) {
+    printf("problem closing file: %s\n", strerror(errno)); 
+    ret=5;
+  }
+  return ret;
+}
 #endif
+

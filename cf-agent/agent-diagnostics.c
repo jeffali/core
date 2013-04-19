@@ -61,6 +61,13 @@ AgentDiagnosticsResult AgentDiagnosticsCheckHavePublicKey(const char *workdir)
     return AgentDiagnosticsResultNew((cfstat(path, &sb) == 0), xstrdup(path));
 }
 
+AgentDiagnosticsResult AgentDiagnosticsCheckAllDBs(const char *workdir)
+{
+    bool res = DiagnoseAllDBs(workdir);
+    return AgentDiagnosticsResultNew(res, 
+                                     res ? xstrdup("All DBs are OK") : xstrdup("Some DBs might not be OK"));
+}
+
 const AgentDiagnosticCheck *AgentDiagnosticsAllChecks(void)
 {
     static const AgentDiagnosticCheck checks[] =
@@ -69,9 +76,10 @@ const AgentDiagnosticCheck *AgentDiagnosticsAllChecks(void)
         { "Check if agent is acting as a policy server", &AgentDiagnosticsCheckAmPolicyServer },
         { "Check that private key exists", &AgentDiagnosticsCheckHavePrivateKey },
         { "Check that public key exists", &AgentDiagnosticsCheckHavePublicKey },
-
+        { "Check that DBs are OK", &AgentDiagnosticsCheckAllDBs },
         { NULL, NULL }
     };
 
     return checks;
 }
+
