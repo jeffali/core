@@ -64,12 +64,9 @@ AgentDiagnosticsResult AgentDiagnosticsCheckHavePublicKey(const char *workdir)
 
 AgentDiagnosticsResult AgentDiagnosticsCheckAllDBs(const char *workdir)
 {
-    const char *path = PublicKeyFile(workdir);
-    assert(path);
-    bool res = DiagnoseAllDBs();
+    bool res = DiagnoseAllDBs(workdir);
     return AgentDiagnosticsResultNew(res, 
                                      res ? xstrdup("All DBs are OK") : xstrdup("Some DBs might not be OK"));
-
 }
 
 const AgentDiagnosticCheck *AgentDiagosticsAllChecks(void)
@@ -81,7 +78,6 @@ const AgentDiagnosticCheck *AgentDiagosticsAllChecks(void)
         { "Check that private key exists", &AgentDiagnosticsCheckHavePrivateKey },
         { "Check that public key exists", &AgentDiagnosticsCheckHavePublicKey },
         { "Check that DBs are OK", &AgentDiagnosticsCheckAllDBs },
-
         { NULL, NULL }
     };
 

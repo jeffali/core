@@ -410,8 +410,7 @@ int DBPrivDiagnose(const char *path)
     }
   }
 clean:
-  ret=fclose(fd);
-  if(ret!=0) {printf("problem closing file: %s\n", strerror(errno)); ret=5;}
+  if(fclose(fd)) {printf("problem closing file: %s\n", strerror(errno)); ret=5;}
   return ret;
 }
 #endif

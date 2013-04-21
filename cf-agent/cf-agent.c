@@ -219,8 +219,6 @@ static const char *HINTS[15] =
 int main(int argc, char *argv[])
 {
     int ret = 0;
-    DiagnoseAllDBs();
-    return 0; 
 
     EvalContext *ctx = EvalContextNew();
 
