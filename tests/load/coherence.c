@@ -1,9 +1,10 @@
 #include <stdio.h>
 #include <stdint.h>
 
-int main() {
+int main(int argc, char **argv) {
   FILE *fp;
-  fp = fopen("/tmp/a.tcdb", "r");
+  if(argc<2) {printf("Usage : %s <dbpath>\n", argv[0]); return 1;}
+  fp = fopen(argv[1], "r");
   char hbuf[256];
   fread(&hbuf, 256, 1, fp);
   uint64_t sz;
@@ -23,7 +24,7 @@ int main() {
   // LOOP OVER BUCKET SECTION
   uint64_t off = 256; // + nb * sizeof(uint64_t);
   uint32_t pv;
-  while(off < fr) {
+  while(off < 256 + nb*sizeof(uint32_t)) {
     fseek(fp, off, SEEK_SET);
     fread(&pv, sizeof(uint32_t), 1, fp); // 64 for large mode
     if(pv) {
@@ -41,11 +42,19 @@ int main() {
   while(ofr < sz) {
     fseek(fp, ofr, SEEK_SET);
     fread(&rbuf, 14, 1, fp); // + map+ksz+vsz
-    printf("flag=%x, hash=%u, pad=%x, ksz=%u, vsz=%u\n", (unsigned char)rbuf[0],(unsigned char)rbuf[1], (unsigned char)rbuf[10], pad, (unsigned char)rbuf[12], (unsigned char)rbuf[13]);
+    printf("flag=%x[%lld], hash=%x, pad=%x, ksz=%u, vsz=%u\n", (unsigned char)rbuf[0],ofr,(unsigned char)rbuf[1], (unsigned char)rbuf[10], pad, (unsigned char)rbuf[12], (unsigned char)rbuf[13]);
     printf("pad=%x\n", (unsigned char)rbuf[10]);
     printf("ksz=%x\n", (unsigned char)rbuf[12]);
     printf("vsz=%x\n", (unsigned char)rbuf[13]);
-    ofr+= 14 + (unsigned char)rbuf[10]+ (unsigned char)rbuf[12] +(unsigned char)rbuf[13];
+    if((unsigned char)rbuf[0]==0xc8) {
+      ofr+= 14 + (unsigned char)rbuf[10]+ (unsigned char)rbuf[12] +(unsigned char)rbuf[13];
+    } else if((unsigned char)rbuf[0]==0xb0) {
+      ofr+= (unsigned char)rbuf[1];
+    } else {
+       printf("flag=X[%lld]\n", ofr);
+       fclose(fp);
+       return 1;
+    }
   }
   fclose(fp);
 }
