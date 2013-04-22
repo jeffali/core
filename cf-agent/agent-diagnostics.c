@@ -7,6 +7,7 @@
 #include "bootstrap.h"
 #include "dbm_api.h"
 #include "dbm_priv.h"
+#include "tokyo_check.h"
 
 #include <assert.h>
 
@@ -123,6 +124,23 @@ static AgentDiagnosticsResult AgentDiagnosticsCheckDB(const char *workdir, dbid 
     }
 }
 
+static AgentDiagnosticsResult AgentDiagnosticsCheckDBCoherence(const char *workdir, dbid id)
+{
+    //char *dbpath = DBIdToPath(workdir, id);
+    int error = CheckTokyoDBCoherence("/tmp/a.tcdb");
+    //int error = do_check_tokyo_db_coherence("/var/cfengine/cf_classes.tcdb");
+    //if(dbpath) free(dbpath);
+
+    if (error)
+    {
+        return AgentDiagnosticsResultNew(false, error);
+    }
+    else
+    {
+        return AgentDiagnosticsResultNew(true, xstrdup("OK"));
+    }
+}
+
 AgentDiagnosticsResult AgentDiagnosticsCheckDBPersistentClasses(const char *workdir)
 {
     return AgentDiagnosticsCheckDB(workdir, dbid_state);
@@ -179,6 +197,7 @@ const AgentDiagnosticCheck *AgentDiagnosticsAllChecks(void)
         { "Check file stats DB", &AgentDiagnosticsCheckDBFileStats },
         { "Check locks DB", &AgentDiagnosticsCheckDBLocks },
         { "Check performance DB", &AgentDiagnosticsCheckDBPerformance },
+        { "Check DB internal coherence", &AgentDiagnosticsCheckDBCoherence },
 
         { NULL, NULL }
     };
