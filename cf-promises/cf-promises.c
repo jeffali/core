@@ -32,6 +32,8 @@
 #include "syntax.h"
 #include "rlist.h"
 #include "parser.h"
+#include "sysinfo.h"
+#include "logging.h"
 
 static GenericAgentConfig *CheckOpts(EvalContext *ctx, int argc, char **argv);
 
@@ -111,7 +113,7 @@ int main(int argc, char *argv[])
     {
     case GENERIC_AGENT_CONFIG_COMMON_POLICY_OUTPUT_FORMAT_CF:
         {
-            Policy *output_policy = ParserParseFile(GenericAgentResolveInputPath(config->input_file, config->input_file));
+            Policy *output_policy = ParserParseFile(config->input_file);
             Writer *writer = FileWriter(stdout);
             PolicyToString(policy, writer);
             WriterClose(writer);
@@ -121,7 +123,7 @@ int main(int argc, char *argv[])
 
     case GENERIC_AGENT_CONFIG_COMMON_POLICY_OUTPUT_FORMAT_JSON:
         {
-            Policy *output_policy = ParserParseFile(GenericAgentResolveInputPath(config->input_file, config->input_file));
+            Policy *output_policy = ParserParseFile(config->input_file);
             JsonElement *json_policy = PolicyToJson(output_policy);
             Writer *writer = FileWriter(stdout);
             JsonElementPrint(writer, json_policy, 2);
@@ -166,7 +168,7 @@ GenericAgentConfig *CheckOpts(EvalContext *ctx, int argc, char **argv)
                 exit(EXIT_FAILURE);
             }
 
-            GenericAgentConfigSetInputFile(config, optarg);
+            GenericAgentConfigSetInputFile(config, GetWorkDir(), optarg);
             MINUSF = true;
             break;
 
@@ -180,7 +182,6 @@ GenericAgentConfig *CheckOpts(EvalContext *ctx, int argc, char **argv)
                 Rlist *bundlesequence = RlistFromSplitString(optarg, ',');
                 GenericAgentConfigSetBundleSequence(config, bundlesequence);
                 RlistDestroy(bundlesequence);
-                CBUNDLESEQUENCE_STR = optarg; // TODO: wtf is this
             }
             break;
 
@@ -236,7 +237,7 @@ GenericAgentConfig *CheckOpts(EvalContext *ctx, int argc, char **argv)
             exit(0);
 
         case 'h':
-            Syntax("cf-promises - cfengine's promise analyzer", OPTIONS, HINTS, ID);
+            Syntax("cf-promises", OPTIONS, HINTS, ID, true);
             exit(0);
 
         case 'M':
@@ -252,18 +253,17 @@ GenericAgentConfig *CheckOpts(EvalContext *ctx, int argc, char **argv)
             exit(0);
 
         default:
-            Syntax("cf-promises - cfengine's promise analyzer", OPTIONS, HINTS, ID);
+            Syntax("cf-promises", OPTIONS, HINTS, ID, true);
             exit(1);
 
         }
     }
 
-    if (argv[optind] != NULL)
+    if (!GenericAgentConfigParseArguments(config, argc - optind, argv + optind))
     {
-        CfOut(OUTPUT_LEVEL_ERROR, "", "Unexpected argument: %s\n", argv[optind]);
+        Log(LOG_LEVEL_ERR, "Too many arguments");
+        exit(EXIT_FAILURE);
     }
-
-    CfDebug("Set debugging\n");
 
     return config;
 }

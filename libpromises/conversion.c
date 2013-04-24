@@ -217,7 +217,7 @@ OutputLevel OutputLevelFromString(const char *level)
 {
     static const char *REPORT_LEVEL_TYPES[] = { "inform", "verbose", "error", "log", NULL };
 
-    return FindTypeInArray(REPORT_LEVEL_TYPES, level, OUTPUT_LEVEL_NONE, OUTPUT_LEVEL_NONE);
+    return FindTypeInArray(REPORT_LEVEL_TYPES, level, OUTPUT_LEVEL_ERROR, OUTPUT_LEVEL_ERROR);
 }
 
 FileLinkType FileLinkTypeFromString(const char *s)
@@ -651,7 +651,7 @@ AclInheritance AclInheritanceFromString(const char *string)
 
 ServicePolicy ServicePolicyFromString(const char *string)
 {
-    static const char *SERVICE_POLICY_TYPES[5] = { "start", "stop", "disable", "restart", NULL };
+    static const char *SERVICE_POLICY_TYPES[] = { "start", "stop", "disable", "restart", "reload", NULL };
 
     return FindTypeInArray(SERVICE_POLICY_TYPES, string, SERVICE_POLICY_START, SERVICE_POLICY_START);
 }

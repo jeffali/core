@@ -1,6 +1,7 @@
 sbin_PROGRAMS = cf-agent
 
 AM_CPPFLAGS = @CPPFLAGS@ -I$(srcdir)/../libpromises -I$(srcdir)/../libutils \
+	-I$(srcdir)/../libcfnet \
 	$(NOVA_CPPFLAGS) \
 	$(LIBVIRT_CPPFLAGS) \
 	$(POSTGRESQL_CPPFLAGS) \
@@ -54,7 +55,6 @@ cf_agent_SOURCES = \
         verify_exec.c verify_exec.h \
         verify_methods.c verify_methods.h \
         verify_databases.c verify_databases.h \
-        verify_outputs.c verify_outputs.h \
         verify_processes.c verify_processes.h \
         verify_services.c verify_services.h \
         verify_environments.c verify_environments.h \

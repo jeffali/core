@@ -34,14 +34,10 @@
 #include "files_interfaces.h"
 #include "files_hashes.h"
 #include "keyring.h"
-#include "communication.h"
 #include "env_context.h"
 #include "crypto.h"
 #include "sysinfo.h"
-
-#ifdef HAVE_NOVA
-#include "license.h"
-#endif
+#include "logging.h"
 
 #include "cf-key-functions.h"
 
@@ -207,7 +203,7 @@ static GenericAgentConfig *CheckOpts(int argc, char **argv)
             break;
 
         case 'h':
-            Syntax("cf-key - CFEngine's key generator", OPTIONS, HINTS, ID);
+            Syntax("cf-key", OPTIONS, HINTS, ID, false);
             exit(0);
 
         case 'M':
@@ -215,7 +211,7 @@ static GenericAgentConfig *CheckOpts(int argc, char **argv)
             exit(0);
 
         default:
-            Syntax("cf-key - CFEngine's key generator", OPTIONS, HINTS, ID);
+            Syntax("cf-key", OPTIONS, HINTS, ID, false);
             exit(1);
 
         }

@@ -33,7 +33,6 @@
 #include "verify_methods.h"
 #include "verify_processes.h"
 #include "verify_packages.h"
-#include "verify_outputs.h"
 #include "verify_services.h"
 #include "verify_storage.h"
 #include "verify_files.h"
@@ -76,7 +75,6 @@ typedef enum
     TYPE_SEQUENCE_VARS,
     TYPE_SEQUENCE_DEFAULTS,
     TYPE_SEQUENCE_CONTEXTS,
-    TYPE_SEQUENCE_OUTPUTS,
     TYPE_SEQUENCE_INTERFACES,
     TYPE_SEQUENCE_FILES,
     TYPE_SEQUENCE_PACKAGES,
@@ -100,6 +98,7 @@ typedef enum
 #ifdef HAVE_NOVA
 #include "cf.nova.h"
 #include "agent_reports.h"
+#include "nova-agent-diagnostics.h"
 #else
 #include "reporting.h"
 #endif
@@ -128,7 +127,6 @@ static const char *AGENT_TYPESEQUENCE[] =
     "vars",
     "defaults",
     "classes",                  /* Maelstrom order 2 */
-    "outputs",
     "interfaces",
     "files",
     "packages",
@@ -254,7 +252,7 @@ int main(int argc, char *argv[])
     {
         CfOut(OUTPUT_LEVEL_ERROR, "", "CFEngine was not able to get confirmation of promises from cf-promises, so going to failsafe\n");
         EvalContextHeapAddHard(ctx, "failsafe_fallback");
-        GenericAgentConfigSetInputFile(config, "failsafe.cf");
+        GenericAgentConfigSetInputFile(config, GetWorkDir(), "failsafe.cf");
         policy = GenericAgentLoadPolicy(ctx, config);
     }
 
@@ -271,7 +269,7 @@ int main(int argc, char *argv[])
     }
 
     // only note class usage when default policy is run
-    if (!config->input_file)
+    if (!MINUSF)
     {
         StringSetIterator soft_iter = EvalContextHeapIteratorSoft(ctx);
         NoteClassUsage(soft_iter, true);
@@ -335,15 +333,16 @@ static GenericAgentConfig *CheckOpts(EvalContext *ctx, int argc, char **argv)
                 exit(EXIT_FAILURE);
             }
 
-            GenericAgentConfigSetInputFile(config, optarg);
+            GenericAgentConfigSetInputFile(config, GetWorkDir(), optarg);
             MINUSF = true;
             break;
 
         case 'b':
             if (optarg)
             {
-                config->bundlesequence = RlistFromSplitString(optarg, ',');
-                CBUNDLESEQUENCE_STR = optarg;
+                Rlist *bundlesequence = RlistFromSplitString(optarg, ',');
+                GenericAgentConfigSetBundleSequence(config, bundlesequence);
+                RlistDestroy(bundlesequence);
             }
             break;
 
@@ -373,7 +372,7 @@ static GenericAgentConfig *CheckOpts(EvalContext *ctx, int argc, char **argv)
 
             BOOTSTRAP = true;
             MINUSF = true;
-            GenericAgentConfigSetInputFile(config, "promises.cf");
+            GenericAgentConfigSetInputFile(config, GetWorkDir(), "promises.cf");
             IGNORELOCK = true;
 
             EvalContextHeapAddHard(ctx, "bootstrap_mode");
@@ -442,7 +441,7 @@ static GenericAgentConfig *CheckOpts(EvalContext *ctx, int argc, char **argv)
             exit(0);
 
         case 'h':
-            Syntax("cf-agent - cfengine's change agent", OPTIONS, HINTS, ID);
+            Syntax("cf-agent", OPTIONS, HINTS, ID, true);
             exit(0);
 
         case 'M':
@@ -451,25 +450,29 @@ static GenericAgentConfig *CheckOpts(EvalContext *ctx, int argc, char **argv)
 
         case 'x':
             {
+                const char *workdir = GetWorkDir();
                 Writer *out = FileWriter(stdout);
-                AgentDiagnosticsRun(GetWorkDir(), AgentDiagosticsAllChecks(), out);
+                WriterWriteF(out, "self-diagnostics for agent using workdir '%s'\n", workdir);
+
+                AgentDiagnosticsRun(workdir, AgentDiagnosticsAllChecks(), out);
+#ifdef HAVE_NOVA
+                AgentDiagnosticsRun(workdir, AgentDiagnosticsAllChecksNova(), out);
+#endif
                 FileWriterDetach(out);
             }
             exit(0);
 
         default:
-            Syntax("cf-agent - cfengine's change agent", OPTIONS, HINTS, ID);
+            Syntax("cf-agent", OPTIONS, HINTS, ID, true);
             exit(1);
         }
     }
 
-    if (argv_bootstrap_options_new[optind] != NULL)
+    if (!GenericAgentConfigParseArguments(config, argc - optind, argv_bootstrap_options_new + optind))
     {
-        CfOut(OUTPUT_LEVEL_ERROR, "", "Unexpected argument: %s\n", argv[optind]);
+        Log(LOG_LEVEL_ERR, "Too many arguments");
         exit(EXIT_FAILURE);
     }
-
-    CfDebug("Set debugging\n");
 
     FreeStringArray(argc_bootstrap_options_new, argv_bootstrap_options_new);
 
@@ -1121,14 +1124,12 @@ static void KeepPromiseBundles(EvalContext *ctx, Policy *policy, GenericAgentCon
 
         if ((bp = PolicyGetBundle(policy, NULL, "agent", name)) || (bp = PolicyGetBundle(policy, NULL, "common", name)))
         {
-            SetBundleOutputs(bp->name);
             BannerBundle(bp, params);
 
             EvalContextStackPushBundleFrame(ctx, bp, false);
             ScopeAugment(ctx, bp, params);
 
             ScheduleAgentOperations(ctx, bp);
-            ResetBundleOutputs(bp->name);
 
             EvalContextStackPopFrame(ctx);
         }
@@ -1417,14 +1418,6 @@ static void KeepAgentPromise(EvalContext *ctx, Promise *pp, ARG_UNUSED void *par
         KeepClassContextPromise(ctx, pp, NULL);
         return;
     }
-
-    if (strcmp("outputs", pp->parent_promise_type->name) == 0)
-    {
-        VerifyOutputsPromise(ctx, pp);
-        return;
-    }
-
-    SetPromiseOutputs(ctx, pp);
 
     if (strcmp("processes", pp->parent_promise_type->name) == 0)
     {
@@ -1717,7 +1710,7 @@ static bool VerifyBootstrap(void)
         return false;
     }
 
-    CfOut(OUTPUT_LEVEL_CMDOUT, "", "-> Bootstrap to %s completed successfully", POLICY_SERVER);
+    printf("-> Bootstrap to %s completed successfully\n", POLICY_SERVER);
 
     return true;
 }
@@ -1797,21 +1790,21 @@ static int AutomaticBootstrap()
         ListDestroy(&foundhubs);
         return -1;
     case 0:
-        CfOut(OUTPUT_LEVEL_REPORTING, "", "No hubs were found. Exiting.");
+        printf("No hubs were found. Exiting.\n");
         ListDestroy(&foundhubs);
         return -1;
     case 1:
-        CfOut(OUTPUT_LEVEL_REPORTING, "", "Found hub installed on:"
-                                                      "Hostname: %s"
-                                                      "IP Address: %s",
-                                                      ((HostProperties*)foundhubs)->Hostname,
-                                                      ((HostProperties*)foundhubs)->IPAddress);
+        printf("Found hub installed on:"
+               "Hostname: %s"
+               "IP Address: %s\n",
+               ((HostProperties*)foundhubs)->Hostname,
+               ((HostProperties*)foundhubs)->IPAddress);
         strncpy(POLICY_SERVER, ((HostProperties*)foundhubs)->IPAddress, CF_BUFSIZE);
         dlclose(avahi_handle);
         break;
     default:
-        CfOut(OUTPUT_LEVEL_REPORTING, "", "Found more than one hub registered in the network.\n"
-                                                      "Please bootstrap manually using IP from the list below:");
+        printf("Found more than one hub registered in the network.\n"
+               "Please bootstrap manually using IP from the list below:\n");
         PrintList(foundhubs);
         dlclose(avahi_handle);
         ListDestroy(&foundhubs);

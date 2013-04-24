@@ -26,10 +26,10 @@
 
 #include "syntax.h"
 
-static const ConstraintSyntax CF_EXECCONTAIN_BODY[] =
+static const ConstraintSyntax contain_constraints[] =
 {
     ConstraintSyntaxNewBool("useshell", "true/false embed the command in a shell environment", "false"),
-    ConstraintSyntaxNewOption("umask", "0,77,22,27,72,077,022,027,072", "The umask value for the child process", NULL),
+    ConstraintSyntaxNewOption("umask", "0,77,22,27,72,077,002,022,027,072", "The umask value for the child process", NULL),
     ConstraintSyntaxNewString("exec_owner", "", "The user name or id under which to run the process", NULL),
     ConstraintSyntaxNewString("exec_group", "", "The group name or id under which to run the process", NULL),
     ConstraintSyntaxNewInt("exec_timeout", "1,3600", "Timeout in seconds for command completion", NULL),
@@ -40,16 +40,18 @@ static const ConstraintSyntax CF_EXECCONTAIN_BODY[] =
     ConstraintSyntaxNewNull()
 };
 
-static const ConstraintSyntax CF_EXEC_BODIES[] =
+static const BodyTypeSyntax contain_body = BodyTypeSyntaxNew("contain", contain_constraints, NULL);
+
+static const ConstraintSyntax commands_constraints[] =
 {
     ConstraintSyntaxNewString("args", "", "Alternative string of arguments for the command (concatenated with promiser string)", NULL),
-    ConstraintSyntaxNewBody("contain", CF_EXECCONTAIN_BODY, "Containment options for the execution process"),
+    ConstraintSyntaxNewBody("contain", &contain_body, "Containment options for the execution process", NULL),
     ConstraintSyntaxNewBool("module", "true/false whether to expect the cfengine module protocol", "false"),
     ConstraintSyntaxNewNull()
 };
 
 const PromiseTypeSyntax CF_EXEC_PROMISE_TYPES[] =
 {
-    PromiseTypeSyntaxNew("agent", "commands", ConstraintSetSyntaxNew(CF_EXEC_BODIES, NULL)),
+    PromiseTypeSyntaxNew("agent", "commands", commands_constraints, NULL),
     PromiseTypeSyntaxNewNull(),
 };

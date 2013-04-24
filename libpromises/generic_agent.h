@@ -35,7 +35,11 @@ typedef struct
     AgentType agent_type;
 
     Rlist *bundlesequence;
+
+    char *original_input_file;
     char *input_file;
+    char *input_dir;
+
     bool check_not_writable_by_others;
     bool check_runnable;
     bool debug_mode;
@@ -64,18 +68,18 @@ typedef struct
 
 } GenericAgentConfig;
 
-const char *GenericAgentResolveInputPath(const char *filename, const char *base_input_file);
+const char *GenericAgentResolveInputPath(const GenericAgentConfig *config, const char *input_file);
 void GenericAgentDiscoverContext(EvalContext *ctx, GenericAgentConfig *config);
 bool GenericAgentCheckPolicy(EvalContext *ctx, GenericAgentConfig *config, bool force_validation);
 Policy *GenericAgentLoadPolicy(EvalContext *ctx, GenericAgentConfig *config);
 
 void InitializeGA(EvalContext *ctx, GenericAgentConfig *config);
-void Syntax(const char *comp, const struct option options[], const char *hints[], const char *id);
+void Syntax(const char *comp, const struct option options[], const char *hints[], const char *description, bool accepts_file_argument);
 void ManPage(const char *component, const struct option options[], const char *hints[], const char *id);
 void PrintVersion(void);
-int CheckPromises(const char *input_file);
+int CheckPromises(const GenericAgentConfig *config);
 Policy *ReadPromises(AgentType agent_type, GenericAgentConfig *config);
-int NewPromiseProposals(EvalContext *ctx, const char *input_file, const Rlist *input_files);
+int NewPromiseProposals(EvalContext *ctx, const GenericAgentConfig *config, const Rlist *input_files);
 
 void BundleHashVariables(EvalContext *ctx, Bundle *bundle);
 void PolicyHashVariables(EvalContext *ctx, Policy *policy);
@@ -100,11 +104,13 @@ void WarnAboutDeprecatedFeatures(EvalContext *ctx);
 void CheckForPolicyHub(EvalContext *ctx);
 void ReloadPromises(AgentType ag);
 
+bool GenericAgentConfigParseArguments(GenericAgentConfig *config, int argc, char **argv);
+
 GenericAgentConfig *GenericAgentConfigNewDefault(AgentType agent_type);
 void GenericAgentConfigDestroy(GenericAgentConfig *config);
 void GenericAgentConfigApply(EvalContext *ctx, const GenericAgentConfig *config);
 
-void GenericAgentConfigSetInputFile(GenericAgentConfig *config, const char *input_file);
+void GenericAgentConfigSetInputFile(GenericAgentConfig *config, const char *workdir, const char *input_file);
 void GenericAgentConfigSetBundleSequence(GenericAgentConfig *config, const Rlist *bundlesequence);
 
 #endif

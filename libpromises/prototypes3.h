@@ -40,9 +40,6 @@ void yyerror(const char *s);
 
 int ScheduleAgentOperations(EvalContext *ctx, Bundle *bp);
 
-/* Mark connection as free */
-void ServerNotBusy(AgentConnection *conn);
-
 /* Only for agent.c */
 
 void ConnectionsInit(void);
@@ -57,7 +54,6 @@ void SetSkipIdentify(bool enabled);
 int CfSessionKeySize(char c);
 char CfEnterpriseOptions(void);
 const EVP_CIPHER *CfengineCipher(char type);
-int IsEnterprise(void);
 void EnterpriseContext(EvalContext *ctx);
 const char *GetConsolePrefix(void);
 void LoadSlowlyVaryingObservations(EvalContext *ctx);
@@ -116,15 +112,6 @@ void CloseNetwork(void);
 int LinkOrCopy(const char *from, const char *to, int sym);
 int ExclusiveLockFile(int fd);
 int ExclusiveUnlockFile(int fd);
-
-/* sockaddr.c */
-
-/* Not thread-safe */
-char *sockaddr_ntop(struct sockaddr *sa);
-
-/* Thread-safe. Returns boolean success.
-   It's up to caller to provide large enough addr. */
-bool sockaddr_pton(int af, const void *src, void *addr);
 
 /* storage_tools.c */
 

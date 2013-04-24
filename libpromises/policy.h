@@ -242,6 +242,8 @@ Constraint *BodyAppendConstraint(Body *body, const char *lval, Rval rval, const 
  */
 Seq *BodyGetConstraint(Body *body, const char *lval);
 
+bool BodyHasConstraint(const Body *body, const char *lval);
+
 const char *ConstraintGetNamespace(const Constraint *cp);
 
 Promise *PromiseTypeAppendPromise(PromiseType *type, const char *promiser, Rval promisee, const char *classes);
@@ -359,14 +361,6 @@ const char *ConstraintContext(const Constraint *cp);
 Constraint *EffectiveConstraint(const EvalContext *ctx, Seq *constraints);
 
 /**
- * @brief Replace the rval of a scalar constraint (copies rval)
- * @param conlist
- * @param lval
- * @param rval
- */
-void ConstraintSetScalarValue(Seq *conlist, const char *lval, const char *rval);
-
-/**
  * @brief Get the Rval value of the first effective constraint that matches the given type
  * @param lval
  * @param promise
@@ -399,7 +393,7 @@ int ConstraintsGetAsBoolean(const EvalContext *ctx, const char *lval, const Seq 
 
 
 /**
- * @return A copy of the namespace compoent of a qualified name, or NULL. e.g. "foo:bar" -> "foo"
+ * @return A copy of the namespace component of a qualified name, or NULL. e.g. "foo:bar" -> "foo"
  */
 char *QualifiedNameNamespaceComponent(const char *qualified_name);
 

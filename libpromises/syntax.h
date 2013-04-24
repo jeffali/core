@@ -84,7 +84,7 @@ const ConstraintSyntax *PromiseTypeSyntaxGetConstraintSyntax(const PromiseTypeSy
  * @param body_type Type of body, e.g. 'contain'
  * @return NULL if not found
  */
-const ConstraintSyntax *BodySyntaxLookup(const char *body_type);
+const BodyTypeSyntax *BodySyntaxLookup(const char *body_type);
 const ConstraintSyntax *ControlBodySyntaxGet(const char *agent_type);
 
 
@@ -110,15 +110,14 @@ const ConstraintSyntax *BodySyntaxGetConstraintSyntax(const ConstraintSyntax *bo
 #define ConstraintSyntaxNewContext(lval, description) { lval, DATA_TYPE_CONTEXT, .range.validation_string = CF_CLASSRANGE, description }
 #define ConstraintSyntaxNewContextList(lval, description, default_value) { lval, DATA_TYPE_CONTEXT_LIST, .range.validation_string = CF_CLASSRANGE, description, default_value }
 
-#define ConstraintSyntaxNewBody(lval, body_syntax, description) { lval, DATA_TYPE_BODY, .range.body_type_syntax = body_syntax, description }
-#define ConstraintSyntaxNewBundle(lval, description) { lval, DATA_TYPE_BUNDLE, .range.validation_string = CF_BUNDLE, description }
+#define ConstraintSyntaxNewBody(lval, body_syntax, description, default_value) { lval, DATA_TYPE_BODY, .range.body_type_syntax = body_syntax, description, default_value }
+#define ConstraintSyntaxNewBundle(lval, description, default_value) { lval, DATA_TYPE_BUNDLE, .range.validation_string = CF_BUNDLE, description, default_value }
 
+#define BodyTypeSyntaxNew(body_type, constraints, check_fn) { body_type, constraints, check_fn }
+#define BodyTypeSyntaxNewNull() { NULL, NULL, NULL }
 
-#define ConstraintSetSyntaxNew(constraints, validation_fn) { constraints, validation_fn }
-
-
-#define PromiseTypeSyntaxNew(agent_type, promise_type, constraint_set) { agent_type, promise_type, constraint_set }
-#define PromiseTypeSyntaxNewNull() PromiseTypeSyntaxNew(NULL, NULL, ConstraintSetSyntaxNew(NULL, NULL))
+#define PromiseTypeSyntaxNew(agent_type, promise_type, constraints, check_fn) { agent_type, promise_type, constraints, check_fn }
+#define PromiseTypeSyntaxNewNull() PromiseTypeSyntaxNew(NULL, NULL, NULL, NULL)
 
 /* print a specification of the CFEngine language */
 void SyntaxPrintAsJson(Writer *writer);

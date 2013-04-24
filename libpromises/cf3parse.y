@@ -705,9 +705,9 @@ selection_id:          IDSYNTAX
                        {
                            ParserDebug("\tP:%s:%s:%s:%s attribute = %s\n", P.block, P.blocktype, P.blockid, P.currentclasses ? P.currentclasses : "any", P.currentid);
 
-                           const ConstraintSyntax *body_syntax = BodySyntaxLookup(P.currentbody->type);
+                           const BodyTypeSyntax *body_syntax = BodySyntaxLookup(P.currentbody->type);
 
-                           if (!body_syntax || !BodySyntaxGetConstraintSyntax(body_syntax, P.currentid))
+                           if (!body_syntax || !BodySyntaxGetConstraintSyntax(body_syntax->constraints, P.currentid))
                            {
                                ParseError("Unknown selection '%s' for body type '%s'", P.currentid, P.currentbody->type);
                                INSTALL_SKIP=true;
@@ -834,20 +834,22 @@ rval:                  IDSYNTAX
                        {
                            P.rval = (Rval) { P.currentfncall[P.arg_nesting+1], RVAL_TYPE_FNCALL };
                            P.references_body = false;
-                       };
+                       }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-list:                  OB CB 
-                     | OB litems CB;
+list:                  OB litems CB
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-litems:                litems_int
-                     | litems_int ',';
-
-litems_int:            litem
-                     | litems_int ',' litem;
+litems:                /* empty */
+                     | litem
+                     | litem ','  litems
+                     | litem error
+                       {
+                           yyclearin;
+                           ParseError("Expected ',', wrong input: %s", yytext);
+                       }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -878,7 +880,13 @@ litem:                 IDSYNTAX
                            CfDebug("Install function call as list item from level %d\n",P.arg_nesting+1);
                            RlistAppendFnCall((Rlist **)&P.currentRlist,(void *)P.currentfncall[P.arg_nesting+1]);
                            FnCallDestroy(P.currentfncall[P.arg_nesting+1]);
-                       };
+                       }
+
+                     | error
+                       {
+                          yyclearin;
+                          ParseError("Not an valid input for a list value, wrong input: %s", yytext);
+                       }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -899,7 +907,7 @@ functionid:            IDSYNTAX
                            free(P.currentstring);
                            P.currentstring = NULL;
                            CfDebug("Found variable in place of a function identifier %s\n",P.currentid);
-                       };
+                       }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -926,6 +934,7 @@ givearglist:           OP
                        }
 
                        gaitems
+
                        CP 
                        {
                            ParserDebug("\tP:%s:%s:%s end givearglist for function %s, level %d\n", P.block,P.blocktype,P.blockid, P.currentfnid[P.arg_nesting], P.arg_nesting );
@@ -936,14 +945,19 @@ givearglist:           OP
                            free(P.currentfnid[P.arg_nesting]);
                            P.currentfnid[P.arg_nesting] = NULL;
                            P.arg_nesting--;
-                       };
+                       }
 
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-gaitems:               gaitem
+gaitems:               /* empty */
+                     | gaitem
                      | gaitems ',' gaitem
-                     |;
+                     | gaitem error
+                       {
+                           yyclearin;
+                           ParseError("Expected ',', wrong input: %s", yytext);
+                       }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -1072,7 +1086,7 @@ static bool LvalWantsBody(char *stype, char *lval)
 
         for (int j = 0; promise_type_syntax[j].promise_type != NULL; j++)
         {
-            const ConstraintSyntax *bs = promise_type_syntax[j].constraint_set.constraints;
+            const ConstraintSyntax *bs = promise_type_syntax[j].constraints;
             if (!bs)
             {
                 continue;
@@ -1106,37 +1120,40 @@ static bool LvalWantsBody(char *stype, char *lval)
 static SyntaxTypeMatch CheckSelection(const char *type, const char *name, const char *lval, Rval rval)
 {
     // Check internal control bodies etc
-    for (int i = 0; CONTROL_BODIES[i].promise_type != NULL; i++)
+    if (strcmp("control", name) == 0)
     {
-        if (strcmp(CONTROL_BODIES[i].promise_type, name) == 0 && strcmp(type, CONTROL_BODIES[i].bundle_type) == 0)
+        for (int i = 0; CONTROL_BODIES[i].body_type != NULL; i++)
         {
-            CfDebug("Found matching a body matching (%s,%s)\n", type, name);
-
-            const ConstraintSyntax *bs = CONTROL_BODIES[i].constraint_set.constraints;
-
-            for (int l = 0; bs[l].lval != NULL; l++)
+            if (strcmp(type, CONTROL_BODIES[i].body_type) == 0)
             {
-                if (strcmp(lval, bs[l].lval) == 0)
-                {
-                    CfDebug("Matched syntatically correct body (lval) item = (%s)\n", lval);
+                CfDebug("Found matching a body matching (%s,%s)\n", type, name);
 
-                    if (bs[l].dtype == DATA_TYPE_BODY)
+                const ConstraintSyntax *bs = CONTROL_BODIES[i].constraints;
+
+                for (int l = 0; bs[l].lval != NULL; l++)
+                {
+                    if (strcmp(lval, bs[l].lval) == 0)
                     {
-                        CfDebug("Constraint syntax ok, but definition of body is elsewhere\n");
-                        return SYNTAX_TYPE_MATCH_OK;
-                    }
-                    else if (bs[l].dtype == DATA_TYPE_BUNDLE)
-                    {
-                        CfDebug("Constraint syntax ok, but definition of bundle is elsewhere\n");
-                        return SYNTAX_TYPE_MATCH_OK;
-                    }
-                    else
-                    {
-                        return CheckConstraintTypeMatch(lval, rval, bs[l].dtype, bs[l].range.validation_string, 0);
+                        CfDebug("Matched syntatically correct body (lval) item = (%s)\n", lval);
+
+                        if (bs[l].dtype == DATA_TYPE_BODY)
+                        {
+                            CfDebug("Constraint syntax ok, but definition of body is elsewhere\n");
+                            return SYNTAX_TYPE_MATCH_OK;
+                        }
+                        else if (bs[l].dtype == DATA_TYPE_BUNDLE)
+                        {
+                            CfDebug("Constraint syntax ok, but definition of bundle is elsewhere\n");
+                            return SYNTAX_TYPE_MATCH_OK;
+                        }
+                        else
+                        {
+                            return CheckConstraintTypeMatch(lval, rval, bs[l].dtype, bs[l].range.validation_string, 0);
+                        }
                     }
                 }
-            }
 
+            }
         }
     }
 
@@ -1153,7 +1170,7 @@ static SyntaxTypeMatch CheckSelection(const char *type, const char *name, const 
 
         for (int j = 0; promise_type_syntax[j].promise_type != NULL; j++)
         {
-            const ConstraintSyntax *bs = bs = promise_type_syntax[j].constraint_set.constraints;
+            const ConstraintSyntax *bs = bs = promise_type_syntax[j].constraints;
 
             if (!bs)
             {
@@ -1164,7 +1181,7 @@ static SyntaxTypeMatch CheckSelection(const char *type, const char *name, const 
             {
                 if (bs[l].dtype == DATA_TYPE_BODY)
                 {
-                    const ConstraintSyntax *bs2 = bs[l].range.body_type_syntax;
+                    const ConstraintSyntax *bs2 = bs[l].range.body_type_syntax->constraints;
 
                     if (bs2 == NULL || bs2 == (void *) CF_BUNDLE)
                     {
@@ -1209,7 +1226,7 @@ static SyntaxTypeMatch CheckConstraint(const char *type, const char *lval, Rval 
     {
         if (strcmp(promise_type_syntax->promise_type, type) == 0)
         {
-            const ConstraintSyntax *bs = promise_type_syntax->constraint_set.constraints;
+            const ConstraintSyntax *bs = promise_type_syntax->constraints;
 
             for (int l = 0; bs[l].lval != NULL; l++)
             {
