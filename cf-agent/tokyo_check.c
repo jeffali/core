@@ -1,6 +1,9 @@
-#include "tokyo_check.h"
+#include "array_map_priv.h"
+#include "hash_map_priv.h"
+#include "map.h"
+#include "string_lib.h"
+#include "logging.h"
 
-#ifdef TCDB
 /*
  * The idea behind the following code comes from : copiousfreetime@github
  */
@@ -50,19 +53,19 @@ static db_meta_t* dbmeta_new_direct( const char* dbfilename )
 
   dbmeta = (db_meta_t*)xcalloc( 1, sizeof( db_meta_t ));
   if(!dbmeta) {
-    CfOut(OUTPUT_LEVEL_ERROR, "", "Error allocating memory : %s\n", strerror(errno));
+    printf("Err:Error allocating memory : %s\n", strerror(errno));
     return NULL;
   }
 
   realpath( dbfilename, dbmeta->dbpath );
   if ( -1 == ( dbmeta->fd = open( dbmeta->dbpath, O_RDONLY) ) ) {
-    CfOut(OUTPUT_LEVEL_ERROR, "", "Failure opening file [%s] : %s\n", dbmeta->dbpath, strerror( errno ));
+    printf("Err:Failure opening file [%s] : %s\n", dbmeta->dbpath, strerror( errno ));
     if(dbmeta) free(dbmeta);
     return NULL;
   }
 
   if ( 256 != read(dbmeta->fd, hbuf, 256 ) ) {
-    CfOut(OUTPUT_LEVEL_ERROR, "", "Failure reading from database [%s] : %s\n", dbmeta->dbpath, strerror( errno ));
+    printf("Err:Failure reading from database [%s] : %s\n", dbmeta->dbpath, strerror( errno ));
     close( dbmeta->fd );
     if(dbmeta) free(dbmeta);
     return NULL;
@@ -72,21 +75,22 @@ static db_meta_t* dbmeta_new_direct( const char* dbfilename )
   dbmeta->bucket_offset = 256;
   uint8_t opts;
   memcpy(&opts, hbuf + 36, sizeof(uint8_t));
-  dbmeta->bytes_per     = (opts & HDBTLARGE) ? sizeof(uint64_t) : sizeof(uint32_t);
+  dbmeta->bytes_per     = (opts & (1<<0)) ? sizeof(uint64_t) : sizeof(uint32_t);
 
   memcpy(&(dbmeta->record_count), hbuf + 48, sizeof(uint64_t));
   memcpy(&(dbmeta->record_offset), hbuf + 64, sizeof(uint64_t));
   memcpy(&(dbmeta->alignment_pow), hbuf + 34, sizeof(uint8_t));
   dbmeta->offset_map   = StringMapNew();
   dbmeta->record_map   = StringMapNew();
+  printf("OMAP = %x RMAP = %x\n", dbmeta->offset_map, dbmeta->record_map);
 
-  CfOut(OUTPUT_LEVEL_VERBOSE, "", "Database            : %s\n",   dbmeta->dbpath );
-  CfOut(OUTPUT_LEVEL_VERBOSE, "", "  number of buckets : %llu\n", (long long unsigned)dbmeta->bucket_count );
-  CfOut(OUTPUT_LEVEL_VERBOSE, "", "  offset of buckets : %llu\n", (long long unsigned)dbmeta->bucket_offset );
-  CfOut(OUTPUT_LEVEL_VERBOSE, "", "  bytes per pointer : %llu\n", (long long unsigned)dbmeta->bytes_per );
-  CfOut(OUTPUT_LEVEL_VERBOSE, "", "  alignment power   : %llu\n", (long long unsigned)dbmeta->alignment_pow);
-  CfOut(OUTPUT_LEVEL_VERBOSE, "", "  number of records : %llu\n", (long long unsigned)dbmeta->record_count );
-  CfOut(OUTPUT_LEVEL_VERBOSE, "", "  offset of records : %llu\n", (long long unsigned)dbmeta->record_offset );
+  printf("Vrb:Database            : %s\n",   dbmeta->dbpath );
+  printf("Vrb:  number of buckets : %llu\n", (long long unsigned)dbmeta->bucket_count );
+  printf("Vrb:  offset of buckets : %llu\n", (long long unsigned)dbmeta->bucket_offset );
+  printf("Vrb:  bytes per pointer : %llu\n", (long long unsigned)dbmeta->bytes_per );
+  printf("Vrb:  alignment power   : %llu\n", (long long unsigned)dbmeta->alignment_pow);
+  printf("Vrb:  number of records : %llu\n", (long long unsigned)dbmeta->record_count );
+  printf("Vrb:  offset of records : %llu\n", (long long unsigned)dbmeta->record_offset );
 
   return dbmeta;
 }
@@ -105,13 +109,13 @@ static int add_offset_to_map_unless_exists( StringMap** tree, uint64_t offset, i
 {
   char *tmp;
   xasprintf(&tmp, "%llu",offset);
-
+  printf("Will add %s in %x\n", tmp, *tree);
   char *val;
-  if ( StringMapHasKey(*tree, tmp) ) {
+  if ( StringMapHasKey(*tree, tmp) == false ) {
     xasprintf(&val, "%llu", bucket_index);
     StringMapInsert( *tree, tmp, val );
   } else {
-    CfOut(OUTPUT_LEVEL_ERROR, "", "Duplicate offset for value %llu at index %lld, other value %llu, other index %s\n", 
+    printf("Err:Duplicate offset for value %llu at index %lld, other value %llu, other index %s\n", 
         (long long unsigned)offset, (long long)bucket_index,
         (long long unsigned)offset   , (char *)StringMapGet(*tree, tmp));
     //if(new_node) free( new_node );
@@ -124,7 +128,7 @@ static int dbmeta_populate_offset_tree( db_meta_t* dbmeta )
   uint64_t i;
 
   if(lseek( dbmeta->fd, dbmeta->bucket_offset, SEEK_SET )==-1) {
-    CfOut(OUTPUT_LEVEL_ERROR, "", "Error traversing bucket section to find record offsets : %s\n", strerror(errno));
+    printf("Err:Error traversing bucket section to find record offsets : %s\n", strerror(errno));
     return 1;
   }
 
@@ -133,7 +137,7 @@ static int dbmeta_populate_offset_tree( db_meta_t* dbmeta )
     int           b = read( dbmeta->fd, &offset, dbmeta->bytes_per);
 
     if ( b != dbmeta->bytes_per ) {
-      CfOut(OUTPUT_LEVEL_ERROR, "", "Read the wrong number of bytes (%d)\n", b );
+      printf("Err:Read the wrong number of bytes (%d)\n", b );
       return 2;
     }
 
@@ -146,7 +150,7 @@ static int dbmeta_populate_offset_tree( db_meta_t* dbmeta )
     }
  }
 
- CfOut(OUTPUT_LEVEL_VERBOSE, "", "Found %llu buckets with offsets\n", (long long unsigned)StringMapSize( dbmeta->offset_map ));
+ printf("Vrb:Found %llu buckets with offsets\n", (long long unsigned)StringMapSize( dbmeta->offset_map ));
  return 0;
 }
 
@@ -183,7 +187,7 @@ static int read_vary_int( int fd, uint32_t* result )
 static bool dbmeta_read_one_rec( db_meta_t *dbmeta, tcrec* rec )
 {
   if(lseek( dbmeta->fd, rec->offset, SEEK_SET )==-1) {
-    CfOut(OUTPUT_LEVEL_ERROR, "", "Error traversing record section to find records : \n" );
+    printf("Err:Error traversing record section to find records : \n" );
   }
 
   while( true ) {
@@ -191,17 +195,17 @@ static bool dbmeta_read_one_rec( db_meta_t *dbmeta, tcrec* rec )
     //rec->offset = lseek64( dbmeta->fd, 0, SEEK_CUR );
     rec->offset = lseek( dbmeta->fd, 0, SEEK_CUR );
     if(rec->offset == (off_t) -1) {
-      CfOut(OUTPUT_LEVEL_ERROR, "", "Error traversing record section to find records : \n" );
+      printf("Err:Error traversing record section to find records : \n" );
     }
     //rec->offset = ftell( dbmeta->fd );
 
     if ( 1 != read(dbmeta->fd, &(rec->magic), 1 ) ) {
-      CfOut(OUTPUT_LEVEL_ERROR, "", "ERROR: Failure reading 1 byte, %s\n", strerror( errno ));
+      printf("Err:ERROR: Failure reading 1 byte, %s\n", strerror( errno ));
       return false;
     }
 
     if ( MAGIC_DATA_BLOCK ==  rec->magic ) {
-      CfOut(OUTPUT_LEVEL_VERBOSE, "", "off=%llu[c8]\n", rec->offset);
+      printf("Vrb:off=%llu[c8]\n", rec->offset);
       int length = 1;
   
       length += read( dbmeta->fd, &(rec->hash), 1 );
@@ -221,7 +225,7 @@ static bool dbmeta_read_one_rec( db_meta_t *dbmeta, tcrec* rec )
       return true;
   
     } else if ( MAGIC_FREE_BLOCK == rec->magic ) {
-      CfOut(OUTPUT_LEVEL_VERBOSE, "", "off=%llu[b0]\n", rec->offset);
+      printf("Vrb:off=%llu[b0]\n", rec->offset);
       uint32_t length;
       rec->length = 1;
       rec->length += read(dbmeta->fd, &length, sizeof( length ));
@@ -231,13 +235,13 @@ static bool dbmeta_read_one_rec( db_meta_t *dbmeta, tcrec* rec )
     } else {
       // read a non-magic byte, so skip it
       /*
-      CfOut(OUTPUT_LEVEL_ERROR, "", "\nERROR : Read the start of a record at offset %llu, got %x instead of %x or %x\n",
+      printf("Err:\nERROR : Read the start of a record at offset %llu, got %x instead of %x or %x\n",
             (long long unsigned)rec->offset, rec->magic, MAGIC_DATA_BLOCK, MAGIC_FREE_BLOCK );
       return false;
       */
     }
   }
-  CfOut(OUTPUT_LEVEL_ERROR, "", "\nERROR : read loop reached here.\n");
+  printf("Err:\nERROR : read loop reached here.\n");
   return false;
 }
 
@@ -250,7 +254,7 @@ static int dbmeta_populate_record_tree( db_meta_t* dbmeta )
 
   offset = dbmeta->record_offset;
   if(fstat( dbmeta->fd, &st ) == -1) {
-    CfOut(OUTPUT_LEVEL_ERROR, "", "Error getting file stats :%s\n", strerror(errno));
+    printf("Err:Error getting file stats :%s\n", strerror(errno));
     return 1;
   }
 
@@ -262,7 +266,7 @@ static int dbmeta_populate_record_tree( db_meta_t* dbmeta )
 
     // read a variable-length record
     if( !dbmeta_read_one_rec( dbmeta, &new_rec )) { 
-      CfOut(OUTPUT_LEVEL_ERROR, "", "Unable to fetch a new record from DB file\n");
+      printf("Err:Unable to fetch a new record from DB file\n");
       return 2;
     } else {
       offset = new_rec.offset + new_rec.length;
@@ -280,7 +284,7 @@ static int dbmeta_populate_record_tree( db_meta_t* dbmeta )
 
         char *key;
         xasprintf(&key, "%llu", new_rec.offset);
-        if ( StringMapHasKey (dbmeta->offset_map, key)) { 
+        if ( StringMapHasKey(dbmeta->offset_map, key) == true) { 
           if(key) free( key );
         } else {
           //char *key;
@@ -288,18 +292,18 @@ static int dbmeta_populate_record_tree( db_meta_t* dbmeta )
           StringMapInsert(dbmeta->record_map, key, "0");
         }
       } else {
-        CfOut(OUTPUT_LEVEL_ERROR, "", "How do you have a new_rec.offset that is <= 0 ???\n");
+        printf("Err:How do you have a new_rec.offset that is <= 0 ???\n");
       }
 
       if ( new_rec.left > 0 ) {
-        CfOut(OUTPUT_LEVEL_VERBOSE, "", ">>> handle left %llu\n", new_rec.left);
+        printf("Vrb:>>> handle left %llu\n", new_rec.left);
         if( add_offset_to_map_unless_exists( &(dbmeta->offset_map), new_rec.left, -1 )) {
           return 4;
         }
       }
 
       if ( new_rec.right > 0 ) {
-        CfOut(OUTPUT_LEVEL_VERBOSE, "", ">>> handle right %llu\n", new_rec.right);
+        printf("Vrb:>>> handle right %llu\n", new_rec.right);
         if(add_offset_to_map_unless_exists( &(dbmeta->offset_map), new_rec.right, -1 )) {
           return 4;
         }
@@ -310,13 +314,13 @@ static int dbmeta_populate_record_tree( db_meta_t* dbmeta )
       // if it is a fragment record, then skip it
       free_blocks++;
     } else {
-      CfOut(OUTPUT_LEVEL_ERROR, "", "NO record found at offset %llu\n", (long long unsigned)new_rec.offset );
+      printf("Err:NO record found at offset %llu\n", (long long unsigned)new_rec.offset );
     }
   }
 
   // if we are not at the end of the file, output the current file offset
   // with an appropriate message and return
-  CfOut(OUTPUT_LEVEL_VERBOSE, "",  "Found %llu data records and %llu free block records\n", data_blocks, free_blocks);
+  printf("Vrb:Found %llu data records and %llu free block records\n", data_blocks, free_blocks);
 
   return 0;
 }
@@ -327,8 +331,8 @@ static int dbmeta_get_results( db_meta_t *dbmeta )
   uint64_t records_no_bucket = StringMapSize( dbmeta->record_map) ;
   int ret = 0;
 
-  CfOut(OUTPUT_LEVEL_VERBOSE, "", "Found %llu offsets listed in buckets that do not have records\n", buckets_no_record);
-  CfOut(OUTPUT_LEVEL_VERBOSE, "", "Found %llu records in data that do not have an offset pointing to them\n", records_no_bucket);
+  printf("Vrb:Found %llu offsets listed in buckets that do not have records\n", buckets_no_record);
+  printf("Vrb:Found %llu records in data that do not have an offset pointing to them\n", records_no_bucket);
 
   if ( buckets_no_record > 0 ) {
     ret += 1;
@@ -350,11 +354,11 @@ int CheckTokyoDBCoherence( char *path )
     return 1;
   }
 
-  CfOut(OUTPUT_LEVEL_VERBOSE, "", "Populating with bucket section offsets\n");
+  printf("Vrb:Populating with bucket section offsets\n");
   ret = dbmeta_populate_offset_tree( dbmeta );
   if(ret) goto clean;
 
-  CfOut(OUTPUT_LEVEL_VERBOSE, "", "Populating with record section offsets\n");
+  printf("Vrb:Populating with record section offsets\n");
   ret = dbmeta_populate_record_tree( dbmeta );
   if(ret) goto clean;
 
@@ -365,9 +369,9 @@ clean:
 
   return ret;
 }
-#else
-int CheckTokyoDBCoherence( char *path )
-{
+
+int main(int argc, char **argv ) {
+  if(argc<2) {printf("usage dbpath\n"); return 1;}
+  CheckTokyoDBCoherence("/var/cfengine/cf_classes.tcdb");
   return 0;
 }
-#endif
