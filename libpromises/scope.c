@@ -974,13 +974,10 @@ void JoinScopeName(const char *ns, const char *bundle, char scope_out[CF_MAXVARS
 }
 
 #ifndef DBG0
-DumpCFSTCK() {
-
-}
 /*******************************************************************/
-void DumpScopes(void) {
+void DumpScopes2(Scope *l) {
     Scope *ptr;
-    for (ptr = VSCOPE; ptr != NULL; ptr = ptr->next)
+    for (ptr = l; ptr != NULL; ptr = ptr->next)
     {
        printf("[SCOPE] %s\n", ptr->scope);
 	    AssocHashTableIterator i;
@@ -1003,6 +1000,36 @@ void DumpScopes(void) {
                }
 	    }
     }
+}
+/*******************************************************************/
+DumpCFSTCK() {
+//typedef struct Scope_
+//{
+//    char *scope;                /* Name of scope */
+//    AssocHashTable *hashtable;
+//    struct Scope_ *next;
+//} Scope;
+
+    for (const Rlist *rp = CF_STCK; rp != NULL; rp = rp->next)
+    {
+        printf("[VSC@ %s\n", (char *)rp->item);
+        switch (rp->type)
+        {
+        case RVAL_TYPE_SCALAR:
+            break;
+
+        case RVAL_TYPE_FNCALL:
+            break;
+
+        default:
+            break;
+        }
+    }
+   //DumpScopes2((Scope *)CF_STCK);
+}
+/*******************************************************************/
+void DumpScopes() {
+  DumpScopes2(VSCOPE);
 }
 /*******************************************************************/
 #endif
