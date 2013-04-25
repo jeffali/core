@@ -22,22 +22,12 @@
   included file COSL.txt.
 */
 
-#ifndef CFENGINE_ORNAMENTS_H
-#define CFENGINE_ORNAMENTS_H
+#ifndef CFENGINE_RETCODE_H
+#define CFENGINE_RETCODE_H
 
-/*
- * Various ornaments in output
- */
-
-#include "cf3.defs.h"
-#include "policy.h"
 #include "env_context.h"
+#include "policy.h"
 
-void PromiseBanner(const Promise *pp);
-void BannerSubBundle(const Bundle *bp, const Rlist *params);
-void BannerPromiseType(const char *bundlename, const char *type, int p);
-void BannerSubPromiseType(const EvalContext *ctx, const char *bundlename, const char *type);
-void Banner(const char *s);
-void BannerBundle(Bundle *bp, Rlist *params);
+int VerifyCommandRetcode(EvalContext *ctx, int retcode, int fallback, Attributes a, Promise *pp);
 
 #endif

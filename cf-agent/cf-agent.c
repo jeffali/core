@@ -27,6 +27,7 @@
 
 #include "audit.h"
 #include "env_context.h"
+#include "verify_classes.h"
 #include "verify_databases.h"
 #include "verify_environments.h"
 #include "verify_exec.h"
@@ -37,6 +38,7 @@
 #include "verify_storage.h"
 #include "verify_files.h"
 #include "verify_files_utils.h"
+#include "verify_vars.h"
 #include "addr_lib.h"
 #include "files_names.h"
 #include "files_interfaces.h"
@@ -99,9 +101,9 @@ typedef enum
 #include "cf.nova.h"
 #include "agent_reports.h"
 #include "nova-agent-diagnostics.h"
-#else
-#include "reporting.h"
 #endif
+
+#include "ornaments.h"
 
 #include <assert.h>
 
@@ -1357,7 +1359,7 @@ static void DefaultVarPromise(EvalContext *ctx, const Promise *pp)
        }
 
     ScopeDeleteScalar((VarRef) { NULL, PromiseGetBundle(pp)->name, pp->promiser });
-    ConvergeVarHashPromise(ctx, pp, true);
+    VerifyVarPromise(ctx, pp, true);
 }
 
 static void KeepAgentPromise(EvalContext *ctx, Promise *pp, ARG_UNUSED void *param)
@@ -1402,7 +1404,7 @@ static void KeepAgentPromise(EvalContext *ctx, Promise *pp, ARG_UNUSED void *par
 
     if (strcmp("meta", pp->parent_promise_type->name) == 0 || strcmp("vars", pp->parent_promise_type->name) == 0)
     {
-        ConvergeVarHashPromise(ctx, pp, true);
+        VerifyVarPromise(ctx, pp, true);
         return;
     }
 
@@ -1415,7 +1417,7 @@ static void KeepAgentPromise(EvalContext *ctx, Promise *pp, ARG_UNUSED void *par
     
     if (strcmp("classes", pp->parent_promise_type->name) == 0)
     {
-        KeepClassContextPromise(ctx, pp, NULL);
+        VerifyClassPromise(ctx, pp, NULL);
         return;
     }
 

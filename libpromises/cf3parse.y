@@ -26,15 +26,16 @@
 */
 
 #include "cf3.defs.h"
+#include "parser.h"
 #include "parser_state.h"
 
-#include "env_context.h"
 #include "fncall.h"
 #include "rlist.h"
 #include "item_lib.h"
 #include "policy.h"
 #include "mod_files.h"
 #include "string_lib.h"
+#include "logic_expressions.h"
 
 // FIX: remove
 #include "syntax.h"
@@ -51,7 +52,11 @@ static SyntaxTypeMatch CheckSelection(const char *type, const char *name, const 
 static SyntaxTypeMatch CheckConstraint(const char *type, const char *lval, Rval rval, const PromiseTypeSyntax *ss);
 static void fatal_yyerror(const char *s);
 
+static void ParseErrorColumnOffset(int column_offset, const char *s, ...) FUNC_ATTR_PRINTF(2, 3);
 static void ParseError(const char *s, ...) FUNC_ATTR_PRINTF(1, 2);
+static void ParseWarning(unsigned int warning, const char *s, ...) FUNC_ATTR_PRINTF(2, 3);
+
+static void ValidateClassLiteral(const char *class_literal);
 
 static bool INSTALL_SKIP = false;
 
@@ -106,14 +111,14 @@ bundletype_values:     typeid
 
                            if (!BundleTypeCheck(P.blocktype))
                            {
-                               ParseError("Unknown bundle type: %s", P.blocktype);
+                               ParseError("Unknown bundle type '%s'", P.blocktype);
                                INSTALL_SKIP = true;
                            }
                        }
                      | error 
                        {
                            yyclearin;
-                           ParseError("Expected bundle type, wrong input: %s", yytext);
+                           ParseError("Expected bundle type, wrong input '%s'", yytext);
                            INSTALL_SKIP = true;
                        }
 
@@ -126,7 +131,7 @@ bundleid_values:       blockid
                      | error 
                        {
                            yyclearin;
-                           ParseError("Expected bundle id, wrong input:%s", yytext);
+                           ParseError("Expected bundle identifier, wrong input '%s'", yytext);
                            INSTALL_SKIP = true;
                        }
 
@@ -147,13 +152,13 @@ bodytype_values:       typeid
                        {
                            if (!BodySyntaxLookup(P.blocktype))
                            {
-                               ParseError("Unknown body type: '%s'", P.blocktype);
+                               ParseError("Unknown body type '%s'", P.blocktype);
                            }
                        }
                      | error
                        {
                            yyclearin;
-                           ParseError("Expected body type, wrong input: '%s'", yytext);
+                           ParseError("Expected body type, wrong input '%s'", yytext);
                        }
 
 bodyid:                bodyid_values
@@ -165,7 +170,7 @@ bodyid_values:         blockid
                      | error
                        {
                            yyclearin;
-                           ParseError("Expected body id, wrong input: '%s'", yytext);
+                           ParseError("Expected body identifier, wrong input '%s'", yytext);
                            INSTALL_SKIP = true;
                        }
 
@@ -197,7 +202,7 @@ arglist:               /* Empty */
                      | arglist_begin error
                        {
                           yyclearin;
-                          ParseError("error in bundle function definition expected ), wrong input:%s", yytext);
+                          ParseError("Error in bundle parameter list, expected ')', wrong input '%s'", yytext);
                        }
 
 arglist_begin:         OP
@@ -225,7 +230,7 @@ aitem:                 IDSYNTAX  /* recipient of argument is never a literal */
                      | error
                        {
                           yyclearin;
-                          ParseError("Expected id, wrong input:%s", yytext);
+                          ParseError("Expected identifier, wrong input '%s'", yytext);
                        }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
@@ -282,7 +287,7 @@ body_begin:            OB
                        }
                      | error
                        {
-                           ParseError("Expected body open:{, wrong input:%s", yytext);
+                           ParseError("Expected body open '{', wrong input '%s'", yytext);
                        }
 
 
@@ -297,8 +302,8 @@ bundle_statements:     bundle_statement
                      | bundle_statements bundle_statement
                      | error 
                        {
-                          INSTALL_SKIP=true;
-                          ParseError("Expected promise type, got:%s", yytext);
+                          INSTALL_SKIP = true;
+                          ParseError("Expected promise type, got '%s'", yytext);
                           ParserDebug("P:promise_type:error yychar = %d, %c, yyempty = %d\n", yychar, yychar, YYEMPTY);
                           yyclearin; 
                        }
@@ -316,24 +321,40 @@ promise_type:          PROMISE_TYPE             /* BUNDLE ONLY */
                            CfDebug("\n* Begin new promise type %s in function \n\n",P.currenttype);
                            ParserDebug("\tP:%s:%s:%s promise_type = %s\n", P.block, P.blocktype, P.blockid, P.currenttype);
 
-                           if (!PromiseTypeSyntaxLookup(P.blocktype, P.currenttype))
-                           {
-                               ParseError("Unknown promise type: %s", P.currenttype);
-                               INSTALL_SKIP = true;
-                           }
+                           const PromiseTypeSyntax *promise_type_syntax = PromiseTypeSyntaxLookup(P.blocktype, P.currenttype);
 
-                           if (strcmp(P.block,"bundle") == 0)
+                           if (promise_type_syntax)
                            {
-                               if (!INSTALL_SKIP)
+                               switch (promise_type_syntax->status)
                                {
-                                   P.currentstype = BundleAppendPromiseType(P.currentbundle,P.currenttype);
-                                   P.currentstype->offset.line = P.line_no;
-                                   P.currentstype->offset.start = P.offsets.last_promise_type_id;
+                               case SYNTAX_STATUS_DEPRECATED:
+                                   ParseWarning(PARSER_WARNING_DEPRECATED, "Deprecated promise type '%s' in bundle type '%s'", promise_type_syntax->promise_type, promise_type_syntax->bundle_type);
+                                   // Intentional fall
+                               case SYNTAX_STATUS_NORMAL:
+                                   if (strcmp(P.block, "bundle") == 0)
+                                   {
+                                       if (!INSTALL_SKIP)
+                                       {
+                                           P.currentstype = BundleAppendPromiseType(P.currentbundle,P.currenttype);
+                                           P.currentstype->offset.line = P.line_no;
+                                           P.currentstype->offset.start = P.offsets.last_promise_type_id;
+                                       }
+                                       else
+                                       {
+                                           P.currentstype = NULL;
+                                       }
+                                   }
+                                   break;
+                               case SYNTAX_STATUS_REMOVED:
+                                   ParseWarning(PARSER_WARNING_REMOVED, "Removed promise type '%s' in bundle type '%s'", promise_type_syntax->promise_type, promise_type_syntax->bundle_type);
+                                   INSTALL_SKIP = true;
+                                   break;
                                }
-                               else
-                               {
-                                   P.currentstype = NULL;
-                               }
+                           }
+                           else
+                           {
+                               ParseError("Unknown promise type '%s'", P.currenttype);
+                               INSTALL_SKIP = true;
                            }
                        }
 
@@ -362,17 +383,17 @@ promise_decl:          promise_line ';'
                             * Based on yychar display right error message
                            */
                            ParserDebug("P:promiser:error yychar = %d\n", yychar);
-                           if ( yychar =='-' || yychar == '>'  )
+                           if (yychar =='-' || yychar == '>')
                            {
-                              ParseError("Expected '->', got:%s", yytext);
+                              ParseError("Expected '->', got '%s'", yytext);
                            }
-                           else if ( yychar == IDSYNTAX || yychar == ',' )
+                           else if (yychar == IDSYNTAX || yychar == ',')
                            {
-                              ParseError("Expected constraint id, got:%s", yytext);
+                              ParseError("Expected attribute, got '%s'", yytext);
                            }
                            else
                            {
-                              ParseError("Expected ';', got:%s", yytext);
+                              ParseError("Expected ';', got '%s'", yytext);
                            }
                            yyclearin;
                        }
@@ -393,7 +414,7 @@ promisee_statement:    promiser
                            {
                                if (!P.currentstype)
                                {
-                                   yyerror("Missing promise type declaration");
+                                   ParseError("Missing promise type declaration");
                                }
 
                                P.currentpromise = PromiseTypeAppendPromise(P.currentstype, P.promiser,
@@ -420,7 +441,7 @@ promiser_statement:    promiser
                            {
                                if (!P.currentstype)
                                {
-                                   yyerror("Missing promise type declaration");
+                                   ParseError("Missing promise type declaration");
                                }
 
                                P.currentpromise = PromiseTypeAppendPromise(P.currentstype, P.promiser,
@@ -449,19 +470,19 @@ promiser:              QSTRING
                        }
                      | error
                        {
-                          INSTALL_SKIP=true;
+                          INSTALL_SKIP = true;
                           ParserDebug("P:promiser:qstring::error yychar = %d\n", yychar);
 
-                          if ( yychar == BUNDLE || yychar == BODY || yychar == YYEOF )
+                          if (yychar == BUNDLE || yychar == BODY || yychar == YYEOF)
                           {
-                             ParseError("Expected '}', got:%s", yytext);
+                             ParseError("Expected '}', got '%s'", yytext);
                              /*
                              YYABORT;
                              */
                           }
                           else
                           {
-                             ParseError("Expected promiser id, got:%s", yytext);
+                             ParseError("Expected promiser string, got '%s'", yytext);
                           }
 
                           yyclearin;
@@ -479,11 +500,11 @@ promiser_constraints_decl:      /* empty */
                                    ParserDebug("P:constraints_decl:error yychar = %d\n", yychar);
                                    if ( yychar == IDSYNTAX )
                                    {
-                                       ParseError("Check previuos line, Expected ',', got:%s", yytext);
+                                       ParseError("Check previous line, Expected ',', got '%s'", yytext);
                                    }
                                    else
                                    {
-                                       ParseError("Check previuos line, Expected ';', got:%s", yytext);
+                                       ParseError("Check previous line, Expected ';', got '%s'", yytext);
                                    }
                                    yyclearin;
 
@@ -525,33 +546,56 @@ constraint:            constraint_id                        /* BUNDLE ONLY */
                        {
                            if (!INSTALL_SKIP)
                            {
-                               Constraint *cp = NULL;
-                               const PromiseTypeSyntax *ss = PromiseTypeSyntaxLookup(P.blocktype,P.currenttype);
+                               const PromiseTypeSyntax *promise_type_syntax = PromiseTypeSyntaxLookup(P.blocktype, P.currenttype);
+                               assert(promise_type_syntax);
+
+                               const ConstraintSyntax *constraint_syntax = PromiseTypeSyntaxGetConstraintSyntax(promise_type_syntax, P.lval);
+                               if (constraint_syntax)
                                {
-                                   SyntaxTypeMatch err = CheckConstraint(P.currenttype, P.lval, P.rval, ss);
-                                   if (err != SYNTAX_TYPE_MATCH_OK && err != SYNTAX_TYPE_MATCH_ERROR_UNEXPANDED)
+                                   switch (constraint_syntax->status)
                                    {
-                                       yyerror(SyntaxTypeMatchToString(err));
+                                   case SYNTAX_STATUS_DEPRECATED:
+                                       ParseWarning(PARSER_WARNING_DEPRECATED, "Deprecated constraint '%s' in promise type '%s'", constraint_syntax->lval, promise_type_syntax->promise_type);
+                                       // Intentional fall
+                                   case SYNTAX_STATUS_NORMAL:
+                                       {
+                                           {
+                                               SyntaxTypeMatch err = CheckConstraint(P.currenttype, P.lval, P.rval, promise_type_syntax);
+                                               if (err != SYNTAX_TYPE_MATCH_OK && err != SYNTAX_TYPE_MATCH_ERROR_UNEXPANDED)
+                                               {
+                                                   yyerror(SyntaxTypeMatchToString(err));
+                                               }
+                                           }
+
+                                           if (P.rval.type == RVAL_TYPE_SCALAR && strcmp(P.lval, "ifvarclass") == 0)
+                                           {
+                                               ValidateClassLiteral(P.rval.item);
+                                           }
+
+                                           Constraint *cp = PromiseAppendConstraint(P.currentpromise, P.lval, P.rval, "any", P.references_body);
+                                           cp->offset.line = P.line_no;
+                                           cp->offset.start = P.offsets.last_id;
+                                           cp->offset.end = P.offsets.current;
+                                           cp->offset.context = P.offsets.last_class_id;
+                                           P.currentstype->offset.end = P.offsets.current;
+
+                                           // Cache whether there are subbundles for later $(this.promiser) logic
+
+                                           if (strcmp(P.lval,"usebundle") == 0 || strcmp(P.lval,"edit_line") == 0
+                                               || strcmp(P.lval,"edit_xml") == 0)
+                                           {
+                                               P.currentpromise->has_subbundles = true;
+                                           }
+                                       }
+                                       break;
+                                   case SYNTAX_STATUS_REMOVED:
+                                       ParseWarning(PARSER_WARNING_REMOVED, "Removed constraint '%s' in promise type '%s'", constraint_syntax->lval, promise_type_syntax->promise_type);
+                                       break;
                                    }
                                }
-                               if (P.rval.type == RVAL_TYPE_SCALAR && strcmp(P.lval, "ifvarclass") == 0)
+                               else
                                {
-                                   ValidateClassSyntax(P.rval.item);
-                               }
-
-                               cp = PromiseAppendConstraint(P.currentpromise, P.lval, P.rval, "any", P.references_body);
-                               cp->offset.line = P.line_no;
-                               cp->offset.start = P.offsets.last_id;
-                               cp->offset.end = P.offsets.current;
-                               cp->offset.context = P.offsets.last_class_id;
-                               P.currentstype->offset.end = P.offsets.current;
-
-                               // Cache whether there are subbundles for later $(this.promiser) logic
-
-                               if (strcmp(P.lval,"usebundle") == 0 || strcmp(P.lval,"edit_line") == 0
-                                   || strcmp(P.lval,"edit_xml") == 0)
-                               {
-                                   P.currentpromise->has_subbundles = true;
+                                   ParseError("Unknown constraint '%s' in promise type '%s'", P.lval, promise_type_syntax->promise_type);
                                }
 
                                P.rval = (Rval) { NULL, '\0' };
@@ -577,7 +621,7 @@ constraint_id:         IDSYNTAX                        /* BUNDLE ONLY */
                            if (!PromiseTypeSyntaxGetConstraintSyntax(promise_type_syntax, P.currentid))
                            {
                                ParseError("Unknown attribute '%s' for promise type '%s' in bundle with type '%s'", P.currentid, P.currenttype, P.blocktype);
-                               INSTALL_SKIP=true;
+                               INSTALL_SKIP = true;
                            }
 
                            strncpy(P.lval,P.currentid,CF_MAXVARSIZE);
@@ -587,7 +631,7 @@ constraint_id:         IDSYNTAX                        /* BUNDLE ONLY */
                        }
                      | error
                        {
-                             ParseError("Expected constraint id, got:%s\n", yytext);
+                             ParseError("Expected attribute, got '%s'\n", yytext);
                        }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
@@ -637,7 +681,7 @@ bodyattrib:            class
 selection_line:        selection ';'
                      | selection error
                        {
-                          ParseError("Expected ';' check previous statement, got:%s", yytext);
+                          ParseError("Expected ';' check previous statement, got '%s'", yytext);
                        }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
@@ -649,31 +693,50 @@ selection:             selection_id                         /* BODY ONLY */
 
                            if (!INSTALL_SKIP)
                            {
-                               Constraint *cp = NULL;
+                               const BodyTypeSyntax *body_syntax = BodySyntaxLookup(P.blocktype);
+                               assert(body_syntax);
 
-                               SyntaxTypeMatch err = CheckSelection(P.blocktype, P.blockid, P.lval, P.rval);
-                               if (err != SYNTAX_TYPE_MATCH_OK && err != SYNTAX_TYPE_MATCH_ERROR_UNEXPANDED)
+                               const ConstraintSyntax *constraint_syntax = BodySyntaxGetConstraintSyntax(body_syntax->constraints, P.lval);
+                               if (constraint_syntax)
                                {
-                                   yyerror(SyntaxTypeMatchToString(err));
-                               }
+                                   switch (constraint_syntax->status)
+                                   {
+                                   case SYNTAX_STATUS_DEPRECATED:
+                                       ParseWarning(PARSER_WARNING_DEPRECATED, "Deprecated constraint '%s' in body type '%s'", constraint_syntax->lval, body_syntax->body_type);
+                                       // Intentional fall
+                                   case SYNTAX_STATUS_NORMAL:
+                                       {
+                                           SyntaxTypeMatch err = CheckSelection(P.blocktype, P.blockid, P.lval, P.rval);
+                                           if (err != SYNTAX_TYPE_MATCH_OK && err != SYNTAX_TYPE_MATCH_ERROR_UNEXPANDED)
+                                           {
+                                               yyerror(SyntaxTypeMatchToString(err));
+                                           }
 
-                               if (P.rval.type == RVAL_TYPE_SCALAR && strcmp(P.lval, "ifvarclass") == 0)
-                               {
-                                   ValidateClassSyntax(P.rval.item);
-                               }
+                                           if (P.rval.type == RVAL_TYPE_SCALAR && strcmp(P.lval, "ifvarclass") == 0)
+                                           {
+                                               ValidateClassLiteral(P.rval.item);
+                                           }
 
-                               if (P.currentclasses == NULL)
-                               {
-                                   cp = BodyAppendConstraint(P.currentbody, P.lval, P.rval, "any", P.references_body);
+                                           Constraint *cp = NULL;
+                                           if (P.currentclasses == NULL)
+                                           {
+                                               cp = BodyAppendConstraint(P.currentbody, P.lval, P.rval, "any", P.references_body);
+                                           }
+                                           else
+                                           {
+                                               cp = BodyAppendConstraint(P.currentbody, P.lval, P.rval, P.currentclasses, P.references_body);
+                                           }
+                                           cp->offset.line = P.line_no;
+                                           cp->offset.start = P.offsets.last_id;
+                                           cp->offset.end = P.offsets.current;
+                                           cp->offset.context = P.offsets.last_class_id;
+                                           break;
+                                       }
+                                   case SYNTAX_STATUS_REMOVED:
+                                       ParseWarning(PARSER_WARNING_REMOVED, "Removed constraint '%s' in promise type '%s'", constraint_syntax->lval, body_syntax->body_type);
+                                       break;
+                                   }
                                }
-                               else
-                               {
-                                   cp = BodyAppendConstraint(P.currentbody, P.lval, P.rval, P.currentclasses, P.references_body);
-                               }
-                               cp->offset.line = P.line_no;
-                               cp->offset.start = P.offsets.last_id;
-                               cp->offset.end = P.offsets.current;
-                               cp->offset.context = P.offsets.last_class_id;
                            }
                            else
                            {
@@ -710,7 +773,7 @@ selection_id:          IDSYNTAX
                            if (!body_syntax || !BodySyntaxGetConstraintSyntax(body_syntax->constraints, P.currentid))
                            {
                                ParseError("Unknown selection '%s' for body type '%s'", P.currentid, P.currentbody->type);
-                               INSTALL_SKIP=true;
+                               INSTALL_SKIP = true;
                            }
 
                            strncpy(P.lval,P.currentid,CF_MAXVARSIZE);
@@ -724,14 +787,14 @@ selection_id:          IDSYNTAX
 
                           if ( yychar == BUNDLE || yychar == BODY || yychar == YYEOF )
                           {
-                             ParseError("Expected '}', got:%s", yytext);
+                             ParseError("Expected '}', got '%s'", yytext);
                              /*
                              YYABORT;
                              */
                           }
                           else
                           {
-                             ParseError("Expected selection id, got:%s", yytext);
+                             ParseError("Expected attribute, got '%s'", yytext);
                           }
 
                           yyclearin;
@@ -746,7 +809,7 @@ assign_type:           ASSIGN
                      | error
                        {
                           yyclearin;
-                          ParseError("Expected =>, got: %s", yytext);
+                          ParseError("Expected '=>', got '%s'", yytext);
                        }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
@@ -759,7 +822,7 @@ arrow_type:            ARROW
                      | error
                        {
                           yyclearin;
-                          ParseError("Expected ->, got: %s", yytext);
+                          ParseError("Expected '->', got '%s'", yytext);
                        }
                        */
 
@@ -769,6 +832,14 @@ class:                 CLASS
                        {
                            P.offsets.last_class_id = P.offsets.current - strlen(P.currentclasses) - 2;
                            ParserDebug("\tP:%s:%s:%s:%s class = %s\n", P.block, P.blocktype, P.blockid, P.currenttype, yytext);
+
+                           /* class literal includes terminating :: */
+                           char *literal = xstrndup(yytext, yylen - 2);
+
+                           ValidateClassLiteral(literal);
+
+                           free(literal);
+
                            CfDebug("  New class context \'%s\' :: \n\n",P.currentclasses);
                        }
 
@@ -836,6 +907,12 @@ rval:                  IDSYNTAX
                            P.references_body = false;
                        }
 
+                     | error
+                       {
+                           yyclearin;
+                           ParseError("Invalid r-value type '%s'", yytext);
+                       }
+
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 list:                  OB litems CB
@@ -847,8 +924,20 @@ litems:                /* empty */
                      | litem ','  litems
                      | litem error
                        {
+                           ParserDebug("P:rval:list:error yychar = %d\n", yychar);
+                           if ( yychar ==';' )
+                           {
+                               ParseError("Expected '}', wrong input '%s'", yytext);
+                           }
+                           else if ( yychar == ASSIGN )
+                           {
+                               ParseError("Check list statement  previous line, Expected '}', wrong input '%s'", yytext);
+                           }
+                           else
+                           {
+                               ParseError("Expected ',', wrong input '%s'", yytext);
+                           }
                            yyclearin;
-                           ParseError("Expected ',', wrong input: %s", yytext);
                        }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
@@ -885,7 +974,7 @@ litem:                 IDSYNTAX
                      | error
                        {
                           yyclearin;
-                          ParseError("Not an valid input for a list value, wrong input: %s", yytext);
+                          ParseError("Invalid input for a list item, got '%s'", yytext);
                        }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
@@ -956,7 +1045,7 @@ gaitems:               /* empty */
                      | gaitem error
                        {
                            yyclearin;
-                           ParseError("Expected ',', wrong input: %s", yytext);
+                           ParseError("Expected ',', wrong input '%s'", yytext);
                        }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
@@ -992,29 +1081,48 @@ gaitem:                IDSYNTAX
                            ParserDebug("\tP:%s:%s:%s:%s function %s, nakedvar arg = %s\n", P.block, P.blocktype, P.blockid, P.currentclasses ? P.currentclasses : "any", P.currentfnid[P.arg_nesting], P.currentstring);
                            RlistAppendFnCall(&P.giveargs[P.arg_nesting],(void *)P.currentfncall[P.arg_nesting+1]);
                            RvalDestroy((Rval) { P.currentfncall[P.arg_nesting+1], RVAL_TYPE_FNCALL });
-                       };
+                       }
+
+                     | error
+                       {
+                          yyclearin;
+                          ParseError("Invalid function argument, wrong input '%s'", yytext);
+                       }
 
 %%
 
 /*****************************************************************/
 
-static void ParseErrorV(const char *s, va_list ap)
+static void ParseErrorVColumnOffset(int column_offset, const char *s, va_list ap)
 {
     char *errmsg = StringVFormat(s, ap);
 
-    fprintf(stderr, "%s:%d:%d: error: %s\n", P.filename, P.line_no, P.line_pos, errmsg);
+    fprintf(stderr, "%s:%d:%d: error: %s\n", P.filename, P.line_no, P.line_pos + column_offset, errmsg);
     fprintf(stderr, "%s\n", P.current_line);
-    fprintf(stderr, "%*s\n", P.line_pos, "^");
+    fprintf(stderr, "%*s\n", P.line_pos + column_offset, "^");
 
     free(errmsg);
 
     P.error_count++;
 
-    if (P.error_count > 10)
+    if (P.error_count > 12)
     {
         fprintf(stderr, "Too many errors");
         exit(1);
     }
+}
+
+static void ParseErrorColumnOffset(int column_offset, const char *s, ...)
+{
+    va_list ap;
+    va_start(ap, s);
+    ParseErrorVColumnOffset(column_offset, s, ap);
+    va_end(ap);
+}
+
+static void ParseErrorV(const char *s, va_list ap)
+{
+    ParseErrorVColumnOffset(0, s, ap);
 }
 
 static void ParseError(const char *s, ...)
@@ -1022,6 +1130,44 @@ static void ParseError(const char *s, ...)
     va_list ap;
     va_start(ap, s);
     ParseErrorV(s, ap);
+    va_end(ap);
+}
+
+static void ParseWarningV(unsigned int warning, const char *s, va_list ap)
+{
+    if (((P.warnings | P.warnings_error) & warning) == 0)
+    {
+        return;
+    }
+
+    char *errmsg = StringVFormat(s, ap);
+    const char *warning_str = ParserWarningToString(warning);
+
+    fprintf(stderr, "%s:%d:%d: warning: %s [-W%s]\n", P.filename, P.line_no, P.line_pos, errmsg, warning_str);
+    fprintf(stderr, "%s\n", P.current_line);
+    fprintf(stderr, "%*s\n", P.line_pos, "^");
+
+    free(errmsg);
+
+    P.warning_count++;
+
+    if ((P.warnings_error & warning) != 0)
+    {
+        P.error_count++;
+    }
+
+    if (P.error_count > 12)
+    {
+        fprintf(stderr, "Too many errors");
+        exit(1);
+    }
+}
+
+static void ParseWarning(unsigned int warning, const char *s, ...)
+{
+    va_list ap;
+    va_start(ap, s);
+    ParseWarningV(warning, s, ap);
     va_end(ap);
 }
 
@@ -1249,4 +1395,14 @@ static SyntaxTypeMatch CheckConstraint(const char *type, const char *lval, Rval 
     }
 
     return SYNTAX_TYPE_MATCH_OK;
+}
+
+static void ValidateClassLiteral(const char *class_literal)
+{
+    ParseResult res = ParseExpression(class_literal, 0, strlen(class_literal));
+
+    if (!res.result)
+    {
+        ParseErrorColumnOffset(res.position - strlen(class_literal), "Syntax error in context string");
+    }
 }
