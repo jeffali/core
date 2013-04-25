@@ -6,18 +6,6 @@
  */
 
 /*
- * node for holding offset information and for correlating data
- */
-typedef struct rbtree {
-  uint64_t offset;      /* the offset in the file */
-  int64_t bucket_index; /* the index into the bucket list this offset exists */
-
-  struct rbtree *left;
-  struct rbtree *right;
-  char color_field;
-} rbtree;
-
-/*
  * Fields we will need from a TC record
  */
 typedef struct tcrec {
@@ -35,21 +23,6 @@ typedef struct tcrec {
   uint8_t  hash;
 } tcrec;
 
-
-static inline int db_offset_comparator( rbtree* a, rbtree* b )
-{
-  if ( a->offset < b->offset ) {
-    return -1;
-  } else if ( a->offset > b->offset ) {
-    return 1;
-  } else {
-    return 0;
-  }
-}
-
-SGLIB_DEFINE_RBTREE_PROTOTYPES(rbtree, left, right, color_field, db_offset_comparator);
-SGLIB_DEFINE_RBTREE_FUNCTIONS(rbtree, left, right, color_field, db_offset_comparator);
-
 /* meta information from the Hash Database
  * used to coordinate the other operations
  */
@@ -66,8 +39,8 @@ typedef struct db_meta {
 
   int      fd;
 
-  rbtree*  offset_tree;
-  rbtree*  record_tree;
+  StringMap* offset_map;
+  StringMap* record_map;
 } db_meta_t;
 
 static db_meta_t* dbmeta_new_direct( const char* dbfilename )
@@ -104,8 +77,8 @@ static db_meta_t* dbmeta_new_direct( const char* dbfilename )
   memcpy(&(dbmeta->record_count), hbuf + 48, sizeof(uint64_t));
   memcpy(&(dbmeta->record_offset), hbuf + 64, sizeof(uint64_t));
   memcpy(&(dbmeta->alignment_pow), hbuf + 34, sizeof(uint8_t));
-  dbmeta->offset_tree   = NULL;
-  dbmeta->record_tree   = NULL;
+  dbmeta->offset_map   = StringMapNew();
+  dbmeta->record_map   = StringMapNew();
 
   CfOut(OUTPUT_LEVEL_VERBOSE, "", "Database            : %s\n",   dbmeta->dbpath );
   CfOut(OUTPUT_LEVEL_VERBOSE, "", "  number of buckets : %llu\n", (long long unsigned)dbmeta->bucket_count );
@@ -120,54 +93,28 @@ static db_meta_t* dbmeta_new_direct( const char* dbfilename )
 
 static void dbmeta_free( db_meta_t* dbmeta )
 {
-  struct sglib_rbtree_iterator iter;
-  rbtree *tree, *element;
-  tree = dbmeta->offset_tree;
-  element = sglib_rbtree_it_init( &iter, tree );
-
-  while ( NULL != element ) {
-    sglib_rbtree_delete( &tree, element );
-    if(element) free( element );
-    element = sglib_rbtree_it_next( &iter );
-  }
-
-  tree = dbmeta->record_tree;
-  element = sglib_rbtree_it_init( &iter, tree );
-
-  while ( NULL != element ) {
-    sglib_rbtree_delete( &tree, element );
-    if(element) free( element );
-    element = sglib_rbtree_it_next( &iter );
-  }
+  StringMapDestroy( dbmeta->offset_map );
+  StringMapDestroy( dbmeta->record_map );
 
   close( dbmeta->fd );
 
   if(dbmeta) free( dbmeta );
 }
 
-static int add_offset_to_tree_unless_exists( rbtree** tree, uint64_t offset, int64_t bucket_index )
+static int add_offset_to_map_unless_exists( StringMap** tree, uint64_t offset, int64_t bucket_index )
 {
-  rbtree *other = NULL;
+  char *tmp;
+  xasprintf(&tmp, "%llu",offset);
 
-  rbtree *new_node       = (rbtree*)xcalloc( 1, sizeof( rbtree ));
-  if(!new_node) {
-    CfOut(OUTPUT_LEVEL_ERROR, "", "Unable to allocate tree node\n");
-    return 1;
-  }
-  new_node->offset       = offset;
-  new_node->bucket_index = bucket_index;
-
-  other = sglib_rbtree_find_member( *tree, new_node );
-
-  if ( NULL == other ) {
-    sglib_rbtree_add( tree, new_node );
+  char *val;
+  if ( StringMapHasKey(*tree, tmp) ) {
+    xasprintf(&val, "%llu", bucket_index);
+    StringMapInsert( *tree, tmp, val );
   } else {
-    uint64_t diff = new_node->offset - other->offset;
-    CfOut(OUTPUT_LEVEL_ERROR, "", "Duplicate offset for value %llu at index %lld, other value %llu, other index %lld, diff %llu\n", 
-        (long long unsigned)new_node->offset, (long long)new_node->bucket_index,
-        (long long unsigned)other->offset   , (long long)other->bucket_index, 
-        (long long unsigned)diff);
-    if(new_node) free( new_node );
+    CfOut(OUTPUT_LEVEL_ERROR, "", "Duplicate offset for value %llu at index %lld, other value %llu, other index %s\n", 
+        (long long unsigned)offset, (long long)bucket_index,
+        (long long unsigned)offset   , (char *)StringMapGet(*tree, tmp));
+    //if(new_node) free( new_node );
   }
   return 0;
 }
@@ -193,13 +140,13 @@ static int dbmeta_populate_offset_tree( db_meta_t* dbmeta )
     /* if the value is > 0 then we have a number so do something with it */
     if ( offset > 0 ) {
       offset = offset << dbmeta->alignment_pow;
-      if(add_offset_to_tree_unless_exists( &(dbmeta->offset_tree), offset, i )) {
+      if(add_offset_to_map_unless_exists( &(dbmeta->offset_map), offset, i )) {
         return 3;
       }
     }
  }
 
- CfOut(OUTPUT_LEVEL_VERBOSE, "", "Found %llu buckets with offsets\n", (long long unsigned)sglib_rbtree_len( dbmeta->offset_tree ));
+ CfOut(OUTPUT_LEVEL_VERBOSE, "", "Found %llu buckets with offsets\n", (long long unsigned)StringMapSize( dbmeta->offset_map ));
  return 0;
 }
 
@@ -331,20 +278,14 @@ static int dbmeta_populate_record_tree( db_meta_t* dbmeta )
 
       if ( new_rec.offset > 0 ) {
 
-        rbtree  find_me;
-        rbtree *found;
-        find_me.offset = new_rec.offset;
-        
-        if ( sglib_rbtree_delete_if_member( &(dbmeta->offset_tree), &find_me, &found ) != 0 ) { 
-          if(found) free( found );
+        char *key;
+        xasprintf(&key, "%llu", new_rec.offset);
+        if ( StringMapHasKey (dbmeta->offset_map, key)) { 
+          if(key) free( key );
         } else {
-          rbtree*  new_node = (rbtree*)xcalloc( 1, sizeof( rbtree ));
-          if(!new_node) {
-            CfOut(OUTPUT_LEVEL_ERROR, "", "Error allocating a tree node\n");
-            return 3;
-          }
-          new_node->offset = new_rec.offset;
-          sglib_rbtree_add(&(dbmeta->record_tree), new_node);
+          //char *key;
+          //xasprintf(&key, "%llu", new_rec.offset );
+          StringMapInsert(dbmeta->record_map, key, "0");
         }
       } else {
         CfOut(OUTPUT_LEVEL_ERROR, "", "How do you have a new_rec.offset that is <= 0 ???\n");
@@ -352,14 +293,14 @@ static int dbmeta_populate_record_tree( db_meta_t* dbmeta )
 
       if ( new_rec.left > 0 ) {
         CfOut(OUTPUT_LEVEL_VERBOSE, "", ">>> handle left %llu\n", new_rec.left);
-        if( add_offset_to_tree_unless_exists( &(dbmeta->offset_tree), new_rec.left, -1 )) {
+        if( add_offset_to_map_unless_exists( &(dbmeta->offset_map), new_rec.left, -1 )) {
           return 4;
         }
       }
 
       if ( new_rec.right > 0 ) {
         CfOut(OUTPUT_LEVEL_VERBOSE, "", ">>> handle right %llu\n", new_rec.right);
-        if(add_offset_to_tree_unless_exists( &(dbmeta->offset_tree), new_rec.right, -1 )) {
+        if(add_offset_to_map_unless_exists( &(dbmeta->offset_map), new_rec.right, -1 )) {
           return 4;
         }
       }
@@ -382,8 +323,8 @@ static int dbmeta_populate_record_tree( db_meta_t* dbmeta )
 
 static int dbmeta_get_results( db_meta_t *dbmeta )
 {
-  uint64_t buckets_no_record = sglib_rbtree_len( dbmeta->offset_tree) ;
-  uint64_t records_no_bucket = sglib_rbtree_len( dbmeta->record_tree) ;
+  uint64_t buckets_no_record = StringMapSize( dbmeta->offset_map) ;
+  uint64_t records_no_bucket = StringMapSize( dbmeta->record_map) ;
   int ret = 0;
 
   CfOut(OUTPUT_LEVEL_VERBOSE, "", "Found %llu offsets listed in buckets that do not have records\n", buckets_no_record);

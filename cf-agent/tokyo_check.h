@@ -5,6 +5,12 @@
 #include  <config.h>
 #endif
 
+#include "array_map_priv.h"
+#include "hash_map_priv.h"
+#include "map.h"
+#include "string_lib.h"
+
+
 #ifdef TCDB
 #include <limits.h>
 #include <stdlib.h>
