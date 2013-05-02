@@ -10,15 +10,15 @@ char CFWORKDIR[CF_BUFSIZE];
 
 static void tests_setup(void)
 {
-    snprintf(CFWORKDIR, CF_BUFSIZE, "/tmp/persistent_lock_test.XXXXXX");
-    mkdtemp(CFWORKDIR);
+    snprintf(CFWORKDIR, CF_BUFSIZE, "/tmp");
+    //mkdtemp(CFWORKDIR);
 }
 
 static void tests_teardown(void)
 {
     char cmd[CF_BUFSIZE];
     snprintf(cmd, CF_BUFSIZE, "rm -rf '%s'", CFWORKDIR);
-    system(cmd);
+    //system(cmd);
 }
 
 static const Event dummy_event = {
@@ -33,16 +33,39 @@ static DBHandle *setup(bool clean)
 {
     char cmd[CF_BUFSIZE];
     snprintf(cmd, CF_BUFSIZE, "rm -rf '%s'/*", CFWORKDIR);
-    system(cmd);
+    printf("CFW = %s\n", CFWORKDIR);
+    //system(cmd);
 
     DBHandle *db;
-    OpenDB(&db, dbid_bundles);
+    OpenDB(&db, dbid_classes);
 
-    if (clean)
-    {
+    //if (clean)
+    //{
         /* There is no way to disable hook in OpenDB yet, so just undo
          * everything */
-
+    Event read_value;
+#if 0
+    ReadDB(db, "ssh_in_high", &read_value, sizeof(read_value));
+    WriteDB(db, "foo", &dummy_event, sizeof(dummy_event));
+    WriteDB(db, "foo1", &dummy_event, sizeof(dummy_event));
+    WriteDB(db, "foo2", &dummy_event, sizeof(dummy_event));
+    //WriteDB(db, "foo", &dummy_event, sizeof(dummy_event));
+    WriteDB(db, "foo1", &dummy_event, sizeof(dummy_event));
+    WriteDB(db, "foo1", &dummy_event, sizeof(dummy_event));
+    WriteDB(db, "foo1", &dummy_event, sizeof(dummy_event));
+    WriteDB(db, "foo", &dummy_event, sizeof(dummy_event));
+    WriteDB(db, "foo", &dummy_event, sizeof(dummy_event));
+    ReadDB(db, "userExists", &read_value, sizeof(read_value));
+    DeleteDB(db, "ntp_installed");
+    DeleteDB(db, "ntp_installed");
+    WriteDB(db, "ntp_installed", &dummy_event, sizeof(dummy_event));
+    DeleteDB(db, "ntp_installed");
+    DeleteDB(db, "ntp_installed");
+    ReadDB(db, "ntp_installed", &read_value, sizeof(read_value));
+    ReadDB(db, "ntp_installed", &read_value, sizeof(read_value));
+    ReadDB(db, "ntp_installed", &read_value, sizeof(read_value));
+#endif
+//printf("ret = %d\n", (int) tchdboptimize(db->priv->hdb,NULL,NULL,NULL,false));
         DBCursor *cursor;
         if (!NewDBCursor(db, &cursor))
         {
@@ -52,26 +75,54 @@ static DBHandle *setup(bool clean)
         char *key;
         void *value;
         int ksize, vsize;
-
+        int kk=0;
         while (NextDB(db, cursor, &key, &ksize, &value, &vsize))
         {
-            DBCursorDeleteEntry(cursor);
+ 		printf("hii\n");
+    //        if(kk%3==2) DBCursorDeleteEntry(cursor);
+#if 0
+    ReadDB(db, "ssh_in_high", &read_value, sizeof(read_value));
+    WriteDB(db, "foo", &dummy_event, sizeof(dummy_event));
+    WriteDB(db, "foo1", &dummy_event, sizeof(dummy_event));
+    WriteDB(db, "foo2", &dummy_event, sizeof(dummy_event));
+    //WriteDB(db, "foo", &dummy_event, sizeof(dummy_event));
+    WriteDB(db, "foo1", &dummy_event, sizeof(dummy_event));
+    WriteDB(db, "foo1", &dummy_event, sizeof(dummy_event));
+    WriteDB(db, "foo1", &dummy_event, sizeof(dummy_event));
+    WriteDB(db, "foo", &dummy_event, sizeof(dummy_event));
+    WriteDB(db, "foo", &dummy_event, sizeof(dummy_event));
+    ReadDB(db, "userExists", &read_value, sizeof(read_value));
+    DeleteDB(db, "ntp_installed");
+    WriteDB(db, "ntp_installed", &dummy_event, sizeof(dummy_event));
+    DeleteDB(db, "ntp_installed");
+    WriteDB(db, "ntp_installed", &dummy_event, sizeof(dummy_event));
+    DeleteDB(db, "ntp_installed");
+    WriteDB(db, "ntp_installed", &dummy_event, sizeof(dummy_event));
+    DeleteDB(db, "ntp_installed");
+    WriteDB(db, "ntp_installed", &dummy_event, sizeof(dummy_event));
+    ReadDB(db, "ntp_installed", &read_value, sizeof(read_value));
+    ReadDB(db, "ntp_installed", &read_value, sizeof(read_value));
+    ReadDB(db, "ntp_installed", &read_value, sizeof(read_value));
+#endif
+          kk++;
+
         }
 
+#if 1
         if (!DeleteDBCursor(db, cursor))
         {
             return NULL;
         }
-    }
-
+    //}
+#endif
     return db;
 }
 
 static void test_no_migration(void **context)
 {
     DBHandle *db = setup(true);
-    CloseDB(db);
-
+    //CloseDB(db);
+#if 0
     /* Migration on empty DB should produce single "version" key */
 
     assert_int_equal(OpenDB(&db, dbid_lastseen), true);
@@ -94,6 +145,7 @@ static void test_no_migration(void **context)
     assert_int_equal(DeleteDBCursor(db, cursor), true);
 
     CloseDB(db);
+#endif
 }
 
 static void test_up_to_date(void **context)
@@ -153,8 +205,8 @@ int main()
     const UnitTest tests[] =
         {
             unit_test(test_no_migration),
-            unit_test(test_up_to_date),
-            unit_test(test_migrate_unqualified_names),
+            //unit_test(test_up_to_date),
+            //unit_test(test_migrate_unqualified_names),
         };
 
     PRINT_TEST_BANNER();

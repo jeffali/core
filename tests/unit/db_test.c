@@ -7,16 +7,42 @@ char CFWORKDIR[CF_BUFSIZE];
 
 void tests_setup(void)
 {
-    snprintf(CFWORKDIR, CF_BUFSIZE, "/tmp/db_test.XXXXXX");
-    mkdtemp(CFWORKDIR);
+    snprintf(CFWORKDIR, CF_BUFSIZE, "/var/cfengine");
+    //mkdtemp(CFWORKDIR);
 }
 
 void tests_teardown(void)
 {
     char cmd[CF_BUFSIZE];
     snprintf(cmd, CF_BUFSIZE, "rm -rf '%s'", CFWORKDIR);
-    system(cmd);
+    //system(cmd);
 }
+void test_open_corrupt(void **state)
+{
+    CF_DB *db;
+    assert_int_equal(OpenDB(&db, dbid_classes), true);
+
+    char readData[1024];
+    char key1[]="clamav_scan";
+    char *key;
+    int ksize;
+    void *value;
+    int vsize;
+
+
+    if(!ReadComplexKeyDB(db, (const char *)&key1, sizeof(key1), readData, sizeof(readData)))
+    {
+        printf("Error read\n");
+    }
+
+    CF_DBC *cursor;
+    assert_int_equal(NewDBCursor(db, &cursor), true);
+
+    assert_int_equal(DeleteDBCursor(db, cursor), true);
+
+    CloseDB(db);
+}
+
 
 void test_iter_modify_entry(void **state)
 {
@@ -115,9 +141,10 @@ int main()
 
     const UnitTest tests[] =
         {
-            unit_test(test_iter_modify_entry),
+            unit_test(test_open_corrupt),
+ /*           unit_test(test_iter_modify_entry),
             unit_test(test_iter_delete_entry),
-            unit_test(test_recreate),
+            unit_test(test_recreate),*/
         };
 
     PRINT_TEST_BANNER();

@@ -75,6 +75,32 @@ void ScopeSet(char *id)
     strlcpy(CONTEXTID, id, CF_MAXVARSIZE);
 }
 
+void DumpScopes(void) {
+    Scope *ptr;
+    for (ptr = VSCOPE; ptr != NULL; ptr = ptr->next)
+    {
+       printf("[SCOPE] %s\n", ptr->scope);
+	    AssocHashTableIterator i;
+	    CfAssoc *assoc;
+
+	    i = HashIteratorInit(ptr->hashtable);
+	    while ((assoc = HashIteratorNext(&i)))
+	    {
+    		//Rlist *rpl, *rpr;
+//    for (rpl = assoc->lval, rpr = assoc->rval; rpl != NULL; rpl = rpl->next, rpr = rpr->next)
+    //{
+      //  lval = (char *) rpl->item;
+
+        //CfOut("scope %s with %s (type=%c)\n", scope, lval, rpr->type);
+    //}
+               if(assoc->rval.type==RVAL_TYPE_SCALAR) {
+		printf("\t%c \"%s\"=[%s]\n", assoc->rval.type, assoc->lval, assoc->rval.item);
+               } else {
+		printf("\t%c \"%s\"\n", assoc->rval.type, assoc->lval);
+               }
+	    }
+    }
+}
 /*******************************************************************/
 
 void ScopeSetNew(char *id)

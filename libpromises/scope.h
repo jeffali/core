@@ -28,6 +28,7 @@
 
 #include "cf3.defs.h"
 
+void DumpScopes(void);
 /**
  * @brief Sets CONTEXTID = id
  * @param id

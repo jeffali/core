@@ -15,9 +15,56 @@ static Policy *LoadPolicy(const char *filename)
     return ParserParseFile(path);
 }
 
+#if 0
+static void DumpScopes(void) {
+    Scope *ptr;
+    for (ptr = VSCOPE; ptr != NULL; ptr = ptr->next)
+    {
+       printf("[SCOPE] %s\n", ptr->scope);
+	    AssocHashTableIterator i;
+	    CfAssoc *assoc;
+
+	    i = HashIteratorInit(ptr->hashtable);
+	    while ((assoc = HashIteratorNext(&i)))
+	    {
+    		//Rlist *rpl, *rpr;
+//    for (rpl = assoc->lval, rpr = assoc->rval; rpl != NULL; rpl = rpl->next, rpr = rpr->next)
+    //{
+      //  lval = (char *) rpl->item;
+
+        //CfOut("scope %s with %s (type=%c)\n", scope, lval, rpr->type);
+    //}
+		printf("assoc->rval");
+	    }
+    }
+}
+#endif
+
+static void DumpPolicyBundles(Policy *policy) {
+    for (size_t i = 0; i < SeqLength(policy->bundles); i++)
+    {
+        Bundle *bp = SeqAt(policy->bundles, i);
+	printf("[BNDL] type=%s name=%s ns=%s\n", bp->type, bp->name, bp->ns);
+
+    }
+}
+
+static void DumpPolicyBodies(Policy *policy) {
+    for (size_t i = 0; i < SeqLength(policy->bodies); i++)
+    {
+        Body *bp = SeqAt(policy->bodies, i);
+
+	printf("[BODY] type=%s name=%s ns=%s\n", bp->type, bp->name, bp->ns);
+    }
+}
+
 static Seq *LoadAndCheck(const char *filename)
 {
     Policy *p = LoadPolicy(filename);
+
+    DumpPolicyBodies(p);
+    DumpPolicyBundles(p);
+
     EvalContext *ctx = EvalContextNew();
 
     Seq *errs = SeqNew(10, PolicyErrorDestroy);
@@ -310,3 +357,4 @@ int main()
 }
 
 // STUBS
+

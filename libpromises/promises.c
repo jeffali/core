@@ -531,6 +531,12 @@ void HashPromise(char *salt, Promise *pp, unsigned char digest[EVP_MAX_MD_SIZE +
         EVP_DigestUpdate(&context, pp->this_server, strlen(pp->this_server));
     }
 
+    printf("ns=%s bundle=%s offset(start:%d,end:%d,line:%d)\n", pp->ns, pp->bundle, pp->offset.start, pp->offset.end, pp->offset.line);
+    if (pp->ns)
+    {
+        EVP_DigestUpdate(&context, pp->ns, strlen(pp->ns));
+    }
+
     if (salt)
     {
         EVP_DigestUpdate(&context, salt, strlen(salt));

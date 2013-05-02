@@ -174,6 +174,18 @@ static void test_filter_everything(void **state)
     assert_true(list == NULL);
 }
 
+static void test_new_parser(void **state)
+{
+    Rlist *list = NULL;
+
+    char *str="   { \" ab\\,c\\,d\\\\ \" ,  \" e\\,f\\\"g \" ,\"hi\\\\jk\", \"l''m \" }  ";
+
+    //list = parse2(str, trim_left2(str), trim_right2(str));
+    list = RlistParseShown2(str);
+    printf("[%s]\n", list?"ok" :"NULL");
+    assert_int_equal(4, RlistLen(list));
+}
+
 int main()
 {
     PRINT_TEST_BANNER();
@@ -191,7 +203,8 @@ int main()
         unit_test(test_rval_to_fncall2),
         unit_test(test_last),
         unit_test(test_filter),
-        unit_test(test_filter_everything)
+        unit_test(test_filter_everything),
+        unit_test(test_new_parser)
     };
 
     return run_tests(tests);
