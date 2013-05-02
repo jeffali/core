@@ -1,19 +1,18 @@
-/* 
-
+/*
    Copyright (C) Cfengine AS
 
    This file is part of Cfengine 3 - written and maintained by Cfengine AS.
- 
+
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
    Free Software Foundation; version 3.
-   
+
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
- 
-  You should have received a copy of the GNU General Public License  
+
+  You should have received a copy of the GNU General Public License
   along with this program; if not, write to the Free Software
   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
 
@@ -28,7 +27,7 @@
 #include "files_names.h"
 #include "files_interfaces.h"
 #include "instrumentation.h"
-#include "logging.h"
+#include "logging_old.h"
 #include "policy.h"
 #include "files_lib.h"
 #include "string_lib.h"
@@ -124,7 +123,7 @@ bool CopyRegularFileDisk(const char *source, const char *destination)
      */
     struct stat statbuf;
 
-    if (cfstat(source, &statbuf) == -1)
+    if (stat(source, &statbuf) == -1)
     {
         CfOut(OUTPUT_LEVEL_INFORM, "stat", "Can't copy %s!\n", source);
         unlink(destination);

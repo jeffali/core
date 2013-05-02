@@ -4,35 +4,52 @@
 
 static void test_lookup_promise_type_agent_vars(void)
 {
-    const PromiseTypeSyntax *s = PromiseTypeSyntaxLookup("agent", "vars");
+    const PromiseTypeSyntax *s = PromiseTypeSyntaxGet("agent", "vars");
     assert_true(s);
     assert_string_equal("vars", s->promise_type);
 }
 
 static void test_lookup_promise_type_common_vars(void)
 {
-    const PromiseTypeSyntax *s = PromiseTypeSyntaxLookup("common", "vars");
+    const PromiseTypeSyntax *s = PromiseTypeSyntaxGet("common", "vars");
     assert_true(s);
     assert_string_equal("vars", s->promise_type);
 }
 
 static void test_lookup_promise_type_edit_xml_build_xpath(void)
 {
-    const PromiseTypeSyntax *s = PromiseTypeSyntaxLookup("edit_xml", "build_xpath");
+    const PromiseTypeSyntax *s = PromiseTypeSyntaxGet("edit_xml", "build_xpath");
     assert_true(s);
     assert_string_equal("build_xpath", s->promise_type);
 }
 
 static void test_lookup_promise_type_edit_line_delete_lines(void)
 {
-    const PromiseTypeSyntax *s = PromiseTypeSyntaxLookup("edit_line", "delete_lines");
+    const PromiseTypeSyntax *s = PromiseTypeSyntaxGet("edit_line", "delete_lines");
     assert_true(s);
     assert_string_equal("delete_lines", s->promise_type);
 }
 
+static void test_lookup_promise_type_edit_xml_commons(void)
+{
+    const PromiseTypeSyntax *s = PromiseTypeSyntaxGet("edit_xml", "*");
+    assert_true(s);
+    assert_string_equal("edit_xml", s->bundle_type);
+    assert_string_equal("*", s->promise_type);
+}
+
+static void test_lookup_promise_type_global_commons(void)
+{
+    const PromiseTypeSyntax *s = PromiseTypeSyntaxGet("*", "*");
+    assert_true(s);
+    assert_string_equal("*", s->bundle_type);
+    assert_string_equal("*", s->promise_type);
+}
+
+
 static void test_lookup_constraint_edit_xml_set_attribute_attribute_value(void)
 {
-    const PromiseTypeSyntax *s = PromiseTypeSyntaxLookup("edit_xml", "set_attribute");
+    const PromiseTypeSyntax *s = PromiseTypeSyntaxGet("edit_xml", "set_attribute");
     assert_true(s);
     assert_string_equal("set_attribute", s->promise_type);
 
@@ -43,7 +60,7 @@ static void test_lookup_constraint_edit_xml_set_attribute_attribute_value(void)
 
 static void test_lookup_body_classes(void)
 {
-    const BodyTypeSyntax *x = BodySyntaxLookup("classes");
+    const BodySyntax *x = BodySyntaxGet("classes");
     assert_true(x);
 
     const ConstraintSyntax *y = BodySyntaxGetConstraintSyntax(x->constraints, "promise_repaired");
@@ -53,7 +70,7 @@ static void test_lookup_body_classes(void)
 
 static void test_lookup_body_process_count(void)
 {
-    const BodyTypeSyntax *x = BodySyntaxLookup("process_count");
+    const BodySyntax *x = BodySyntaxGet("process_count");
     assert_true(x);
 
     const ConstraintSyntax *y = BodySyntaxGetConstraintSyntax(x->constraints, "match_range");
@@ -63,7 +80,7 @@ static void test_lookup_body_process_count(void)
 
 static void test_lookup_body_delete_select(void)
 {
-    const BodyTypeSyntax *x = BodySyntaxLookup("delete_select");
+    const BodySyntax *x = BodySyntaxGet("delete_select");
     assert_true(x);
 
     const ConstraintSyntax *y = BodySyntaxGetConstraintSyntax(x->constraints, "delete_if_startwith_from_list");
@@ -80,6 +97,9 @@ int main()
         unit_test(test_lookup_promise_type_common_vars),
         unit_test(test_lookup_promise_type_edit_xml_build_xpath),
         unit_test(test_lookup_promise_type_edit_line_delete_lines),
+
+        unit_test(test_lookup_promise_type_edit_xml_commons),
+        unit_test(test_lookup_promise_type_global_commons),
 
         unit_test(test_lookup_body_classes),
         unit_test(test_lookup_body_process_count),

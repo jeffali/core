@@ -20,13 +20,12 @@
   versions of Cfengine, the applicable Commerical Open Source License
   (COSL) may apply to this file if you as a licensee so wish it. See
   included file COSL.txt.
-
 */
 
 #include "audit.h"
 #include "misc_lib.h"
 #include "conversion.h"
-#include "logging.h"
+#include "logging_old.h"
 #include "string_lib.h"
 
 int PR_KEPT;
@@ -100,7 +99,7 @@ void EndAudit(const EvalContext *ctx, int background_tasks)
             CfOut(OUTPUT_LEVEL_INFORM, "", " -> Recording promise valuations");
 
             snprintf(name, CF_MAXVARSIZE, "%s/state/%s", CFWORKDIR, CF_VALUE_LOG);
-            snprintf(datestr, CF_MAXVARSIZE, "%s", cf_ctime(&now));
+            snprintf(datestr, CF_MAXVARSIZE, "%s", ctime(&now));
 
             if ((fout = fopen(name, "a")) == NULL)
             {

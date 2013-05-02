@@ -2,17 +2,17 @@
    Copyright (C) Cfengine AS
 
    This file is part of Cfengine 3 - written and maintained by Cfengine AS.
- 
+
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
    Free Software Foundation; version 3.
-   
+
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
- 
-  You should have received a copy of the GNU General Public License  
+
+  You should have received a copy of the GNU General Public License
   along with this program; if not, write to the Free Software
   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
 
@@ -20,7 +20,6 @@
   versions of Cfengine, the applicable Commerical Open Source License
   (COSL) may apply to this file if you as a licensee so wish it. See
   included file COSL.txt.
-
 */
 
 #include "scope.h"
@@ -29,7 +28,7 @@
 #include "expand.h"
 #include "hashes.h"
 #include "unix.h"
-#include "logging.h"
+#include "logging_old.h"
 #include "fncall.h"
 #include "mutex.h"
 #include "misc_lib.h"
@@ -176,7 +175,7 @@ Scope *ScopeGetCurrent(void)
     return SCOPE_CURRENT;
 }
 
-void ScopeAugment(EvalContext *ctx, const Bundle *bp, const Rlist *arguments)
+void ScopeAugment(EvalContext *ctx, const Bundle *bp, const Promise *pp, const Rlist *arguments)
 {
     if (RlistLen(bp->args) != RlistLen(arguments))
     {
@@ -187,6 +186,12 @@ void ScopeAugment(EvalContext *ctx, const Bundle *bp, const Rlist *arguments)
         RlistShow(stderr, arguments);
         fprintf(stderr, "\n");
         FatalError(ctx, "Augment scope, formal and actual parameter mismatch is fatal");
+    }
+
+    const Bundle *pbp = NULL;
+    if (pp != NULL)
+    {
+        pbp = PromiseGetBundle(pp);
     }
 
     for (const Rlist *rpl = bp->args, *rpr = arguments; rpl != NULL; rpl = rpl->next, rpr = rpr->next)
@@ -201,18 +206,19 @@ void ScopeAugment(EvalContext *ctx, const Bundle *bp, const Rlist *arguments)
         if (IsNakedVar(rpr->item, '@'))
         {
             DataType vtype;
-            char qnaked[CF_MAXVARSIZE];
             char naked[CF_BUFSIZE];
             
             GetNaked(naked, rpr->item);
 
-            if (IsQualifiedVariable(naked) && strchr(naked, CF_NS) == NULL)
-            {
-                snprintf(qnaked, CF_MAXVARSIZE, "%s%c%s", bp->ns, CF_NS, naked);
-            }
-            
             Rval retval;
-            EvalContextVariableGet(ctx, (VarRef) { NULL, bp->name, qnaked }, &retval, &vtype);
+            if (pbp != NULL)
+            {
+                EvalContextVariableGet(ctx, (VarRef) { pbp->ns, pbp->name, naked }, &retval, &vtype);
+            }
+            else
+            {
+                EvalContextVariableGet(ctx, (VarRef) { NULL, bp->name, naked }, &retval, &vtype);
+            }
 
             switch (vtype)
             {
@@ -222,7 +228,7 @@ void ScopeAugment(EvalContext *ctx, const Bundle *bp, const Rlist *arguments)
                 ScopeNewList(ctx, (VarRef) { NULL, bp->name, lval }, RvalCopy((Rval) { retval.item, RVAL_TYPE_LIST}).item, DATA_TYPE_STRING_LIST);
                 break;
             default:
-                CfOut(OUTPUT_LEVEL_ERROR, "", " !! List parameter \"%s\" not found while constructing scope \"%s\" - use @(scope.variable) in calling reference", qnaked, bp->name);
+                CfOut(OUTPUT_LEVEL_ERROR, "", " !! List parameter \"%s\" not found while constructing scope \"%s\" - use @(scope.variable) in calling reference", naked, bp->name);
                 ScopeNewScalar(ctx, (VarRef) { NULL, bp->name, lval }, rpr->item, DATA_TYPE_STRING);
                 break;
             }
@@ -238,7 +244,6 @@ void ScopeAugment(EvalContext *ctx, const Bundle *bp, const Rlist *arguments)
             case RVAL_TYPE_FNCALL:
                 {
                     FnCall *subfp = rpr->item;
-                    Promise *pp = NULL; // This argument should really get passed down.
                     Rval rval = FnCallEvaluate(ctx, subfp, pp).rval;
                     if (rval.type == RVAL_TYPE_SCALAR)
                     {
@@ -691,9 +696,6 @@ void ScopeDeRefListsInHashtable(char *scope, Rlist *namelist, Rlist *dereflist)
 
                 if (rp->state_ptr)
                 {
-                    CfDebug("Rewriting expanded type for %s from %s to %s\n", assoc->lval, CF_DATATYPES[assoc->dtype],
-                            (char *) rp->state_ptr->item);
-
                     // must first free existing rval in scope, then allocate new (should always be string)
                     RvalDestroy(assoc->rval);
 
@@ -719,8 +721,6 @@ void ScopeDeRefListsInHashtable(char *scope, Rlist *namelist, Rlist *dereflist)
                     /* Only lists need to be converted */
                     break;
                 }
-
-                CfDebug(" to %s\n", CF_DATATYPES[assoc->dtype]);
             }
         }
     }
@@ -756,8 +756,8 @@ int ScopeMapBodyArgs(EvalContext *ctx, const char *scopeid, Rlist *give, const R
         {
             CfOut(OUTPUT_LEVEL_ERROR, "", "Type mismatch between logical/formal parameters %s/%s\n", (char *) rpg->item,
                   (char *) rpt->item);
-            CfOut(OUTPUT_LEVEL_ERROR, "", "%s is %s whereas %s is %s\n", (char *) rpg->item, CF_DATATYPES[dtg],
-                  (char *) rpt->item, CF_DATATYPES[dtt]);
+            CfOut(OUTPUT_LEVEL_ERROR, "", "%s is %s whereas %s is %s\n", (char *) rpg->item, DataTypeToString(dtg),
+                  (char *) rpt->item, DataTypeToString(dtt));
         }
 
         switch (rpg->type)

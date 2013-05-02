@@ -1,19 +1,18 @@
-/* 
-
+/*
    Copyright (C) Cfengine AS
 
    This file is part of Cfengine 3 - written and maintained by Cfengine AS.
- 
+
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
    Free Software Foundation; version 3.
-   
+
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
- 
-  You should have received a copy of the GNU General Public License  
+
+  You should have received a copy of the GNU General Public License
   along with this program; if not, write to the Free Software
   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
 
@@ -25,12 +24,14 @@
 
 #include "communication.h"
 
+#include "alloc.h"                                      /* xmalloc,... */
+#include "logging.h"                                    /* Log */
+#include "misc_lib.h"                                   /* ProgrammingError */
 
 AgentConnection *NewAgentConn(const char *server_name)
 {
     AgentConnection *conn = xcalloc(1, sizeof(AgentConnection));
 
-    CfDebug("New server connection...\n");
     conn->sd = SOCKET_INVALID;
     conn->family = AF_INET;
     conn->trust = false;
@@ -59,8 +60,6 @@ int IsIPV6Address(char *name)
 {
     char *sp;
     int count, max = 0;
-
-    CfDebug("IsIPV6Address(%s)\n", name);
 
     if (name == NULL)
     {
@@ -97,7 +96,6 @@ int IsIPV6Address(char *name)
 
     if (max <= 2)
     {
-        CfDebug("Looks more like a MAC address");
         return false;
     }
 
@@ -120,8 +118,6 @@ int IsIPV4Address(char *name)
 {
     char *sp;
     int count = 0;
-
-    CfDebug("IsIPV4Address(%s)\n", name);
 
     if (name == NULL)
     {
@@ -151,85 +147,97 @@ int IsIPV4Address(char *name)
 
 /*****************************************************************************/
 
-/* TODO thread-safe */
-const char *Hostname2IPString(const char *hostname)
+/**
+ * @brief DNS lookup of hostname, store the address as string into dst of size
+ * dst_size.
+ * @return -1 in case of unresolvable hostname or other error.
+ */
+int Hostname2IPString(char *dst, const char *hostname, size_t dst_size)
 {
-    int err;
-    struct addrinfo query, *response, *ap;
+    int ret;
+    struct addrinfo *response, *ap;
+    struct addrinfo query = {
+        .ai_family = AF_UNSPEC,
+        .ai_socktype = SOCK_STREAM
+    };
 
-    memset(&query, 0, sizeof(struct addrinfo));
-    query.ai_family = AF_UNSPEC;
-    query.ai_socktype = SOCK_STREAM;
-
-    if ((err = getaddrinfo(hostname, NULL, &query, &response)) != 0)
+    if (dst_size < CF_MAX_IP_LEN)
     {
-        CfOut(OUTPUT_LEVEL_INFORM, "",
-              "Unable to lookup hostname (%s) or cfengine service: %s",
-              hostname, gai_strerror(err));
-        return hostname;
+        ProgrammingError("Hostname2IPString got %lu, needs at least"
+                         " %d length buffer for IPv6 portability!",
+                         dst_size, CF_MAX_IP_LEN);
     }
 
-    static char ipbuffer[CF_MAX_IP_LEN] = {0};
+    ret = getaddrinfo(hostname, NULL, &query, &response);
+    if ((ret) != 0)
+    {
+        Log(LOG_LEVEL_INFO,
+            "Unable to lookup hostname (%s) or cfengine service: getaddrinfo: %s",
+            hostname, gai_strerror(ret));
+        return -1;
+    }
 
     for (ap = response; ap != NULL; ap = ap->ai_next)
     {
-        /* Convert numeric IP to string. */
-        getnameinfo(ap->ai_addr, ap->ai_addrlen,
-                    ipbuffer, sizeof(ipbuffer),
-                    NULL, 0, NI_NUMERICHOST);
-        CfDebug("Found address (%s) for host %s\n", ipbuffer, hostname);
-
-        freeaddrinfo(response);
-        return ipbuffer;
+        /* No lookup, just convert numeric IP to string. */
+        int ret2 = getnameinfo(ap->ai_addr, ap->ai_addrlen,
+                               dst, dst_size, NULL, 0, NI_NUMERICHOST);
+        if (ret2 == 0)
+        {
+            freeaddrinfo(response);
+            return 0;                                           /* Success */
+        }
     }
+    freeaddrinfo(response);
 
-    /* TODO return NULL? Must signify resolving failed? */
-    snprintf(ipbuffer, sizeof(ipbuffer), "Unknown IP %s", hostname);
-    return ipbuffer;
+    Log(LOG_LEVEL_ERR,
+        "Hostname2IPString: ERROR even though getaddrinfo returned success!");
+    return -1;
 }
 
 /*****************************************************************************/
 
-char *IPString2Hostname(const char *ipaddress)
+/**
+ * @brief Reverse DNS lookup of ipaddr, store the address as string into dst
+ * of size dst_size.
+ * @return -1 in case of unresolvable IP address or other error.
+ */
+int IPString2Hostname(char *dst, const char *ipaddr, size_t dst_size)
 {
-    static char hostbuffer[MAXHOSTNAMELEN];
+    int ret;
+    struct addrinfo *response;
 
-    int err;
-    struct addrinfo query, *response, *ap;
+    /* First convert ipaddr string to struct sockaddr, with no DNS query. */
+    struct addrinfo query = {
+        .ai_flags = AI_NUMERICHOST
+    };
 
-    memset(&query, 0, sizeof(query));
-    memset(hostbuffer, 0, MAXHOSTNAMELEN);
-
-    /* First convert ipaddress string to struct sockaddr, with no DNS query. */
-    query.ai_flags = AI_NUMERICHOST;
-    if ((err = getaddrinfo(ipaddress, NULL, &query, &response)) != 0)
+    ret = getaddrinfo(ipaddr, NULL, &query, &response);
+    if (ret != 0)
     {
-        CfOut(OUTPUT_LEVEL_INFORM, "",
+        Log(LOG_LEVEL_ERR,
               "getaddrinfo: Unable to convert IP address (%s): %s",
-              ipaddress, gai_strerror(err));
-        strlcpy(hostbuffer, ipaddress, MAXHOSTNAMELEN);
-        /* TODO return NULL? Must signify error somehow. */
-        return hostbuffer;
+              ipaddr, gai_strerror(ret));
+        return -1;
     }
 
-    for (ap = response; ap != NULL; ap = ap->ai_next)
+    /* response should only have one reply, so no need to iterate over the
+     * response struct addrinfo. */
+
+    /* Reverse DNS lookup. NI_NAMEREQD forces an error if not resolvable. */
+    ret = getnameinfo(response->ai_addr, response->ai_addrlen,
+                      dst, dst_size, NULL, 0, NI_NAMEREQD);
+    if (ret != 0)
     {
-        /* Reverse DNS lookup. */
-        if ((err = getnameinfo(ap->ai_addr, ap->ai_addrlen,
-                               hostbuffer, MAXHOSTNAMELEN,
-                               NULL, 0, 0)) != 0)
-        {
-            break;
-        }
-        CfDebug("Found address (%s) for host %s\n", hostbuffer, ipaddress);
+        Log(LOG_LEVEL_INFO,
+            "Couldn't reverse resolve %s: getaddrinfo: %s",
+            ipaddr, gai_strerror(ret));
         freeaddrinfo(response);
-        return hostbuffer;
+        return -1;
     }
 
-    /* TODO return NULL to signify unsuccessful reverse query. */
     freeaddrinfo(response);
-    strlcpy(hostbuffer, ipaddress, MAXHOSTNAMELEN);
-    return hostbuffer;
+    return 0;                                                   /* Success */
 }
 
 /*****************************************************************************/
@@ -250,12 +258,12 @@ int GetMyHostInfo(char nameBuf[MAXHOSTNAMELEN], char ipBuf[MAXIP4CHARLEN])
         }
         else
         {
-            CfOut(OUTPUT_LEVEL_ERROR, "gethostbyname", "!! Could not get host entry for local host");
+            Log(LOG_LEVEL_ERR, "!! Could not get host entry for local host: %s", GetErrorStr());
         }
     }
     else
     {
-        CfOut(OUTPUT_LEVEL_ERROR, "gethostname", "!! Could not get host name");
+        Log(LOG_LEVEL_ERR, "!! Could not get host name: %s", GetErrorStr());
     }
 
     return false;
@@ -270,7 +278,7 @@ unsigned short SocketFamily(int sd)
 
    if (getsockname(sd, &sa, &len) == -1)
    {
-       CfOut(OUTPUT_LEVEL_ERROR, "getsockname", "!! Could not get socket family");
+       Log(LOG_LEVEL_ERR, "!! Could not get socket family: %s", GetErrorStr());
    }
 
    return sa.sa_family;

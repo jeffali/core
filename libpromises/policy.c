@@ -20,7 +20,6 @@
   versions of Cfengine, the applicable Commerical Open Source License
   (COSL) may apply to this file if you as a licensee so wish it. See
   included file COSL.txt.
-
 */
 
 #include "policy.h"
@@ -29,7 +28,7 @@
 #include "string_lib.h"
 #include "conversion.h"
 #include "mutex.h"
-#include "logging.h"
+#include "logging_old.h"
 #include "misc_lib.h"
 #include "mod_files.h"
 #include "vars.h"
@@ -302,7 +301,7 @@ static bool ConstraintCheckSyntax(const Constraint *constraint, Seq *errors)
     const Bundle *bundle = promise_type->parent_bundle;
 
     /* Check if lvalue is valid for the bundle's specific promise_type. */
-    const PromiseTypeSyntax *promise_type_syntax = PromiseTypeSyntaxLookup(bundle->type, promise_type->name);
+    const PromiseTypeSyntax *promise_type_syntax = PromiseTypeSyntaxGet(bundle->type, promise_type->name);
     for (size_t i = 0; promise_type_syntax->constraints[i].lval != NULL; i++)
     {
         const ConstraintSyntax *body_syntax = &promise_type_syntax->constraints[i];
@@ -436,7 +435,7 @@ static bool PolicyCheckBody(const Body *body, Seq *errors)
         }
     }
 
-    const BodyTypeSyntax *body_syntax = BodySyntaxLookup(body->type);
+    const BodySyntax *body_syntax = BodySyntaxGet(body->type);
     assert(body_syntax && "Should have been checked at parse time");
     if (body_syntax->check_body)
     {
@@ -462,7 +461,7 @@ static const ConstraintSyntax *ConstraintGetSyntax(const Constraint *constraint)
     const PromiseType *promise_type = promise->parent_promise_type;
     const Bundle *bundle = promise_type->parent_bundle;
 
-    const PromiseTypeSyntax *promise_type_syntax = PromiseTypeSyntaxLookup(bundle->type, promise_type->name);
+    const PromiseTypeSyntax *promise_type_syntax = PromiseTypeSyntaxGet(bundle->type, promise_type->name);
 
     /* Check if lvalue is valid for the bundle's specific promise_type. */
     for (size_t i = 0; promise_type_syntax->constraints[i].lval != NULL; i++)
@@ -1053,14 +1052,6 @@ Bundle *PolicyAppendBundle(Policy *policy, const char *ns, const char *name, con
 
 Body *PolicyAppendBody(Policy *policy, const char *ns, const char *name, const char *type, Rlist *args, const char *source_path)
 {
-    CfDebug("Appending new promise body %s %s(", type, name);
-
-    for (const Rlist *rp = args; rp; rp = rp->next)
-    {
-        CfDebug("%s,", (char *) rp->item);
-    }
-    CfDebug(")\n");
-
     Body *body = xcalloc(1, sizeof(Body));
     body->parent_policy = policy;
 
@@ -2263,7 +2254,7 @@ static bool PromiseCheck(const Promise *pp, Seq *errors)
         success &= ConstraintCheckSyntax(constraint, errors);
     }
 
-    const PromiseTypeSyntax *pts = PromiseTypeSyntaxLookup(pp->parent_promise_type->parent_bundle->type,
+    const PromiseTypeSyntax *pts = PromiseTypeSyntaxGet(pp->parent_promise_type->parent_bundle->type,
                                                            pp->parent_promise_type->name);
 
     if (pts->check_promise)
@@ -2832,6 +2823,11 @@ bool BundleTypeCheck(const char *name)
         {
             return true;
         }
+    }
+
+    if (!strcmp("knowledge", name))
+    {
+        return true;
     }
 
     if (!strcmp("edit_line", name))

@@ -29,7 +29,6 @@
 
 extern pid_t ALARM_PID;
 extern RSA *PRIVKEY, *PUBKEY;
-extern char PUBKEY_DIGEST[CF_MAXVARSIZE];
 extern char BINDINTERFACE[CF_BUFSIZE];
 
 extern Item *IPADDRESSES;
@@ -39,8 +38,6 @@ extern unsigned short SHORT_CFENGINEPORT;
 extern time_t CONNTIMEOUT;
 
 extern char CFLOCK[CF_BUFSIZE];
-extern char CFLOG[CF_BUFSIZE];
-extern char CFLAST[CF_BUFSIZE];
 
 extern char CFWORKDIR[CF_BUFSIZE];
 
@@ -50,7 +47,6 @@ extern char VMONTH[];
 extern char VSHIFT[];
 
 extern const char *CLASSTEXT[];
-extern int AUDIT;
 
 extern time_t CFSTARTTIME;
 extern time_t CFINITSTARTTIME;
@@ -84,19 +80,17 @@ extern int VEXPIREAFTER;
 extern const char *OBS[CF_OBSERVABLES][2];
 
 extern int FIPS_MODE;
-extern char POLICY_SERVER[CF_BUFSIZE];
+extern char POLICY_SERVER[CF_MAX_IP_LEN];
 extern HashMethod CF_DEFAULT_DIGEST;
 extern int CF_DEFAULT_DIGEST_LEN;
 
 extern Scope *VSCOPE;
-extern Item *ROTATED;
-
 extern Rlist *CF_STCK;
+
 extern int CF_PERSISTENCE;
 extern int LOOKUP;
 extern int BOOTSTRAP;
 
-extern const char *CF_DATATYPES[];
 extern const char *CF_AGENTTYPES[];
 
 extern int CFA_MAXTHREADS;

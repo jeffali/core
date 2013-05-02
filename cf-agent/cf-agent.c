@@ -1,18 +1,18 @@
-/* 
+/*
    Copyright (C) Cfengine AS
 
    This file is part of Cfengine 3 - written and maintained by Cfengine AS.
- 
+
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
    Free Software Foundation; version 3.
-   
+
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
- 
-  You should have received a copy of the GNU General Public License  
+
+  You should have received a copy of the GNU General Public License
   along with this program; if not, write to the Free Software
   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
 
@@ -20,7 +20,6 @@
   versions of Cfengine, the applicable Commerical Open Source License
   (COSL) may apply to this file if you as a licensee so wish it. See
   included file COSL.txt.
-  
 */
 
 #include "generic_agent.h"
@@ -56,6 +55,7 @@
 #include "promises.h"
 #include "unix.h"
 #include "attributes.h"
+#include "logging_old.h"
 #include "logging.h"
 #include "communication.h"
 #include "signals.h"
@@ -98,7 +98,6 @@ typedef enum
 #endif
 
 #ifdef HAVE_NOVA
-#include "cf.nova.h"
 #include "agent_reports.h"
 #include "nova-agent-diagnostics.h"
 #endif
@@ -258,7 +257,6 @@ int main(int argc, char *argv[])
         policy = GenericAgentLoadPolicy(ctx, config);
     }
 
-    WarnAboutDeprecatedFeatures(ctx);
     CheckForPolicyHub(ctx);
 
     ThisAgentInit();
@@ -382,7 +380,14 @@ static GenericAgentConfig *CheckOpts(EvalContext *ctx, int argc, char **argv)
             // temporary assure that network functions are working
             OpenNetwork();
 
-            strncpy(POLICY_SERVER, Hostname2IPString(optarg), CF_BUFSIZE - 1);
+            if (Hostname2IPString(POLICY_SERVER, optarg,
+                                  sizeof(POLICY_SERVER)) == -1)
+            {
+                Log(LOG_LEVEL_ERR,
+                    "CheckOpts: ERROR, could not resolve %s, can't bootstrap",
+                    optarg);
+                exit(EXIT_FAILURE);
+            }
 
             CloseNetwork();
 
@@ -1021,8 +1026,18 @@ void KeepControlPromises(EvalContext *ctx, Policy *policy)
 
     if (EvalContextVariableControlCommonGet(ctx, COMMON_CONTROL_SYSLOG_HOST, &retval))
     {
-        SetSyslogHost(Hostname2IPString(retval.item));
-        CfOut(OUTPUT_LEVEL_VERBOSE, "", "SET syslog_host to %s", Hostname2IPString(retval.item));
+        /* Don't resolve syslog_host now, better do it per log request. */
+        if (!SetSyslogHost(retval.item))
+        {
+            CfOut(OUTPUT_LEVEL_ERROR, "",
+                  "FAILed to set syslog_host, ""\"%s\" too long",
+                  (char *) retval.item);
+        }
+        else
+        {
+            CfOut(OUTPUT_LEVEL_VERBOSE, "", "SET syslog_host to %s",
+                  (char *) retval.item);
+        }
     }
 
 #ifdef HAVE_NOVA
@@ -1129,7 +1144,7 @@ static void KeepPromiseBundles(EvalContext *ctx, Policy *policy, GenericAgentCon
             BannerBundle(bp, params);
 
             EvalContextStackPushBundleFrame(ctx, bp, false);
-            ScopeAugment(ctx, bp, params);
+            ScopeAugment(ctx, bp, NULL, params);
 
             ScheduleAgentOperations(ctx, bp);
 
@@ -1263,7 +1278,7 @@ static void CheckAgentAccess(Rlist *list, const Rlist *input_files)
 
     for (const Rlist *rp = input_files; rp != NULL; rp = rp->next)
     {
-        cfstat(rp->item, &sb);
+        stat(rp->item, &sb);
 
         if (ACCESSLIST)
         {
@@ -1695,7 +1710,7 @@ static bool VerifyBootstrap(void)
     snprintf(filePath, sizeof(filePath), "%s/inputs/promises.cf", CFWORKDIR);
     MapName(filePath);
 
-    if (cfstat(filePath, &sb) == -1)
+    if (stat(filePath, &sb) == -1)
     {
         CfOut(OUTPUT_LEVEL_ERROR, "", "!! Bootstrapping failed, no input file at %s after bootstrap", filePath);
         return false;
@@ -1784,38 +1799,49 @@ static int AutomaticBootstrap()
 {
     List *foundhubs = NULL;
     int hubcount = ListHubs(&foundhubs);
-    
+    int ret;
+
     switch(hubcount)
     {
     case -1:
         CfOut(OUTPUT_LEVEL_ERROR, "", "Error while trying to find a Policy Server");
-        ListDestroy(&foundhubs);
-        return -1;
+        ret = -1;
+        break;
     case 0:
         printf("No hubs were found. Exiting.\n");
-        ListDestroy(&foundhubs);
-        return -1;
-    case 1:
-        printf("Found hub installed on:"
-               "Hostname: %s"
-               "IP Address: %s\n",
-               ((HostProperties*)foundhubs)->Hostname,
-               ((HostProperties*)foundhubs)->IPAddress);
-        strncpy(POLICY_SERVER, ((HostProperties*)foundhubs)->IPAddress, CF_BUFSIZE);
-        dlclose(avahi_handle);
+        ret = -1;
         break;
+    case 1:
+    {
+        char *hostname = ((HostProperties*)foundhubs)->Hostname;
+        char *ipaddr = ((HostProperties*)foundhubs)->IPAddress;
+        printf("Autodiscovered hub installed on:"
+               " Hostname \"%s\", IP Address %s\n",
+               hostname, ipaddr);
+        if (strlen((ipaddr) < sizeof(POLICY_SERVER))
+        {
+            strcpy(POLICY_SERVER, ipaddr);
+            ret = 0;
+        }
+        else
+        {
+            CfOut(OUTPUT_LEVEL_ERROR, "",
+                  "Invalid autodiscovered hub IP address \"%s\"", ipaddr);
+            ret = -1;
+        }
+        break;
+    }
     default:
         printf("Found more than one hub registered in the network.\n"
                "Please bootstrap manually using IP from the list below:\n");
         PrintList(foundhubs);
-        dlclose(avahi_handle);
-        ListDestroy(&foundhubs);
-        return -1;
+        ret = -1;
     };
 
+    dlclose(avahi_handle);
     ListDestroy(&foundhubs);
 
-    return 0;
+    return ret;
 }
 #endif
 #endif

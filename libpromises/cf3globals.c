@@ -1,19 +1,18 @@
-/* 
-
+/*
    Copyright (C) Cfengine AS
 
    This file is part of Cfengine 3 - written and maintained by Cfengine AS.
- 
+
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
    Free Software Foundation; version 3.
-   
+
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
- 
-  You should have received a copy of the GNU General Public License  
+
+  You should have received a copy of the GNU General Public License
   along with this program; if not, write to the Free Software
   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
 
@@ -35,8 +34,6 @@ int SHOWREPORTS = false;
 /* operational state                                                         */
 /*****************************************************************************/
 
-int VERBOSE = false;
-int INFORM = false;
 int LOOKUP = false;
 int FIPS_MODE = false;
 
@@ -63,7 +60,7 @@ Rlist *CF_STCK = NULL; // TODO: consider renaming to something comprehesible
 
 int LASTSEENEXPIREAFTER = SECONDS_PER_WEEK;
 
-char POLICY_SERVER[CF_BUFSIZE] = { 0 };
+char POLICY_SERVER[CF_MAX_IP_LEN] = { 0 };
 
 /*****************************************************************************/
 /* Compatability infrastructure                                              */
@@ -71,7 +68,6 @@ char POLICY_SERVER[CF_BUFSIZE] = { 0 };
 
 int IGNORELOCK = false;
 int DONTDO = false;
-int DEBUG = false;
 
 char VFQNAME[CF_MAXVARSIZE] = { 0 };
 char VUQNAME[CF_MAXVARSIZE] = { 0 };
@@ -82,8 +78,6 @@ char VDAY[3] = { 0 };
 char VMONTH[4] = { 0 };
 char VSHIFT[12] = { 0 };
 
-char VPREFIX[CF_MAXVARSIZE] = { 0 };
-
 char CFWORKDIR[CF_BUFSIZE] = { 0 };
 
 char *DEFAULT_COPYTYPE = NULL;
@@ -92,7 +86,7 @@ RSA *PRIVKEY = NULL, *PUBKEY = NULL;
 char PUBKEY_DIGEST[CF_MAXVARSIZE] = { 0 };
 
 
-char VIPADDRESS[18] = { 0 };
+char VIPADDRESS[CF_MAX_IP_LEN] = { 0 };
 
 Item *IPADDRESSES = NULL;
 
@@ -108,8 +102,6 @@ int CF_DEFAULT_DIGEST_LEN;
 /***********************************************************/
 
 char CFLOCK[CF_BUFSIZE] = { 0 };
-char CFLOG[CF_BUFSIZE] = { 0 };
-char CFLAST[CF_BUFSIZE] = { 0 };
 
 time_t CFSTARTTIME;
 time_t CFINITSTARTTIME;

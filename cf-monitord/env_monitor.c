@@ -36,7 +36,7 @@
 #include "expand.h"
 #include "scope.h"
 #include "sysinfo.h"
-#include "logging.h"
+#include "logging_old.h"
 #include "signals.h"
 #include "locks.h"
 #include "exec_tools.h"
@@ -48,8 +48,7 @@
 #include "cf-monitord-enterprise-stubs.h"
 
 #ifdef HAVE_NOVA
-#include "cf.nova.h"
-#include "history.h"
+# include "history.h"
 #endif
 
 #include <math.h>
@@ -568,7 +567,7 @@ static void PublishEnvironment(Item *classes)
 
     fclose(fp);
 
-    cf_rename(ENVFILE_NEW, ENVFILE);
+    rename(ENVFILE_NEW, ENVFILE);
 }
 
 /*********************************************************************/

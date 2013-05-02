@@ -1,5 +1,4 @@
 /*
-
    Copyright (C) Cfengine AS
 
    This file is part of Cfengine 3 - written and maintained by Cfengine AS.
@@ -29,7 +28,7 @@
 #include "dbm_priv.h"
 #include "dbm_migration.h"
 #include "atexit.h"
-#include "logging.h"
+#include "logging_old.h"
 #include "misc_lib.h"
 
 #include <assert.h>
@@ -373,7 +372,7 @@ static void DBPathMoveBroken(const char *filename)
         ProgrammingError("Unable to construct broken database filename for file %s", filename);
     }
 
-    if(cf_rename(filename, filename_broken) != 0)
+    if(rename(filename, filename_broken) != 0)
     {
         CfOut(OUTPUT_LEVEL_ERROR, "", "!! Failed moving broken db out of the way");
     }

@@ -20,7 +20,6 @@
   versions of Cfengine, the applicable Commerical Open Source License
   (COSL) may apply to this file if you as a licensee so wish it. See
   included file COSL.txt.
-
 */
 
 #ifndef CFENGINE_CLIENT_CODE_H
@@ -29,6 +28,9 @@
 #include "platform.h"
 #include "communication.h"
 
+/* TODO: Remove dependency on libpromises */
+#include "attributes.h"
+#include "item_lib.h"
 
 void DetermineCfenginePort(void);
 /**

@@ -29,14 +29,11 @@
 #include "env_monitor.h"
 #include "conversion.h"
 #include "vars.h"
+#include "logging_old.h"
 #include "logging.h"
 #include "signals.h"
 #include "scope.h"
 #include "sysinfo.h"
-
-#ifdef HAVE_NOVA
-#include "cf.nova.h"
-#endif
 
 typedef enum
 {
@@ -115,7 +112,6 @@ int main(int argc, char *argv[])
     GenericAgentDiscoverContext(ctx, config);
     Policy *policy = GenericAgentLoadPolicy(ctx, config);
 
-    WarnAboutDeprecatedFeatures(ctx);
     CheckForPolicyHub(ctx);
 
     ThisAgentInit(ctx);

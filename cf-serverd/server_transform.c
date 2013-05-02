@@ -1,18 +1,18 @@
-/* 
+/*
    Copyright (C) Cfengine AS
 
    This file is part of Cfengine 3 - written and maintained by Cfengine AS.
- 
+
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
    Free Software Foundation; version 3.
-   
+
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
- 
-  You should have received a copy of the GNU General Public License  
+
+  You should have received a copy of the GNU General Public License
   along with this program; if not, write to the Free Software
   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
 
@@ -20,7 +20,6 @@
   versions of Cfengine, the applicable Commerical Open Source License
   (COSL) may apply to this file if you as a licensee so wish it. See
   included file COSL.txt.
-
 */
 
 #include "server_transform.h"
@@ -37,7 +36,7 @@
 #include "scope.h"
 #include "vars.h"
 #include "attributes.h"
-#include "logging.h"
+#include "logging_old.h"
 #include "communication.h"
 #include "string_lib.h"
 #include "rlist.h"
@@ -477,7 +476,18 @@ static void KeepControlPromises(EvalContext *ctx, Policy *policy, GenericAgentCo
 
     if (EvalContextVariableControlCommonGet(ctx, COMMON_CONTROL_SYSLOG_HOST, &retval))
     {
-        SetSyslogHost(Hostname2IPString(retval.item));
+        /* Don't resolve syslog_host now, better do it per log request. */
+        if (!SetSyslogHost(retval.item))
+        {
+            CfOut(OUTPUT_LEVEL_ERROR, "",
+                  "FAILed to set syslog_host, ""\"%s\" too long",
+                  (char *) retval.item);
+        }
+        else
+        {
+            CfOut(OUTPUT_LEVEL_VERBOSE, "", "SET syslog_host to %s",
+                  (char *) retval.item);
+        }
     }
 
     if (EvalContextVariableControlCommonGet(ctx, COMMON_CONTROL_SYSLOG_PORT, &retval))
@@ -529,7 +539,7 @@ static void KeepContextBundles(EvalContext *ctx, Policy *policy)
                 BannerPromiseType(bp->name, sp->name, 0);
 
                 EvalContextStackPushBundleFrame(ctx, bp, false);
-                ScopeAugment(ctx, bp, NULL);
+                ScopeAugment(ctx, bp, NULL, NULL);
 
                 for (size_t ppi = 0; ppi < SeqLength(sp->promises); ppi++)
                 {
@@ -575,7 +585,7 @@ static void KeepPromiseBundles(EvalContext *ctx, Policy *policy)
                 BannerPromiseType(bp->name, sp->name, 0);
 
                 EvalContextStackPushBundleFrame(ctx, bp, false);
-                ScopeAugment(ctx, bp, NULL);
+                ScopeAugment(ctx, bp, NULL, NULL);
 
                 for (size_t ppi = 0; ppi < SeqLength(sp->promises); ppi++)
                 {

@@ -627,6 +627,8 @@ typedef enum
 
 /*************************************************************************/
 
+typedef struct EvalContext_ EvalContext;
+
 typedef enum
 {
     RVAL_TYPE_SCALAR = 's',
@@ -644,7 +646,7 @@ typedef struct
 typedef struct Rlist_ Rlist;
 
 typedef struct ConstraintSyntax_ ConstraintSyntax;
-typedef struct BodyTypeSyntax_ BodyTypeSyntax;
+typedef struct BodySyntax_ BodySyntax;
 
 /*
  * Promise types or bodies may optionally provide parse-tree check function, called after
@@ -672,13 +674,13 @@ struct ConstraintSyntax_
     union
     {
         const char *validation_string;
-        const BodyTypeSyntax *body_type_syntax;
+        const BodySyntax *body_type_syntax;
     } range;
     const char *description;
     SyntaxStatus status;
 };
 
-struct BodyTypeSyntax_
+struct BodySyntax_
 {
     const char *body_type;
     const ConstraintSyntax *constraints;
@@ -695,11 +697,17 @@ typedef struct
     SyntaxStatus status;
 } PromiseTypeSyntax;
 
-/*************************************************************************/
+typedef enum FnCallStatus
+{
+    FNCALL_SUCCESS,
+    FNCALL_FAILURE
+} FnCallStatus;
 
-typedef struct EvalContext_ EvalContext;
-
-typedef struct FnCallResult_ FnCallResult;
+typedef struct
+{
+    FnCallStatus status;
+    Rval rval;
+} FnCallResult;
 
 typedef struct
 {
@@ -713,14 +721,15 @@ typedef struct
     const char *name;
     DataType dtype;
     const FnCallArg *args;
-    FnCallResult(*impl) (EvalContext *ctx, FnCall *, Rlist *);
+    FnCallResult (*impl)(EvalContext *ctx, FnCall *, Rlist *);
     const char *description;
     bool varargs;
+    SyntaxStatus status;
 } FnCallType;
 
-/*************************************************************************/
-
 #define UNKNOWN_FUNCTION -1
+
+/*************************************************************************/
 
 typedef struct Constraint_ Constraint;
 
@@ -748,27 +757,6 @@ typedef struct Scope_
     AssocHashTable *hashtable;
     struct Scope_ *next;
 } Scope;
-
-/*******************************************************************/
-/* Return value signalling                                         */
-/*******************************************************************/
-
-typedef enum FnCallStatus
-{
-    FNCALL_SUCCESS,
-    FNCALL_FAILURE,
-} FnCallStatus;
-
-/* from builtin functions */
-struct FnCallResult_
-{
-    FnCallStatus status;
-    Rval rval;
-};
-
-/*******************************************************************/
-/* Return value signalling                                         */
-/*******************************************************************/
 
 typedef enum
 {
@@ -1672,7 +1660,7 @@ extern const ConstraintSyntax CF_VARBODY[];
 extern const PromiseTypeSyntax *CF_ALL_PROMISE_TYPES[];
 extern const ConstraintSyntax CFG_CONTROLBODY[];
 extern const FnCallType CF_FNCALL_TYPES[];
-extern const BodyTypeSyntax CONTROL_BODIES[];
+extern const BodySyntax CONTROL_BODIES[];
 extern const ConstraintSyntax CFH_CONTROLBODY[];
 extern const PromiseTypeSyntax CF_COMMON_PROMISE_TYPES[];
 extern const ConstraintSyntax CF_CLASSBODY[];

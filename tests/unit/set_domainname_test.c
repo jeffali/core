@@ -212,11 +212,6 @@ void Unix_FindV6InterfaceInfo(void)
     fail();
 }
 
-int cfstat(const char *path, struct stat *buf)
-{
-    fail();
-}
-
 void FatalError(char *s, ...)
 {
     fail();
@@ -224,11 +219,6 @@ void FatalError(char *s, ...)
 }
 
 Item *SplitString(const char *string, char sep)
-{
-    fail();
-}
-
-char *cf_ctime(const time_t *timep)
 {
     fail();
 }
@@ -269,11 +259,6 @@ void LoadSlowlyVaryingObservations(EvalContext *ctx)
 }
 
 void HashPubKey(RSA *key, unsigned char digest[EVP_MAX_MD_SIZE + 1], HashMethod type)
-{
-    fail();
-}
-
-char *MapName(char *s)
 {
     fail();
 }
@@ -358,6 +343,6 @@ char EXPIRY[CF_SMALLBUF];
 RSA *PUBKEY;
 const char *CLASSTEXT[1] = { };
 
-char VIPADDRESS[18];
+char VIPADDRESS[CF_MAX_IP_LEN];
 
 /* LCOV_EXCL_STOP */

@@ -31,6 +31,7 @@
 #include "scope.h"
 #include "assoc.h"
 #include "rlist.h"
+#include "conversion.h"
 
 static char *MANUAL_DIRECTORY;
 
@@ -63,7 +64,7 @@ static char *MANUAL_DIRECTORY;
 static void XmlExportVariables(Writer *writer, const char *scope);
 static void XmlExportFunction(Writer *writer, FnCallType fn);
 static void XmlExportPromiseType(Writer *writer, const PromiseTypeSyntax *st);
-static void XmlExportControl(Writer *writer, BodyTypeSyntax body);
+static void XmlExportControl(Writer *writer, BodySyntax body);
 static void XmlExportConstraint(Writer *writer, const ConstraintSyntax *bs);
 static void XmlExportConstraints(Writer *writer, const ConstraintSyntax *bs);
 static void XmlExportType(Writer *writer, const ConstraintSyntax *constraint_syntax);
@@ -175,7 +176,7 @@ static void XmlExportFunction(Writer *writer, FnCallType fn)
 
 /* START XML ELEMENT -- FUNCTION */
     XmlAttribute fun_name_attr = { "name", fn.name };
-    XmlAttribute fun_returntype_attr = { "return-type", CF_DATATYPES[fn.dtype] };
+    XmlAttribute fun_returntype_attr = { "return-type", DataTypeToString(fn.dtype) };
     XmlAttribute fun_varargs_attr = { "varargs", NULL };
 
     if (fn.varargs)
@@ -195,7 +196,7 @@ static void XmlExportFunction(Writer *writer, FnCallType fn)
     for (i = 0; fn.args[i].pattern != NULL; i++)
     {
         /* START XML ELEMENT -- ARGUMENT */
-        XmlAttribute argument_type_attr = { "type", CF_DATATYPES[fn.args[i].dtype] };
+        XmlAttribute argument_type_attr = { "type", DataTypeToString(fn.args[i].dtype) };
         XmlStartTag(writer, XMLTAG_ARGUMENT, 1, argument_type_attr);
 
         /* XML ELEMENT -- DESCRIPTION */
@@ -221,7 +222,7 @@ static void XmlExportFunction(Writer *writer, FnCallType fn)
 
 /*****************************************************************************/
 
-static void XmlExportControl(Writer *writer, BodyTypeSyntax type)
+static void XmlExportControl(Writer *writer, BodySyntax type)
 {
     char *filebuffer = NULL;
 
@@ -388,7 +389,7 @@ static void XmlExportType(Writer *writer, const ConstraintSyntax *constraint_syn
     Rlist *rp = NULL;
 
 /* START XML ELEMENT -- TYPE */
-    XmlAttribute type_name_attr = { "name", CF_DATATYPES[constraint_syntax->dtype] };
+    XmlAttribute type_name_attr = { "name", DataTypeToString(constraint_syntax->dtype) };
     XmlStartTag(writer, XMLTAG_TYPE, 1, type_name_attr);
 
     switch (constraint_syntax->dtype)

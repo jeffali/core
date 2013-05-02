@@ -28,7 +28,7 @@
 #include "cf3.defs.h"
 
 #include "sequence.h"
-#include "writer.h"
+#include "json.h"
 
 #include <stdio.h>
 
@@ -75,21 +75,16 @@ SyntaxTypeMatch CheckParseContext(const char *context, const char *range);
 DataType StringDataType(EvalContext *ctx, const char *scopeid, const char *string);
 DataType ExpectedDataType(const char *lvalname);
 bool IsDataType(const char *s);
-const PromiseTypeSyntax *PromiseTypeSyntaxLookup(const char *bundle_type, const char *promise_type_name);
 
+const PromiseTypeSyntax *PromiseTypeSyntaxGet(const char *bundle_type, const char *promise_type);
 const ConstraintSyntax *PromiseTypeSyntaxGetConstraintSyntax(const PromiseTypeSyntax *promise_type_syntax, const char *lval);
 
-/**
- * @brief An array of ConstraintSyntax for the given body_type
- * @param body_type Type of body, e.g. 'contain'
- * @return NULL if not found
- */
-const BodyTypeSyntax *BodySyntaxLookup(const char *body_type);
-const ConstraintSyntax *ControlBodySyntaxGet(const char *agent_type);
-
-
+const BodySyntax *BodySyntaxGet(const char *body_type);
 const ConstraintSyntax *BodySyntaxGetConstraintSyntax(const ConstraintSyntax *body_syntax, const char *lval);
 
+const char *SyntaxStatusToString(SyntaxStatus status);
+
+JsonElement *SyntaxToJson(void);
 
 #define ConstraintSyntaxNewNull() { NULL, DATA_TYPE_NONE, .range.validation_string = NULL, .status = SYNTAX_STATUS_NORMAL }
 #define ConstraintSyntaxNewBool(lval, description, status) { lval, DATA_TYPE_OPTION, .range.validation_string = CF_BOOL, description, status }
@@ -113,13 +108,13 @@ const ConstraintSyntax *BodySyntaxGetConstraintSyntax(const ConstraintSyntax *bo
 #define ConstraintSyntaxNewBody(lval, body_syntax, description, status) { lval, DATA_TYPE_BODY, .range.body_type_syntax = body_syntax, description, status }
 #define ConstraintSyntaxNewBundle(lval, description, status) { lval, DATA_TYPE_BUNDLE, .range.validation_string = CF_BUNDLE, description, status }
 
-#define BodyTypeSyntaxNew(body_type, constraints, check_fn, status) { body_type, constraints, check_fn, status }
-#define BodyTypeSyntaxNewNull() { NULL, NULL, NULL, SYNTAX_STATUS_NORMAL }
+#define BodySyntaxNew(body_type, constraints, check_fn, status) { body_type, constraints, check_fn, status }
+#define BodySyntaxNewNull() { NULL, NULL, NULL, SYNTAX_STATUS_NORMAL }
 
 #define PromiseTypeSyntaxNew(agent_type, promise_type, constraints, check_fn, status) { agent_type, promise_type, constraints, check_fn, status }
 #define PromiseTypeSyntaxNewNull() PromiseTypeSyntaxNew(NULL, NULL, NULL, NULL, SYNTAX_STATUS_NORMAL)
 
-/* print a specification of the CFEngine language */
-void SyntaxPrintAsJson(Writer *writer);
+#define FnCallTypeNew(name, return_type, arguments, implementation, description, is_varargs, status) { name, return_type, arguments, implementation, description, is_varargs, status }
+#define FnCallTypeNewNull() FnCallTypeNew(NULL, DATA_TYPE_NONE, NULL, NULL, NULL, false, SYNTAX_STATUS_NORMAL)
 
 #endif

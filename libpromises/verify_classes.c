@@ -26,7 +26,7 @@
 
 #include "attributes.h"
 #include "matching.h"
-#include "logging.h"
+#include "logging_old.h"
 #include "files_names.h"
 #include "fncall.h"
 #include "rlist.h"
@@ -35,10 +35,6 @@
 #include "hashes.h"
 #include "conversion.h"
 #include "logic_expressions.h"
-
-#ifdef HAVE_NOVA
-#include "cf.nova.h"
-#endif
 
 #include <assert.h>
 

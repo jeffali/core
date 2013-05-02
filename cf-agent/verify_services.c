@@ -28,7 +28,7 @@
 #include "promises.h"
 #include "vars.h"
 #include "attributes.h"
-#include "logging.h"
+#include "logging_old.h"
 #include "fncall.h"
 #include "locks.h"
 #include "rlist.h"
@@ -37,10 +37,6 @@
 #include "cf-agent-enterprise-stubs.h"
 #include "ornaments.h"
 #include "env_context.h"
-
-#ifdef __MINGW32__
-#include "cf.nova.h"
-#endif
 
 static int ServicesSanityChecks(Attributes a, Promise *pp);
 static void SetServiceDefaults(Attributes *a);

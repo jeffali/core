@@ -21,7 +21,6 @@ libpromises_la_SOURCES = \
         audit.c audit.h \
         attributes.c attributes.h \
         bootstrap.c bootstrap.h \
-        cf.events.h \
         cf3.defs.h \
         cf3.extern.h \
         cf3globals.c \
@@ -37,7 +36,6 @@ libpromises_la_SOURCES = \
         dbm_quick.c \
         dbm_tokyocab.c \
         dir.h dir_priv.h \
-        enterprise_stubs.c \
         env_context.c env_context.h \
         evalfunction.c evalfunction.h \
         exec_tools.c exec_tools.h \
@@ -56,7 +54,7 @@ libpromises_la_SOURCES = \
         keyring.c keyring.h\
         lastseen.c lastseen.h \
         locks.c locks.h \
-        logging.c logging.h \
+        logging_old.c logging_old.h \
         logic_expressions.c logic_expressions.h \
         matching.c matching.h \
         mod_access.c mod_access.h \
@@ -73,6 +71,7 @@ libpromises_la_SOURCES = \
         mod_report.c mod_report.h \
         mod_services.c mod_services.h \
         mod_storage.c mod_storage.h \
+        mod_knowledge.c mod_knowledge.h \
         modes.c \
         mutex.c mutex.h \
         ornaments.c ornaments.h \
@@ -83,6 +82,7 @@ libpromises_la_SOURCES = \
         pipes.h \
         processes_select.c processes_select.h \
         process_lib.h process_unix_priv.h \
+        promise_logging.c promise_logging.h \
         promises.c promises.h \
         prototypes3.h \
         rlist.c rlist.h \
@@ -101,6 +101,11 @@ libpromises_la_SOURCES = \
         verify_classes.c verify_classes.h \
         verify_reports.c \
         verify_vars.c verify_vars.h
+
+if !HAVE_NOVA
+libpromises_la_SOURCES += \
+	enterprise_stubs.c
+endif
 
 if !NT
 
@@ -155,7 +160,7 @@ MOSTLYCLEANFILES = *~ *.orig *.rej
 # libutils dependency
 
 # Automake need to be guided due to symlinking
-libpromises_la_DEPENDENCIES = ../libutils/libutils.la $(NOVA_LDADD)
+libpromises_la_DEPENDENCIES = ../libutils/libutils.la ../libcfnet/libcfnet.la $(NOVA_LDADD)
 
 .PRECIOUS: ../libutils/libutils.la
 

@@ -39,6 +39,7 @@
 #include "mod_process.h"
 #include "mod_services.h"
 #include "mod_measurement.h"
+#include "mod_knowledge.h"
 
 #include "conversion.h"
 #include "policy.h"
@@ -88,7 +89,7 @@ static const ConstraintSyntax action_constraints[] =
     ConstraintSyntaxNewNull()
 };
 
-static const BodyTypeSyntax action_body = BodyTypeSyntaxNew("action", action_constraints, ActionCheck, SYNTAX_STATUS_NORMAL);
+static const BodySyntax action_body = BodySyntaxNew("action", action_constraints, ActionCheck, SYNTAX_STATUS_NORMAL);
 
 static const ConstraintSyntax classes_constraints[] =
 {
@@ -109,7 +110,7 @@ static const ConstraintSyntax classes_constraints[] =
     ConstraintSyntaxNewNull()
 };
 
-static const BodyTypeSyntax classes_body = BodyTypeSyntaxNew("classes", classes_constraints, NULL, SYNTAX_STATUS_NORMAL);
+static const BodySyntax classes_body = BodySyntaxNew("classes", classes_constraints, NULL, SYNTAX_STATUS_NORMAL);
 
 const ConstraintSyntax CF_VARBODY[] =
 {
@@ -227,7 +228,7 @@ const ConstraintSyntax CFG_CONTROLBODY[] =
     ConstraintSyntaxNewString("output_prefix", "", "The string prefix for standard output", SYNTAX_STATUS_NORMAL),
     ConstraintSyntaxNewString("domain", ".*", "Specify the domain name for this host", SYNTAX_STATUS_NORMAL),
     ConstraintSyntaxNewBool("require_comments", "Warn about promises that do not have comment documentation. Default value: false", SYNTAX_STATUS_NORMAL),
-    ConstraintSyntaxNewInt("host_licenses_paid", CF_VALRANGE, "This promise is deprecated since CFEngine version 3.1 and is ignored. Default value: 25", SYNTAX_STATUS_NORMAL),
+    ConstraintSyntaxNewInt("host_licenses_paid", CF_VALRANGE, "This promise is deprecated since CFEngine version 3.1 and is ignored. Default value: 25", SYNTAX_STATUS_REMOVED),
     ConstraintSyntaxNewContextList("site_classes", "A list of classes that will represent geographical site locations for hosts. These should be defined elsewhere in the configuration in a classes promise.", SYNTAX_STATUS_NORMAL),
     ConstraintSyntaxNewString("syslog_host", CF_IPRANGE, "The name or address of a host to which syslog messages should be sent directly by UDP. Default value: 514", SYNTAX_STATUS_NORMAL),
     ConstraintSyntaxNewInt("syslog_port", CF_VALRANGE, "The port number of a UDP syslog service", SYNTAX_STATUS_NORMAL),
@@ -363,22 +364,69 @@ const ConstraintSyntax CFFILE_CONTROLBODY[] =  /* enum cfh_control */
     ConstraintSyntaxNewNull()
 };
 
+const ConstraintSyntax CFRE_CONTROLBODY[] = /* enum cfrecontrol */
+{
+    ConstraintSyntaxNewString("aggregation_point", CF_ABSPATHRANGE, "The root directory of the data cache for CMDB aggregation", SYNTAX_STATUS_REMOVED),
+    ConstraintSyntaxNewOption("auto_scaling", CF_BOOL, "true/false whether to auto-scale graph output to optimize use of space. Default value: true", SYNTAX_STATUS_REMOVED),
+    ConstraintSyntaxNewString("build_directory", ".*", "The directory in which to generate output files", SYNTAX_STATUS_REMOVED),
+    ConstraintSyntaxNewStringList("csv2xml", "", "A list of csv formatted files in the build directory to convert to simple xml", SYNTAX_STATUS_REMOVED),
+    ConstraintSyntaxNewOption("error_bars", CF_BOOL, "true/false whether to generate error bars on graph output", SYNTAX_STATUS_REMOVED),
+    ConstraintSyntaxNewString("html_banner", "", "HTML code for a banner to be added to rendered in html after the header", SYNTAX_STATUS_REMOVED),
+    ConstraintSyntaxNewOption("html_embed", CF_BOOL, "If true, no header and footer tags will be added to html output", SYNTAX_STATUS_REMOVED),
+    ConstraintSyntaxNewString("html_footer", "", "HTML code for a page footer to be added to rendered in html before the end body tag", SYNTAX_STATUS_REMOVED),
+    ConstraintSyntaxNewString("query_engine", "", "Name of a dynamic web-page used to accept and drive queries in a browser", SYNTAX_STATUS_REMOVED),
+    ConstraintSyntaxNewOptionList("reports", "all,audit,performance,all_locks,active_locks,hashes,classes,last_seen,monitor_now,monitor_history,monitor_summary,compliance,setuid,file_changes,installed_software,software_patches,value,variables", "A list of reports that may be generated", SYNTAX_STATUS_REMOVED),
+    ConstraintSyntaxNewOption("report_output", "csv,html,text,xml", "Menu option for generated output format. Applies only to text reports, graph data remain in xydy format.", SYNTAX_STATUS_REMOVED),
+    ConstraintSyntaxNewString("style_sheet", "", "Name of a style-sheet to be used in rendering html output (added to headers)", SYNTAX_STATUS_REMOVED),
+    ConstraintSyntaxNewString("time_stamps", CF_BOOL, "true/false whether to generate timestamps in the output directory name", SYNTAX_STATUS_REMOVED),
+    ConstraintSyntaxNewNull()
+};
+
+
+const ConstraintSyntax CFK_CONTROLBODY[] =
+{
+    ConstraintSyntaxNewString("build_directory", ".*", "The directory in which to generate output files", SYNTAX_STATUS_REMOVED),
+    ConstraintSyntaxNewString("document_root", ".*", "The directory in which the web root resides", SYNTAX_STATUS_REMOVED),
+    ConstraintSyntaxNewOption("generate_manual", CF_BOOL, "true/false generate texinfo manual page skeleton for this version", SYNTAX_STATUS_REMOVED),
+    ConstraintSyntaxNewString("graph_directory", CF_ABSPATHRANGE, "Path to directory where rendered .png files will be created", SYNTAX_STATUS_REMOVED),
+    ConstraintSyntaxNewOption("graph_output", CF_BOOL, "true/false generate png visualization of topic map if possible (requires lib)", SYNTAX_STATUS_REMOVED),
+    ConstraintSyntaxNewString("html_banner", "", "HTML code for a banner to be added to rendered in html after the header", SYNTAX_STATUS_REMOVED),
+    ConstraintSyntaxNewString("html_footer", "", "HTML code for a page footer to be added to rendered in html before the end body tag", SYNTAX_STATUS_REMOVED),
+    ConstraintSyntaxNewString("id_prefix", ".*", "The LTM identifier prefix used to label topic maps (used for disambiguation in merging)", SYNTAX_STATUS_REMOVED),
+    ConstraintSyntaxNewString("manual_source_directory", CF_ABSPATHRANGE, "Path to directory where raw text about manual topics is found (defaults to build_directory)", SYNTAX_STATUS_REMOVED),
+    ConstraintSyntaxNewString("query_engine", "", "Name of a dynamic web-page used to accept and drive queries in a browser", SYNTAX_STATUS_REMOVED),
+    ConstraintSyntaxNewOption("query_output", "html,text", "Menu option for generated output format", SYNTAX_STATUS_REMOVED),
+    ConstraintSyntaxNewOption("sql_type", "mysql,postgres", "Menu option for supported database type", SYNTAX_STATUS_REMOVED),
+    ConstraintSyntaxNewString("sql_database", "", "Name of database used for the topic map", SYNTAX_STATUS_REMOVED),
+    ConstraintSyntaxNewString("sql_owner", "", "User id of sql database user", SYNTAX_STATUS_REMOVED),
+    ConstraintSyntaxNewString("sql_passwd", "", "Embedded password for accessing sql database", SYNTAX_STATUS_REMOVED),
+    ConstraintSyntaxNewString("sql_server", "", "Name or IP of database server (or localhost)", SYNTAX_STATUS_REMOVED),
+    ConstraintSyntaxNewString("sql_connection_db", "", "The name of an existing database to connect to in order to create/manage other databases", SYNTAX_STATUS_REMOVED),
+    ConstraintSyntaxNewString("style_sheet", "", "Name of a style-sheet to be used in rendering html output (added to headers)", SYNTAX_STATUS_REMOVED),
+    ConstraintSyntaxNewOption("view_projections", CF_BOOL, "Perform view-projection analytics in graph generation", SYNTAX_STATUS_REMOVED),
+    ConstraintSyntaxNewNull()
+};
+
+
 /* This list is for checking free standing body lval => rval bindings */
 
-const BodyTypeSyntax CONTROL_BODIES[] =
+const BodySyntax CONTROL_BODIES[] =
 {
-    BodyTypeSyntaxNew(CF_COMMONC, CFG_CONTROLBODY, NULL, SYNTAX_STATUS_NORMAL),
-    BodyTypeSyntaxNew(CF_AGENTC, CFA_CONTROLBODY, NULL, SYNTAX_STATUS_NORMAL),
-    BodyTypeSyntaxNew(CF_SERVERC, CFS_CONTROLBODY, NULL, SYNTAX_STATUS_NORMAL),
-    BodyTypeSyntaxNew(CF_MONITORC, CFM_CONTROLBODY, NULL, SYNTAX_STATUS_NORMAL),
-    BodyTypeSyntaxNew(CF_RUNC, CFR_CONTROLBODY, NULL, SYNTAX_STATUS_NORMAL),
-    BodyTypeSyntaxNew(CF_EXECC, CFEX_CONTROLBODY, NULL, SYNTAX_STATUS_NORMAL),
-    BodyTypeSyntaxNew(CF_HUBC, CFH_CONTROLBODY, NULL, SYNTAX_STATUS_NORMAL),
-    BodyTypeSyntaxNew("file", CFFILE_CONTROLBODY, NULL, SYNTAX_STATUS_NORMAL),
+    BodySyntaxNew(CF_COMMONC, CFG_CONTROLBODY, NULL, SYNTAX_STATUS_NORMAL),
+    BodySyntaxNew(CF_AGENTC, CFA_CONTROLBODY, NULL, SYNTAX_STATUS_NORMAL),
+    BodySyntaxNew(CF_SERVERC, CFS_CONTROLBODY, NULL, SYNTAX_STATUS_NORMAL),
+    BodySyntaxNew(CF_MONITORC, CFM_CONTROLBODY, NULL, SYNTAX_STATUS_NORMAL),
+    BodySyntaxNew(CF_RUNC, CFR_CONTROLBODY, NULL, SYNTAX_STATUS_NORMAL),
+    BodySyntaxNew(CF_EXECC, CFEX_CONTROLBODY, NULL, SYNTAX_STATUS_NORMAL),
+    BodySyntaxNew(CF_HUBC, CFH_CONTROLBODY, NULL, SYNTAX_STATUS_NORMAL),
+    BodySyntaxNew("file", CFFILE_CONTROLBODY, NULL, SYNTAX_STATUS_NORMAL),
+
+    BodySyntaxNew("reporter", CFRE_CONTROLBODY, NULL, SYNTAX_STATUS_REMOVED),
+    BodySyntaxNew("knowledge", CFK_CONTROLBODY, NULL, SYNTAX_STATUS_REMOVED),
 
     //  get others from modules e.g. "agent","files",CF_FILES_BODIES,
 
-    BodyTypeSyntaxNewNull()
+    BodySyntaxNewNull()
 };
 
 /*********************************************************/
@@ -440,6 +488,7 @@ const PromiseTypeSyntax *CF_ALL_PROMISE_TYPES[] =
     CF_STORAGE_PROMISE_TYPES,        /* mod_storage.c */
     CF_REMACCESS_PROMISE_TYPES,      /* mod_access.c */
     CF_MEASUREMENT_PROMISE_TYPES,    /* mod_measurement.c */
+    CF_KNOWLEDGE_PROMISE_TYPES,      /* mod_knowledge.c */
 };
 
 const int CF3_MODULES = (sizeof(CF_ALL_PROMISE_TYPES) / sizeof(CF_ALL_PROMISE_TYPES[0]));

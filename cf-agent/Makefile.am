@@ -40,13 +40,13 @@ endif
 
 cf_agent_SOURCES = \
         agent-diagnostics.c agent-diagnostics.h \
+        tokyo_check.c tokyo_check.h \
         abstract_dir.c abstract_dir.h \
         cf-agent.c \
         cf_acl.c cf_acl.h \
         comparray.c comparray.h \
         acl_posix.c acl_posix.h \
         cf_sql.c cf_sql.h \
-        nfs.c nfs.h \
         promiser_regex_resolver.c promiser_regex_resolver.h \
         retcode.c retcode.h \
         verify_files.c verify_files.h \
@@ -70,6 +70,10 @@ cf_agent_SOURCES = \
         vercmp_internal.c vercmp_internal.h \
         vercmp.c vercmp.h \
         verify_packages.c verify_packages.h
+
+if !NT
+cf_agent_SOURCES += nfs.c nfs.h
+endif
 
 if !HAVE_NOVA
 cf_agent_SOURCES += cf-agent-enterprise-stubs.c cf-agent-enterprise-stubs.h

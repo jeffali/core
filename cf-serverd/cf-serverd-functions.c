@@ -28,6 +28,7 @@
 #include "server_transform.h"
 #include "bootstrap.h"
 #include "scope.h"
+#include "logging_old.h"
 #include "logging.h"
 #include "signals.h"
 #include "mutex.h"
@@ -285,7 +286,7 @@ void StartServer(EvalContext *ctx, Policy *policy, GenericAgentConfig *config)
         return;
     }
 
-    CfOut(OUTPUT_LEVEL_INFORM, "", "cf-serverd starting %.24s\n", cf_ctime(&starttime));
+    CfOut(OUTPUT_LEVEL_INFORM, "", "cf-serverd starting %.24s\n", ctime(&starttime));
 
     if (sd != -1)
     {

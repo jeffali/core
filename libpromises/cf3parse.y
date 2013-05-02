@@ -150,7 +150,7 @@ bodytype:              bodytype_values
 
 bodytype_values:       typeid
                        {
-                           if (!BodySyntaxLookup(P.blocktype))
+                           if (!BodySyntaxGet(P.blocktype))
                            {
                                ParseError("Unknown body type '%s'", P.blocktype);
                            }
@@ -321,7 +321,7 @@ promise_type:          PROMISE_TYPE             /* BUNDLE ONLY */
                            CfDebug("\n* Begin new promise type %s in function \n\n",P.currenttype);
                            ParserDebug("\tP:%s:%s:%s promise_type = %s\n", P.block, P.blocktype, P.blockid, P.currenttype);
 
-                           const PromiseTypeSyntax *promise_type_syntax = PromiseTypeSyntaxLookup(P.blocktype, P.currenttype);
+                           const PromiseTypeSyntax *promise_type_syntax = PromiseTypeSyntaxGet(P.blocktype, P.currenttype);
 
                            if (promise_type_syntax)
                            {
@@ -546,7 +546,7 @@ constraint:            constraint_id                        /* BUNDLE ONLY */
                        {
                            if (!INSTALL_SKIP)
                            {
-                               const PromiseTypeSyntax *promise_type_syntax = PromiseTypeSyntaxLookup(P.blocktype, P.currenttype);
+                               const PromiseTypeSyntax *promise_type_syntax = PromiseTypeSyntaxGet(P.blocktype, P.currenttype);
                                assert(promise_type_syntax);
 
                                const ConstraintSyntax *constraint_syntax = PromiseTypeSyntaxGetConstraintSyntax(promise_type_syntax, P.lval);
@@ -615,7 +615,7 @@ constraint_id:         IDSYNTAX                        /* BUNDLE ONLY */
                        {
                            ParserDebug("\tP:%s:%s:%s:%s:%s:%s attribute = %s\n", P.block, P.blocktype, P.blockid, P.currenttype, P.currentclasses ? P.currentclasses : "any", P.promiser, P.currentid);
 
-                           const PromiseTypeSyntax *promise_type_syntax = PromiseTypeSyntaxLookup(P.blocktype, P.currenttype);
+                           const PromiseTypeSyntax *promise_type_syntax = PromiseTypeSyntaxGet(P.blocktype, P.currenttype);
                            assert(promise_type_syntax);
 
                            if (!PromiseTypeSyntaxGetConstraintSyntax(promise_type_syntax, P.currentid))
@@ -638,18 +638,39 @@ constraint_id:         IDSYNTAX                        /* BUNDLE ONLY */
 
 bodybody:              body_begin
                        {
-                           P.currentbody = PolicyAppendBody(P.policy, P.current_namespace, P.blockid, P.blocktype, P.useargs, P.filename);
-                           if (P.currentbody)
+                           const BodySyntax *body_syntax = BodySyntaxGet(P.blocktype);
+
+                           if (body_syntax)
                            {
-                               P.currentbody->offset.line = P.line_no;
-                               P.currentbody->offset.start = P.offsets.last_block_id;
+                               INSTALL_SKIP = false;
+
+                               switch (body_syntax->status)
+                               {
+                               case SYNTAX_STATUS_DEPRECATED:
+                                   ParseWarning(PARSER_WARNING_DEPRECATED, "Deprecated body '%s' of type '%s'", P.blockid, body_syntax->body_type);
+                                   // intentional fall
+                               case SYNTAX_STATUS_NORMAL:
+                                   P.currentbody = PolicyAppendBody(P.policy, P.current_namespace, P.blockid, P.blocktype, P.useargs, P.filename);
+                                   P.currentbody->offset.line = P.line_no;
+                                   P.currentbody->offset.start = P.offsets.last_block_id;
+                                   break;
+
+                               case SYNTAX_STATUS_REMOVED:
+                                   ParseWarning(PARSER_WARNING_REMOVED, "Removed body '%s' of type '%s'", P.blockid, body_syntax->body_type);
+                                   INSTALL_SKIP = true;
+                                   break;
+                               }
+                           }
+                           else
+                           {
+                               ParseError("Invalid body type '%s'", P.blocktype);
+                               INSTALL_SKIP = true;
                            }
 
                            RlistDestroy(P.useargs);
                            P.useargs = NULL;
 
                            strcpy(P.currentid,"");
-                           CfDebug("Starting block\n");
                        }
 
                        bodyattribs
@@ -693,7 +714,7 @@ selection:             selection_id                         /* BODY ONLY */
 
                            if (!INSTALL_SKIP)
                            {
-                               const BodyTypeSyntax *body_syntax = BodySyntaxLookup(P.blocktype);
+                               const BodySyntax *body_syntax = BodySyntaxGet(P.blocktype);
                                assert(body_syntax);
 
                                const ConstraintSyntax *constraint_syntax = BodySyntaxGetConstraintSyntax(body_syntax->constraints, P.lval);
@@ -768,15 +789,18 @@ selection_id:          IDSYNTAX
                        {
                            ParserDebug("\tP:%s:%s:%s:%s attribute = %s\n", P.block, P.blocktype, P.blockid, P.currentclasses ? P.currentclasses : "any", P.currentid);
 
-                           const BodyTypeSyntax *body_syntax = BodySyntaxLookup(P.currentbody->type);
-
-                           if (!body_syntax || !BodySyntaxGetConstraintSyntax(body_syntax->constraints, P.currentid))
+                           if (!INSTALL_SKIP)
                            {
-                               ParseError("Unknown selection '%s' for body type '%s'", P.currentid, P.currentbody->type);
-                               INSTALL_SKIP = true;
-                           }
+                               const BodySyntax *body_syntax = BodySyntaxGet(P.currentbody->type);
 
-                           strncpy(P.lval,P.currentid,CF_MAXVARSIZE);
+                               if (!body_syntax || !BodySyntaxGetConstraintSyntax(body_syntax->constraints, P.currentid))
+                               {
+                                   ParseError("Unknown selection '%s' for body type '%s'", P.currentid, P.currentbody->type);
+                                   INSTALL_SKIP = true;
+                               }
+
+                               strncpy(P.lval,P.currentid,CF_MAXVARSIZE);
+                           }
                            RlistDestroy(P.currentRlist);
                            P.currentRlist = NULL;
                            CfDebug("Recorded LVAL %s\n",P.lval);
@@ -1044,8 +1068,8 @@ gaitems:               /* empty */
                      | gaitems ',' gaitem
                      | gaitem error
                        {
-                           yyclearin;
                            ParseError("Expected ',', wrong input '%s'", yytext);
+                           yyclearin;
                        }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
@@ -1085,8 +1109,20 @@ gaitem:                IDSYNTAX
 
                      | error
                        {
-                          yyclearin;
-                          ParseError("Invalid function argument, wrong input '%s'", yytext);
+                           ParserDebug("P:rval:function:gaitem:error yychar = %d\n", yychar);
+                           if (yychar == ';')
+                           {
+                              ParseError("Expected ')', wrong input '%s'", yytext);
+                           }
+                           else if (yychar == ASSIGN )
+                           {
+                              ParseError("Check function statement  previous line, Expected ')', wrong input '%s'", yytext);
+                           }
+                           else
+                           {
+                              ParseError("Invalid function argument, wrong input '%s'", yytext);
+                           }
+                           yyclearin;
                        }
 
 %%
@@ -1096,20 +1132,24 @@ gaitem:                IDSYNTAX
 static void ParseErrorVColumnOffset(int column_offset, const char *s, va_list ap)
 {
     char *errmsg = StringVFormat(s, ap);
-
     fprintf(stderr, "%s:%d:%d: error: %s\n", P.filename, P.line_no, P.line_pos + column_offset, errmsg);
-    fprintf(stderr, "%s\n", P.current_line);
-    fprintf(stderr, "%*s\n", P.line_pos + column_offset, "^");
-
     free(errmsg);
 
-    P.error_count++;
-
-    if (P.error_count > 12)
+    /* FIXME: why this might be NULL? */
+    if (P.current_line)
     {
-        fprintf(stderr, "Too many errors");
-        exit(1);
+        fprintf(stderr, "%s\n", P.current_line);
+        fprintf(stderr, "%*s\n", P.line_pos + column_offset, "^");
+
+        P.error_count++;
+
+        if (P.error_count > 12)
+        {
+            fprintf(stderr, "Too many errors");
+            exit(1);
+        }
     }
+
 }
 
 static void ParseErrorColumnOffset(int column_offset, const char *s, ...)

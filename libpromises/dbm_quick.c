@@ -1,5 +1,4 @@
 /*
-
    Copyright (C) Cfengine AS
 
    This file is part of Cfengine 3 - written and maintained by Cfengine AS.
@@ -31,7 +30,7 @@
 
 #include "dbm_api.h"
 #include "dbm_priv.h"
-#include "logging.h"
+#include "logging_old.h"
 #include "string_lib.h"
 
 #ifdef QDB
