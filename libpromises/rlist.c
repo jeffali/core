@@ -658,6 +658,7 @@ static Rlist *parse3(const char *str, const char *left, const char *right) {
    bool ignore = true; //ignore outside "(s)
    char *extract = NULL;
    //[  "______"  , "_____" , "______"     ]
+   printf("________________________________________________\n");
    do {
      if(*s!='\\') {
       if(precede) {
@@ -696,13 +697,21 @@ static Rlist *parse3(const char *str, const char *left, const char *right) {
  *
  *
  */
+/* 
+   s=NULL -> NULL
+   s=""   -> NULL
+   s="   {" -> NULL
+   s="   { " -> s+4
+*/
 static char *trim_left2(const char *str) {
   char *s = str;
-  int ignore = true;
+
+  bool ignore = true;
+  if(!s) return NULL;
   while(*s) {
     if(ignore) {
       if(*s==' ') {}
-      else if(*s=='{') {ignore = false; if(*(s+1)) {return s+1;} else return NULL;}
+      else if(*s=='{') {ignore = false; return *(s+1)?s+1:NULL;}
       else {return NULL;}
     }
     s++;
