@@ -7,6 +7,55 @@
 
 #include "assoc.h"
 
+struct ParseRoullete {
+  int nfields;
+  char str[4096];
+} PR[] = {
+  /*Simple*/
+  {1, "{\"a\"}"},
+  {2, "{\"a\",\"b\"}"},
+  {3, "{\"a\",\"b\",\"c\"}"},
+  /*Simple empty*/
+  {1, "{\"\"}" },
+  {2, "{\"\",\"\"}" },
+  {3, "{\"\",\"\",\"\"}" },
+  /*Single escaped*/
+  {1, "{\"\\\"\"}" },
+  {1, "{\"\\,\"}" },
+  {1, "{\"\\\\\"}" },
+  {1, "{\"}\"}" },
+  {1, "{\"{\"}" },
+  {1, "{\"'\"}" },
+  /*Couple mixed escaped*/
+  {1, "{\"\\\"\\,\"}" },    /*   [",]    */
+  {1, "{\"\\,\\\"\"}" },    /*   [,"]    */
+  {1, "{\"\\,\\,\"}" },     /*   [\\]    */
+  {1, "{\"\\\\\\\\\"}" },   /*   [\\]    */
+  {1, "{\"\\\\\\\"\"}" },   /*   [\"]    */
+  {1, "{\"\\\"\\\\\"}" },   /*   ["\]    */
+  /**/
+  {4, "   { \" ab\\,c\\,d\\\\ \" ,  \" e\\,f\\\"g \" ,\"hi\\\\jk\", \"l''m \" }   "},
+  /*Very long*/
+  {1, "{\"AaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaA\"}" },
+  /*Inner space (inside elements) */
+  {1, "{\" \"}" },
+  {1, "{\"  \"}" },
+  {1, "{\"   \"}" },
+  {1, "{\"\t\"}" },
+  /*Outer space (outside elements) */
+  {1, "     {\"\"}       " },
+  {1, "     {\"a\"}       " },
+  {2, "     {\"a\",\"b\"}       " },
+  {1, "{    \"a\"      }" },
+  {2, "{    \"a\",\"b\"      }" },
+  {2, "{    \"a\"    ,\"b\"      }" },
+  {2, "{    \"a\",    \"b\"      }" },
+  {2, "{    \"a\",    \"b\"}       " },
+  /**/
+  {1, " {\"\"}" },
+  {-1, NULL }
+};
+
 /* Stubs */
 
 void FatalError(char *s, ...)
@@ -177,13 +226,18 @@ static void test_filter_everything(void **state)
 static void test_new_parser(void **state)
 {
     Rlist *list = NULL;
+    char str[4096];
+    int i=0;
+    while(PR[i].nfields!=-1) {
+      printf("===========================================================\n");
+      strcpy(str, PR[i].str);
 
-    char *str="   { \" ab\\,c\\,d\\\\ \" ,  \" e\\,f\\\"g \" ,\"hi\\\\jk\", \"l''m \" }  ";
-
-    //list = parse2(str, trim_left2(str), trim_right2(str));
-    list = RlistParseShown2(str);
-    printf("[%s]\n", list?"ok" :"NULL");
-    assert_int_equal(4, RlistLen(list));
+      list = RlistParseShown2(str);
+      printf("[%s]\n", list?"ok" :"NULL");
+      assert_int_equal(PR[i].nfields, RlistLen(list));
+      RlistDestroy(list);
+      i++;
+    }
 }
 
 int main()

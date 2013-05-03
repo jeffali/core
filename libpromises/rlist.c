@@ -699,12 +699,13 @@ static Rlist *parse3(const char *str, const char *left, const char *right) {
 static char *trim_left2(const char *str) {
   char *s = str;
   int ignore = true;
-  while(*s++) {
+  while(*s) {
     if(ignore) {
       if(*s==' ') {}
-      else if(*s=='{') {ignore = false; return s+1;}
+      else if(*s=='{') {ignore = false; if(*(s+1)) {return s+1;} else return NULL;}
       else {return NULL;}
     }
+    s++;
   }
   return NULL;
 }
