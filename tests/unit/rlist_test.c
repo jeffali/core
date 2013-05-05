@@ -233,11 +233,60 @@ static void test_new_parser(void **state)
       strcpy(str, PR[i].str);
 
       list = RlistParseShown2(str);
-      printf("[%s]\n", list?"ok" :"NULL");
+      printf("[%s] = %x\n", list?"okiz" :"NULL", list);
       assert_int_equal(PR[i].nfields, RlistLen(list));
       RlistDestroy(list);
       i++;
     }
+}
+
+char *PFR[] = {
+ /* trim left failure */
+ "",
+ " ",
+ "a",
+ "\"",
+ "\"\"",
+ /* trim right failure */
+ "{",
+ "{ ",
+ "{a",
+ "{\"",
+ "{\"\"",
+ /* parse failure */
+  /* un-even number of quotation marks */
+ "{\"\"\"}",
+ "{\"\",\"}",
+ "{\"\"\"\"}",
+ "{\"\"\"\"\"}",
+ "{\"\",\"\"\"}",
+ "{\"\"\"\",\"}",
+ "{\"\",\"\",\"}",
+ /**/
+ "{\"a\",}",
+ "{,\"a\"}",
+ "{,,\"a\"}",
+ "{\"a\",,\"b\"}",
+ NULL
+};
+
+static void test_failure(void **state)
+{
+    Rlist *list = NULL;
+    char str[4096];
+    int i=0;
+    while(PFR[i]!=NULL) {
+      printf("===========================================================\n");
+      strcpy(str, PFR[i]);
+
+    printf("I *  %i\n", i );
+      list = RlistParseShown2(str);
+      printf("[%s]\n", list?"ok" :"NULL");
+      //assert_int_equal(PR[i].nfields, RlistLen(list));
+      RlistDestroy(list);
+      i++;
+    }
+    printf("I ====  %i\n", i );
 }
 
 int main()
@@ -245,6 +294,7 @@ int main()
     PRINT_TEST_BANNER();
     const UnitTest tests[] =
     {
+#if 0
         unit_test(test_prepend_scalar),
         unit_test(test_prepend_scalar_idempotent),
         unit_test(test_length),
@@ -258,7 +308,9 @@ int main()
         unit_test(test_last),
         unit_test(test_filter),
         unit_test(test_filter_everything),
-        unit_test(test_new_parser)
+#endif
+        unit_test(test_new_parser),
+        unit_test(test_failure)
     };
 
     return run_tests(tests);
