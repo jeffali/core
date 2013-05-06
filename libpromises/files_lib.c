@@ -628,11 +628,11 @@ int LoadFileAsItemList(EvalContext *ctx, Item **liststart, const char *file, Att
         if (join)
         {
             *(line + strlen(line) - 1) = '\0';
-            JoinSuffix(concat, line);
+            JoinSuffix2(concat, line);
         }
         else
         {
-            JoinSuffix(concat, line);
+            JoinSuffix2(concat, line);
 
             if (!feof(fp) || (strlen(concat) != 0))
             {

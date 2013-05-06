@@ -198,6 +198,21 @@ char *JoinSuffix(char *path, char *leaf)
     return path;
 }
 
+char *JoinSuffix2(char *dest, char *src)
+{
+    int len = strlen(src);
+
+    if ((strlen(dest) + len) > (CF_BUFSIZE - 1/*CF_BUFFERMARGIN*/))
+    {
+        CfOut(OUTPUT_LEVEL_ERROR, "", "Internal limit 2: Buffer ran out of space constructing string. Tried to add %s to %s\n",
+              src, dest);
+        return NULL;
+    }
+
+    strcat(dest, src);
+    return dest;
+}
+
 int IsAbsPath(char *path)
 {
     if (IsFileSep(*path))
