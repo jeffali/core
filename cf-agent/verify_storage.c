@@ -325,11 +325,13 @@ static void VolumeScanArrivals(char *file, Attributes a, Promise *pp)
 /*********************************************************************/
 
 #if !defined(__MINGW32__)
+typedef enum {absent,present_mounton,present_srvsrc,present_full};
+
 static int FileSystemMountedCorrectly(Rlist *list, char *name, char *options, Attributes a, Promise *pp)
 {
     Rlist *rp;
     Mount *mp;
-    int found = false;
+    int found = absent;
 
     for (rp = list; rp != NULL; rp = rp->next)
     {
@@ -346,12 +348,19 @@ static int FileSystemMountedCorrectly(Rlist *list, char *name, char *options, At
         {
             /* We have found something mounted on the promiser dir */
 
-            found = true;
+            found = present_mounton;
 
             if ((a.mount.mount_source) && (strcmp(mp->source, a.mount.mount_source) != 0))
             {
                 CfOut(OUTPUT_LEVEL_INFORM, "", "A different file system (%s:%s) is mounted on %s than what is promised\n",
                       mp->host, mp->source, name);
+                /* if nfs 
+                if ((mp->options) && (strstr(mp->options, "nfs")))
+ 
+                    check also host and nfs
+                      if equal hosts present2
+                      else full presence
+                 * fi*/
                 return false;
             }
             else
@@ -445,7 +454,10 @@ static int VerifyMountPromise(EvalContext *ctx, char *name, Attributes a, Promis
 
     options = Rlist2String(a.mount.mount_options, ",");
 
-    if (!FileSystemMountedCorrectly(MOUNTEDFSLIST, name, options, a, pp))
+//typedef enum {absent,present_mounton,present_srvsrc,present_full};
+    int ret;
+    ret=FileSystemMountedCorrectly(MOUNTEDFSLIST, name, options, a, pp);
+    if (ret==absent)
     {
         if (!a.mount.unmount)
         {
@@ -455,6 +467,10 @@ static int VerifyMountPromise(EvalContext *ctx, char *name, Attributes a, Promis
 
             if (a.mount.editfstab)
             {
+                //TODO: update Fstab is not like what we want
+                //  either it has all our entries
+                //     or  it has them partially
+                //     or  it does not
                 changes += VerifyInFstab(ctx, name, a, pp);
             }
             else
@@ -479,7 +495,7 @@ static int VerifyMountPromise(EvalContext *ctx, char *name, Attributes a, Promis
             CF_MOUNTALL = true;
         }
     }
-    else
+    else if(present_full)
     {
         if (a.mount.unmount)
         {
@@ -491,6 +507,33 @@ static int VerifyMountPromise(EvalContext *ctx, char *name, Attributes a, Promis
         }
         else
         {
+            cfPS(ctx, OUTPUT_LEVEL_INFORM, CF_NOP, "", pp, a, " -> Filesystem %s seems to be mounted as promised\n", name);
+        }
+    }
+    else if(present_mounton || present_srvsrc) {
+        if (a.mount.unmount)
+        {
+            VerifyUnmount(ctx, name, a, pp);
+            if (a.mount.editfstab)
+            {
+                VerifyNotInFstab(ctx, name, a, pp);
+            }
+        }
+        else
+        {
+            //TODO:
+            //Unmount it
+            //then re-mount with new params
+            //if edit_fstab, then update fstab
+#if 0
+            VerifyUnmount(ctx, name, a, pp);
+            VerifyMount(ctx, name, a, pp);
+            if (a.mount.editfstab)
+            {
+                changes += VerifyInFstab(ctx, name, a, pp);
+            }
+#endif
+            //
             cfPS(ctx, OUTPUT_LEVEL_INFORM, CF_NOP, "", pp, a, " -> Filesystem %s seems to be mounted as promised\n", name);
         }
     }
