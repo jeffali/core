@@ -32,7 +32,7 @@ typedef enum           {false=0, true=1};
               {
                 if(skipped != true) goto clean; //" should come after ,
                 ignore = false;
-                extract = s2 + 1;
+                extract = s2; //+ 1;
               }
               else 
               {
@@ -150,10 +150,9 @@ struct ParseRoullete {
   {1, "{\"\\\\\\\\\"}" },   /*   [\\]    */
   {1, "{\"\\\\\\\"\"}" },   /*   [\"]    */
   {1, "{\"\\\"\\\\\"}" },   /*   ["\]    */
-  /**/
-  {4, "   { \" ab\\,c\\,d\\\\ \" ,  \" e\\,f\\\"g \" ,\"hi\\\\jk\", \"l''m \" }   "},
   /*Very long*/
   {1, "{\"AaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaA\"}" },
+  {2, "{\"Aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaA\"  ,  \"Bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\\\\bbbbbbbbbbbbbbbbbbbbbbbb\\\\bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\\\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbB\" }" },
   /*Inner space (inside elements) */
   {1, "{\" \"}" },
   {1, "{\"  \"}" },
@@ -168,8 +167,9 @@ struct ParseRoullete {
   {2, "{    \"a\"    ,\"b\"      }" },
   {2, "{    \"a\",    \"b\"      }" },
   {2, "{    \"a\",    \"b\"}       " },
+  /*Normal*/
+  {4, "   { \" ab\\,c\\,d\\\\ \" ,  \" e\\,f\\\"g \" ,\"hi\\\\jk\", \"l''m \" }   "},
   /**/
-  {1, " {\"\"}" },
   {-1, NULL }
 };
 char *PFR[] = {
@@ -188,17 +188,51 @@ char *PFR[] = {
  /* parse failure */
   /* un-even number of quotation marks */
  "{\"\"\"}",
- "{\"\",\"}",  /*TODO: fix*/
+ "{\"\",\"}",
  "{\"\"\"\"}",
  "{\"\"\"\"\"}",
  "{\"\",\"\"\"}",
  "{\"\"\"\",\"}",
- "{\"\",\"\",\"}",  /*TODO: fix*/
+ "{\"\",\"\",\"}",
  /**/
  "{\"a\",}",
  "{,\"a\"}",
  "{,,\"a\"}",
  "{\"a\",,\"b\"}",
+  /*Comma play*/
+ " {,}",
+ " {,,}",
+ " {,,,}",
+ " {,\"\"}",
+ " {\"\",}",
+ " {,\"\",}",
+ " {\"\",,}",
+ " {\"\",,,}",
+ " {,,\"\",,}",
+ " {\"\",\"\",}",
+ " {\"\",\"\",,}",
+ " {   \"\"  ,  \"\" ,  , }",
+  /*Ignore space's oddities*/
+ "\" {\"\"}",
+ "{ {\"\"}",
+ "{\"\"}\"",
+ "{\"\"}\\",
+ "{\"\"} } ",
+ "a{\"\"}",
+ " a {\"\"}",
+ "{a\"\"}",
+ "{ a \"\"}",
+ "{\"\"}a",
+ "{\"\"}  a ",
+ "{\"\"a}",
+ "{\"\" a }",
+ "a{\"\"}b",
+ "{a\"\"b}",
+ "a{\"\"b}",
+ "{a\"\"}b",
+ "{\"\"a\"\"}",
+ "{\"\",\"\"a\"\"}",
+ /*Incomplete*/
  NULL
 };
 
@@ -217,6 +251,8 @@ void test_new_parser()
       printf("[%s] = %x\n", list?"okiz" :"NULL", list);
       if(list && PR[i].nfields == n) {
         printf("[OKN]\n");
+      } else {
+        printf("[FAIL]\n");
       }
       //assert_int_equal(PR[i].nfields, n);
       //RlistDestroy(list);
@@ -243,8 +279,8 @@ int main() {
   //char *str = "   {   \"  a \\\" \\,   \"    ,  X      \"  b   \"   }   ";
   //char *str = "   {   \"  a \\\" \\,   \"  X  ,  Y      \"  b   \"   }   ";
   //char *str = "   {   \"  a \\\" \\,   \"  X Y      \"  b   \"   }   ";
-  //test_failure();
-  test_new_parser();
+  test_failure();
+  //test_new_parser();
   return 0;
   char *str = "   {   \"  a \\\" \\,   \"\"  b   \"   }   ";
   int n=-1;
