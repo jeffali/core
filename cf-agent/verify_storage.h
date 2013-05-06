@@ -31,6 +31,8 @@
 extern Rlist *MOUNTEDFSLIST;
 extern int CF_MOUNTALL;
 
+typedef enum {absent, present_mounton, present_srvsrc, present_full} StorageMountState;
+
 void *FindAndVerifyStoragePromises(EvalContext *ctx, Promise *pp, const ReportContext *report_context);
 void VerifyStoragePromise(EvalContext *ctx, char *path, Promise *pp, const ReportContext *report_context);
 

@@ -391,7 +391,7 @@ int VerifyInFstab(EvalContext *ctx, char *name, Attributes a, Promise *pp)
 
     CfOut(OUTPUT_LEVEL_VERBOSE, "", "Verifying %s in %s\n", mountpt, VFSTAB[VSYSTEMHARDCLASS]);
 
-    if (!MatchFSInFstab(mountpt))
+    if (present_fill!=MatchFSInFstab(mountpt, a.mount.mount_server, a.mount.mount_source, opts))
     {
         AppendItem(&FSTABLIST, fstab, NULL);
         FSTAB_EDITS++;
@@ -437,7 +437,7 @@ int VerifyNotInFstab(EvalContext *ctx, char *name, Attributes a, Promise *pp)
     host = a.mount.mount_server;
     mountpt = name;
 
-    if (MatchFSInFstab(mountpt))
+    if (MatchFSInFstab(mountpt, host, a.mount.mount_source , opts ))
     {
         if (a.mount.editfstab)
         {
@@ -596,19 +596,32 @@ int VerifyUnmount(EvalContext *ctx, char *name, Attributes a, Promise *pp)
 
 /*******************************************************************/
 
-static int MatchFSInFstab(char *match)
+//absent, present_mounton, present_srvsrc, present_full
+static int MatchFSInFstab(char *match, char *host, *source, char *opts)
 {
     Item *ip;
+    int found = absent;
 
     for (ip = FSTABLIST; ip != NULL; ip = ip->next)
     {
-        if (strstr(ip->name, match))
+        if (strstr(ip->name, match)) //why strstr and not strcmp ???
         {
-            return true;
+           //TODO: do some regexp on on ip maybe ????
+           //    or maybe extract every field depending on platform
+           if (strstr(ip->name, host) && strstr(ip->name, source))
+           {
+              if (strstr(ip->name, opts))
+              {
+                 return present_full;
+              } else {
+                 return present_srvsrc;
+              }
+           } else {
+               found = present_mounton;
+           }
         }
     }
-
-    return false;
+    return found;
 }
 
 /*******************************************************************/

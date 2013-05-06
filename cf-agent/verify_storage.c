@@ -325,7 +325,6 @@ static void VolumeScanArrivals(char *file, Attributes a, Promise *pp)
 /*********************************************************************/
 
 #if !defined(__MINGW32__)
-typedef enum {absent,present_mounton,present_srvsrc,present_full};
 
 static int FileSystemMountedCorrectly(Rlist *list, char *name, char *options, Attributes a, Promise *pp)
 {
@@ -354,14 +353,21 @@ static int FileSystemMountedCorrectly(Rlist *list, char *name, char *options, At
             {
                 CfOut(OUTPUT_LEVEL_INFORM, "", "A different file system (%s:%s) is mounted on %s than what is promised\n",
                       mp->host, mp->source, name);
-                /* if nfs 
-                if ((mp->options) && (strstr(mp->options, "nfs")))
- 
-                    check also host and nfs
-                      if equal hosts present2
-                      else full presence
-                 * fi*/
-                return false;
+                /* if nfs*/
+                if ((mp->options) && (strstr(mp->options, "nfs"))) {
+                    //check also host and nfs
+                    if(mp->host && a.mount.mount_server && !strcmp(mp->host, a.mount.mount_server)) {
+                       if(mp->opts && a.mount.mount_options && !strcmp(mp->opts, a.mount.mount_options)) {
+                           return present_full;
+                       } else {
+                           return present_srvsrc;
+                       } 
+                    } else {
+                      found = present_mounton;
+                    }
+                }
+                /* fi*/
+                //return false;
             }
             else
             {
@@ -371,7 +377,7 @@ static int FileSystemMountedCorrectly(Rlist *list, char *name, char *options, At
         }
     }
 
-    if (!found)
+    if (found==absent)
     {
         if (!a.mount.unmount)
         {
