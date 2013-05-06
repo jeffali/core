@@ -23,7 +23,7 @@ typedef enum           {false=0, true=1};
    while(*s && s < right) {
      if(*s!='\\') {
         if(precede) {
-            if(*s!='\\' && *s!='"' && *s!=',') {printf("big problem (presence of %c after separator)\n", *s); goto clean;} 
+            if(*s!='\\' && *s!='"' /*&& *s!=','*/) {printf("big problem (presence of %c after separator)\n", *s); goto clean;} 
             else *s2++ = *s;
             precede = false;
         } else {
@@ -45,9 +45,11 @@ typedef enum           {false=0, true=1};
               }
               skipped = false;
             } else if(*s==',') {
-              *s2++ = 0xa;
-              if(skipped==false) {skipped = true; }
-              else {goto clean; /*duplicate ,*/}
+              if(ignore) {
+                *s2++ = 0xa;
+                if(skipped==false) {skipped = true; }
+                else {goto clean; /*duplicate ,*/}
+              }
             } 
             else {
                if(ignore==true && *s!=' ') {printf("Wa3333=%c\n",*s); goto clean;}
@@ -138,15 +140,15 @@ struct ParseRoullete {
   {3, "{\"\",\"\",\"\"}" },
   /*Single escaped*/
   {1, "{\"\\\"\"}" },
-  {1, "{\"\\,\"}" },
+  {1, "{\",\"}" },
   {1, "{\"\\\\\"}" },
   {1, "{\"}\"}" },
   {1, "{\"{\"}" },
   {1, "{\"'\"}" },
   /*Couple mixed escaped*/
-  {1, "{\"\\\"\\,\"}" },    /*   [",]    */
-  {1, "{\"\\,\\\"\"}" },    /*   [,"]    */
-  {1, "{\"\\,\\,\"}" },     /*   [\\]    */
+  {1, "{\"\\\",\"}" },    /*   [",]    */
+  {1, "{\",\\\"\"}" },    /*   [,"]    */
+  {1, "{\",,\"}" },     /*   [\\]    */
   {1, "{\"\\\\\\\\\"}" },   /*   [\\]    */
   {1, "{\"\\\\\\\"\"}" },   /*   [\"]    */
   {1, "{\"\\\"\\\\\"}" },   /*   ["\]    */
@@ -168,7 +170,7 @@ struct ParseRoullete {
   {2, "{    \"a\",    \"b\"      }" },
   {2, "{    \"a\",    \"b\"}       " },
   /*Normal*/
-  {4, "   { \" ab\\,c\\,d\\\\ \" ,  \" e\\,f\\\"g \" ,\"hi\\\\jk\", \"l''m \" }   "},
+  {4, "   { \" ab,c,d\\\\ \" ,  \" e,f\\\"g \" ,\"hi\\\\jk\", \"l''m \" }   "},
   /**/
   {-1, NULL }
 };
@@ -279,8 +281,8 @@ int main() {
   //char *str = "   {   \"  a \\\" \\,   \"    ,  X      \"  b   \"   }   ";
   //char *str = "   {   \"  a \\\" \\,   \"  X  ,  Y      \"  b   \"   }   ";
   //char *str = "   {   \"  a \\\" \\,   \"  X Y      \"  b   \"   }   ";
-  test_failure();
-  //test_new_parser();
+  //test_failure();
+  test_new_parser();
   return 0;
   char *str = "   {   \"  a \\\" \\,   \"\"  b   \"   }   ";
   int n=-1;
