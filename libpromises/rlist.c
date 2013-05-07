@@ -610,111 +610,204 @@ Rlist *RlistParseShown(char *string)
 
 /*******************************************************************/
 
-Rlist *RlistParseStringBounded(const char *str, const char *left, const char *right, int *n) {
-   Rlist *newlist = NULL;
-   char str2[CF_MAXVARSIZE];
-   char *s = left;
-   char *s2 = str2;
-   memset(str2, 0, CF_MAXVARSIZE);
-   int precede = false;
-   bool ignore = true; //ignore outside "(s)
-   bool skipped = true;
-   char *extract = NULL;
-   *n=0;
+Rlist *RlistParseStringBounded(const char *str, const char *left,
+                               const char *right, int *n)
+{
+    Rlist *newlist = NULL;
+    char str2[CF_MAXVARSIZE];
+    char *s = left;
+    char *s2 = str2;
+    memset(str2, 0, CF_MAXVARSIZE);
+    int precede = false;
+    bool ignore = true;         //ignore outside "(s)
+    bool skipped = true;
+    char *extract = NULL;
+    *n = 0;
 
-   if( str[0]             == '\"' ) return NULL;
-   if( str[strlen(str)-1] == '\"' ) return NULL;
+    if (str[0] == '\"')
+        return NULL;
+    if (str[strlen(str) - 1] == '\"')
+        return NULL;
 
-   printf("________________________________________________\n");
-   while(*s && s < right) {
-     if(*s!='\\') {
-        if(precede) {
-            if(*s!='\\' && *s!='"' /*&& *s!=','*/) {printf("big problem (presence of %c after separator)\n", *s); goto clean;} 
-            else *s2++ = *s;
-            precede = false;
-        } else {
-            if(*s=='"') {
-              if(ignore)
-              {
-                if(skipped != true) goto clean; //" should come after ,
-                ignore = false;
-                extract = s2; //+ 1;
-              }
-              else 
-              {
-                //add extract (length = s - extract) to list
-                printf("\tExtract :[%s](%d)\n", extract, (size_t) (s2 - extract));
-                RlistAppendScalar(&newlist, extract);
-                ignore = true;
-                extract = NULL;
-                if ( n!=NULL) *n+=1;
-              }
-              skipped = false;
-            } else if(*s==',') {
-              if(ignore) {
-                *s2++ = 0xa;
-                if(skipped==false) {skipped = true; }
-                else {goto clean; /*duplicate ,*/}
-              } else {
-                   *s2++ = *s;
-              }
-         } 
-            else {
-               if(ignore==true && *s!=' ') {printf("Wa3333=%c\n",*s); goto clean;}
-               *s2++ = *s;
+    printf("________________________________________________\n");
+    while (*s && s < right)
+    {
+        if (*s != '\\')
+        {
+            if (precede)
+            {
+                if (*s != '\\' && *s != '"' /*&& *s!=',' */ )
+                {
+                    printf("big problem (presence of %c after separator)\n",
+                           *s);
+                    goto clean;
+                }
+                else
+                    *s2++ = *s;
+                precede = false;
+            }
+            else
+            {
+                if (*s == '"')
+                {
+                    if (ignore)
+                    {
+                        if (skipped != true)
+                            goto clean; //" should come after ,
+                        ignore = false;
+                        extract = s2;   //+ 1;
+                    }
+                    else
+                    {
+                        //add extract (length = s - extract) to list
+                        printf("\tExtract :[%s](%d)\n", extract,
+                               (size_t) (s2 - extract));
+                        RlistAppendScalar(&newlist, extract);
+                        ignore = true;
+                        extract = NULL;
+                        if (n != NULL)
+                            *n += 1;
+                    }
+                    skipped = false;
+                }
+                else if (*s == ',')
+                {
+                    if (ignore)
+                    {
+                        *s2++ = 0xa;
+                        if (skipped == false)
+                        {
+                            skipped = true;
+                        }
+                        else
+                        {
+                            goto clean; /*duplicate , */
+                        }
+                    }
+                    else
+                    {
+                        *s2++ = *s;
+                    }
+                }
+                else
+                {
+                    if (ignore == true && *s != ' ')
+                    {
+                        printf("Wa3333=%c\n", *s);
+                        goto clean;
+                    }
+                    *s2++ = *s;
+                }
             }
         }
-     } else {
-         if(precede) { *s2++='\\'; precede=false;}
-         else {precede = true;}
-     }
-     s++;
-   }
-   if(ignore) {return newlist;} else {return NULL;}
-clean:
-   printf("***cleaned****\n");
-   if(newlist) free(newlist);
-   return NULL;
+        else
+        {
+            if (precede)
+            {
+                *s2++ = '\\';
+                precede = false;
+            }
+            else
+            {
+                precede = true;
+            }
+        }
+        s++;
+    }
+    if (ignore)
+    {
+        return newlist;
+    }
+    else
+    {
+        return NULL;
+    }
+  clean:
+    printf("***cleaned****\n");
+    if (newlist)
+        free(newlist);
+    return NULL;
 }
 
-static char *TrimLeft(const char *str) {
-  char *s = str;
+static char *TrimLeft(const char *str)
+{
+    char *s = str;
 
-  bool crossed = false;
-  if(!s) return NULL;
-  while(*s) {
-    if(crossed==false) {
-      if(*s==' ') {}
-      else if(*s=='{') {crossed = true;}
-      else {return NULL;}
-    } else {
-      if(*s==' ') {}
-      else if(*s=='"') {return s;}
-      else {return NULL;} 
+    bool crossed = false;
+    if (!s)
+        return NULL;
+    while (*s)
+    {
+        if (crossed == false)
+        {
+            if (*s == ' ')
+            {
+            }
+            else if (*s == '{')
+            {
+                crossed = true;
+            }
+            else
+            {
+                return NULL;
+            }
+        }
+        else
+        {
+            if (*s == ' ')
+            {
+            }
+            else if (*s == '"')
+            {
+                return s;
+            }
+            else
+            {
+                return NULL;
+            }
+        }
+        s++;
     }
-    s++;
-  }
-  return NULL;
+    return NULL;
 }
 
-static char   *TrimRight(const char *str) {
-  bool crossed = false;
-  char *s = str + strlen(str) - 1;
-  while(*s && s>str) {
-    if(crossed==false) {  
-      if(*s==' ') {}
-      else if(*s=='}') {
-        crossed=true;
-      } else {return NULL;}
-    } else {
-      if(*s==' ') {}
-      else if(*s=='"') {
-        return s+1;
-      } else {return NULL;}
+static char *TrimRight(const char *str)
+{
+    bool crossed = false;
+    char *s = str + strlen(str) - 1;
+    while (*s && s > str)
+    {
+        if (crossed == false)
+        {
+            if (*s == ' ')
+            {
+            }
+            else if (*s == '}')
+            {
+                crossed = true;
+            }
+            else
+            {
+                return NULL;
+            }
+        }
+        else
+        {
+            if (*s == ' ')
+            {
+            }
+            else if (*s == '"')
+            {
+                return s + 1;
+            }
+            else
+            {
+                return NULL;
+            }
+        }
+        s--;
     }
-    s--;
-  }
-  return NULL;
+    return NULL;
 }
 
 Rlist *RlistParseString(const char *string, int *n)
@@ -723,10 +816,12 @@ Rlist *RlistParseString(const char *string, int *n)
 /* Parse a string representation generated by ShowList and turn back into Rlist */
     char *l = TrimLeft(string);
     printf(">Left.l =[%s]\n", l);
-    if (l==NULL) return NULL;
+    if (l == NULL)
+        return NULL;
     char *r = TrimRight(l);
     printf(">Right.r =[%s]\n", r);
-    if (r==NULL) return NULL;
+    if (r == NULL)
+        return NULL;
     newlist = RlistParseStringBounded(string, l, r, n);
     return newlist;
 }
