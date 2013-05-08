@@ -187,13 +187,13 @@ static void test_reverse(void)
     RlistDestroy(list);
 }
 /***************************************************************************/
-static struct ParseRoullete
+static struct ParseRoulette
 {
     int nfields;
-    char str[4096];
+    char *str;
 } PR[] =
 {
-    /*Simple */
+        /*Simple */
     {
     1, "{\"a\"}"},
     {
@@ -220,7 +220,7 @@ static struct ParseRoullete
     1, "{\"{\"}"},
     {
     1, "{\"'\"}"},
-        /*Couple mixed escaped */
+        /*Couple double-escaped */
     {
     1, "{\"\\\",\"}"},          /*   [",]    */
     {
@@ -273,7 +273,7 @@ static struct ParseRoullete
     -1, (char *)NULL}
 };
 
-char *PFR[] = {
+static char *PFR[] = {
     /* trim left failure */
     "",
     " ",
@@ -295,11 +295,11 @@ char *PFR[] = {
     "{\"\",\"\"\"}",
     "{\"\"\"\",\"}",
     "{\"\",\"\",\"}",
-     /**/ "{\"a\",}",
+    /* Misplaced commas*/
+    "{\"a\",}",
     "{,\"a\"}",
     "{,,\"a\"}",
     "{\"a\",,\"b\"}",
-    /*Comma play */
     " {,}",
     " {,,}",
     " {,,,}",
@@ -340,25 +340,11 @@ char *PFR[] = {
 static void test_new_parser_success()
 {
     Rlist *list = NULL;
-    char str[4096];
     int i = 0;
     while (PR[i].nfields != -1)
     {
-        printf("==================  %d ==================================\n",
-               i);
-        strcpy(str, PR[i].str);
-
-        list = RlistParseString(str, NULL);
-        printf("[%s] = %x\n", list ? "okiz" : "NULL", list);
-        if (list && PR[i].nfields == RlistLen(list))
-        {
-            printf("[OKN]\n");
-        }
-        else
-        {
-            printf("[FAIL]\n");
-        }
-        //assert_int_equal(PR[i].nfields, RlistLen(list));
+        list = RlistParseString(PR[i].str, NULL);
+        assert_int_equal(PR[i].nfields, RlistLen(list));
         if (list != NULL)
         {
             RlistDestroy(list);
@@ -369,15 +355,11 @@ static void test_new_parser_success()
 
 static void test_new_parser_failure()
 {
-    char str[4096];
     int i = 0;
     Rlist *list = NULL;
     while (PFR[i] != NULL)
     {
-        printf("=========== %d ===========================\n", i);
-        strcpy(str, PFR[i]);
-        list = RlistParseString(str, NULL);
-        printf("[%s]\n", list ? "ok" : "NULL");
+        list = RlistParseString(PFR[i], NULL);
         assert_true(RlistLast(list) == NULL);
         if(list) RlistDestroy(list);
         i++;

@@ -29,6 +29,7 @@
 #include "expand.h"
 #include "matching.h"
 #include "scope.h"
+#include "logging.h"
 #include "logging_old.h"
 #include "fncall.h"
 #include "string_lib.h"
@@ -610,16 +611,16 @@ Rlist *RlistParseShown(char *string)
 
 /*******************************************************************/
 
-static Rlist *RlistParseStringBounded(const char *str, const char *left,
-                                      const char *right, int *n)
+static Rlist *RlistParseStringBounded(char *left,
+                                      char *right, int *n)
 {
     Rlist *newlist = NULL;
     char str2[CF_MAXVARSIZE];
     char *s = left;
     char *s2 = str2;
-    bool precede = false;
-    bool ignore = true;         //ignore outside "(s)
-    bool skipped = true;
+    bool precede = false;  //set if we just encountred escaping character
+    bool ignore = true;    //set if we're outside quotation marks
+    bool skipped = true;   //set if a separating comma is behind us
     char *extract = NULL;
 
     if (n!=NULL)
@@ -637,7 +638,7 @@ static Rlist *RlistParseStringBounded(const char *str, const char *left,
             {
                 if (*s != '\\' && *s != '"')
                 {
-                    printf("big problem (presence of %c after separator)\n", *s);
+                    Log(LOG_LEVEL_ERR, "Presence of illegal %c after escaping character", *s);
                     goto clean;
                 }
                 else
@@ -654,16 +655,16 @@ static Rlist *RlistParseStringBounded(const char *str, const char *left,
                     {
                         if (skipped != true)
                         {
-                            goto clean; //" should come after ,
+                            Log(LOG_LEVEL_ERR, "Quotation marks \" should follow commas");
+                            goto clean;
                         }
                         ignore = false;
                         extract = s2;
                     }
                     else
                     {
-                        //add extract (length = s - extract) to list
                         *s2='\0';
-                        printf("\tExtract :[%s](%d)\n", extract,
+                        Log(LOG_LEVEL_VERBOSE, "Extracted string [%s] of length (%d)", extract,
                                (size_t) (s2 - extract));
                         RlistAppendScalar(&newlist, extract);
                         ignore = true;
@@ -685,7 +686,8 @@ static Rlist *RlistParseStringBounded(const char *str, const char *left,
                         }
                         else
                         {
-                            goto clean; /*duplicate , */
+                            Log(LOG_LEVEL_ERR, "Only one comma should separate different list elements");
+                            goto clean;
                         }
                     }
                     else
@@ -697,7 +699,7 @@ static Rlist *RlistParseStringBounded(const char *str, const char *left,
                 {
                     if (ignore == true && *s != ' ')
                     {
-                        printf("Wa3333=%c\n", *s);
+                        Log(LOG_LEVEL_ERR, "Only white characters are permitted outside of list elements. Character %c is illegal.", *s);
                         goto clean;
                     }
                     *s2++ = *s;
@@ -727,7 +729,6 @@ static Rlist *RlistParseStringBounded(const char *str, const char *left,
         goto clean;
     }
   clean:
-    printf("***cleaned****\n");
     if (newlist)
     {
         RlistDestroy(newlist);
@@ -735,7 +736,7 @@ static Rlist *RlistParseStringBounded(const char *str, const char *left,
     return NULL;
 }
 
-static char *TrimLeft(const char *str)
+static char *TrimLeft(char *str)
 {
     char *s = str;
 
@@ -779,7 +780,7 @@ static char *TrimLeft(const char *str)
     return NULL;
 }
 
-static char *TrimRight(const char *str)
+static char *TrimRight(char *str)
 {
     bool crossed = false;
     char *s = str + strlen(str) - 1;
@@ -818,7 +819,7 @@ static char *TrimRight(const char *str)
     return NULL;
 }
 
-Rlist *RlistParseString(const char *string, int *n)
+Rlist *RlistParseString(char *string, int *n)
 {
     Rlist *newlist = NULL;
 
@@ -832,7 +833,7 @@ Rlist *RlistParseString(const char *string, int *n)
     {
         return NULL;
     }
-    newlist = RlistParseStringBounded(string, l, r, n);
+    newlist = RlistParseStringBounded(l, r, n);
     return newlist;
 }
 
