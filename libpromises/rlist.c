@@ -626,14 +626,7 @@ static Rlist *RlistParseStringBounded(const char *str, const char *left,
     {
         *n = 0;
     }
-    if (str[0] != '\"')
-    {
-        return NULL;
-    }
-    if (str[strlen(str) - 1] != '\"')
-    {
-        return NULL;
-    }
+
     memset(str2, 0, CF_MAXVARSIZE);
 
     while (*s && s < right)
@@ -669,6 +662,7 @@ static Rlist *RlistParseStringBounded(const char *str, const char *left,
                     else
                     {
                         //add extract (length = s - extract) to list
+                        *s2='\0';
                         printf("\tExtract :[%s](%d)\n", extract,
                                (size_t) (s2 - extract));
                         RlistAppendScalar(&newlist, extract);
@@ -730,7 +724,7 @@ static Rlist *RlistParseStringBounded(const char *str, const char *left,
     }
     else
     {
-        return NULL;
+        goto clean;
     }
   clean:
     printf("***cleaned****\n");

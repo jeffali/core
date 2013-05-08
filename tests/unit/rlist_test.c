@@ -186,6 +186,203 @@ static void test_reverse(void)
 
     RlistDestroy(list);
 }
+/***************************************************************************/
+static struct ParseRoullete
+{
+    int nfields;
+    char str[4096];
+} PR[] =
+{
+    /*Simple */
+    {
+    1, "{\"a\"}"},
+    {
+    2, "{\"a\",\"b\"}"},
+    {
+    3, "{\"a\",\"b\",\"c\"}"},
+        /*Simple empty */
+    {
+    1, "{\"\"}"},
+    {
+    2, "{\"\",\"\"}"},
+    {
+    3, "{\"\",\"\",\"\"}"},
+        /*Single escaped */
+    {
+    1, "{\"\\\"\"}"},
+    {
+    1, "{\",\"}"},
+    {
+    1, "{\"\\\\\"}"},
+    {
+    1, "{\"}\"}"},
+    {
+    1, "{\"{\"}"},
+    {
+    1, "{\"'\"}"},
+        /*Couple mixed escaped */
+    {
+    1, "{\"\\\",\"}"},          /*   [",]    */
+    {
+    1, "{\",\\\"\"}"},          /*   [,"]    */
+    {
+    1, "{\",,\"}"},             /*   [\\]    */
+    {
+    1, "{\"\\\\\\\\\"}"},       /*   [\\]    */
+    {
+    1, "{\"\\\\\\\"\"}"},       /*   [\"]    */
+    {
+    1, "{\"\\\"\\\\\"}"},       /*   ["\]    */
+        /*Very long */
+    {
+    1, "{\"AaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaA\"}"},
+    {
+    2, "{\"Aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaA\"  ,  \"Bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\\\\bbbbbbbbbbbbbbbbbbbbbbbb\\\\bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\\\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbB\" }"},
+        /*Inner space (inside elements) */
+    {
+    1, "{\" \"}"},
+    {
+    1, "{\"  \"}"},
+    {
+    1, "{\"   \"}"},
+    {
+    1, "{\"\t\"}"},
+        /*Outer space (outside elements) */
+    {
+    1, "     {\"\"}       "},
+    {
+    1, "     {\"a\"}       "},
+    {
+    2, "     {\"a\",\"b\"}       "},
+    {
+    1, "{    \"a\"      }"},
+    {
+    2, "{    \"a\",\"b\"      }"},
+    {
+    2, "{    \"a\"    ,\"b\"      }"},
+    {
+    2, "{    \"a\",    \"b\"      }"},
+    {
+    2, "{    \"a\",    \"b\"}       "},
+        /*Normal */
+    {
+    4, "   { \" ab,c,d\\\\ \" ,  \" e,f\\\"g \" ,\"hi\\\\jk\", \"l''m \" }   "},
+    {
+    21, "   { \"A\\\"\\\\    \", \"    \\\\\",   \"}B\",   \"\\\\\\\\\"  ,   \"   \\\\C\\\"\"  ,   \"\\\",\"  ,   \",\\\"D\"  ,   \"   ,,    \", \"E\\\\\\\\F\", \"\", \"{\",   \"   G    '\"  ,   \"\\\\\\\"\", \" \\\"  H \\\\    \", \",   ,\"  ,   \"I\", \"  \",   \"\\\"    J  \",   \"\\\",\", \",\\\"\", \",\"  }   "},
+    {
+    -1, (char *)NULL}
+};
+
+char *PFR[] = {
+    /* trim left failure */
+    "",
+    " ",
+    "a",
+    "\"",
+    "\"\"",
+    /* trim right failure */
+    "{",
+    "{ ",
+    "{a",
+    "{\"",
+    "{\"\"",
+    /* parse failure */
+    /* un-even number of quotation marks */
+    "{\"\"\"}",
+    "{\"\",\"}",
+    "{\"\"\"\"}",
+    "{\"\"\"\"\"}",
+    "{\"\",\"\"\"}",
+    "{\"\"\"\",\"}",
+    "{\"\",\"\",\"}",
+     /**/ "{\"a\",}",
+    "{,\"a\"}",
+    "{,,\"a\"}",
+    "{\"a\",,\"b\"}",
+    /*Comma play */
+    " {,}",
+    " {,,}",
+    " {,,,}",
+    " {,\"\"}",
+    " {\"\",}",
+    " {,\"\",}",
+    " {\"\",,}",
+    " {\"\",,,}",
+    " {,,\"\",,}",
+    " {\"\",\"\",}",
+    " {\"\",\"\",,}",
+    " {   \"\"  ,  \"\" ,  , }",
+    /*Ignore space's oddities */
+    "\" {\"\"}",
+    "{ {\"\"}",
+    "{\"\"}\"",
+    "{\"\"}\\",
+    "{\"\"} } ",
+    "a{\"\"}",
+    " a {\"\"}",
+    "{a\"\"}",
+    "{ a \"\"}",
+    "{\"\"}a",
+    "{\"\"}  a ",
+    "{\"\"a}",
+    "{\"\" a }",
+    "a{\"\"}b",
+    "{a\"\"b}",
+    "a{\"\"b}",
+    "{a\"\"}b",
+    "{\"\"a\"\"}",
+    "{\"\",\"\"a\"\"}",
+    /*Incomplete */
+    NULL
+};
+
+
+static void test_new_parser_success()
+{
+    Rlist *list = NULL;
+    char str[4096];
+    int i = 0;
+    while (PR[i].nfields != -1)
+    {
+        printf("==================  %d ==================================\n",
+               i);
+        strcpy(str, PR[i].str);
+
+        list = RlistParseString(str, NULL);
+        printf("[%s] = %x\n", list ? "okiz" : "NULL", list);
+        if (list && PR[i].nfields == RlistLen(list))
+        {
+            printf("[OKN]\n");
+        }
+        else
+        {
+            printf("[FAIL]\n");
+        }
+        //assert_int_equal(PR[i].nfields, RlistLen(list));
+        if (list != NULL)
+        {
+            RlistDestroy(list);
+        }
+        i++;
+    }
+}
+
+static void test_new_parser_failure()
+{
+    char str[4096];
+    int i = 0;
+    Rlist *list = NULL;
+    while (PFR[i] != NULL)
+    {
+        printf("=========== %d ===========================\n", i);
+        strcpy(str, PFR[i]);
+        list = RlistParseString(str, NULL);
+        printf("[%s]\n", list ? "ok" : "NULL");
+        assert_true(RlistLast(list) == NULL);
+        RlistDestroy(list);
+        i++;
+    }
+}
 
 int main()
 {
@@ -206,6 +403,8 @@ int main()
         unit_test(test_filter),
         unit_test(test_filter_everything),
         unit_test(test_reverse),
+        unit_test(test_new_parser_success),
+        unit_test(test_new_parser_failure),
     };
 
     return run_tests(tests);
