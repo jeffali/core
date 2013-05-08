@@ -379,7 +379,7 @@ static void test_new_parser_failure()
         list = RlistParseString(str, NULL);
         printf("[%s]\n", list ? "ok" : "NULL");
         assert_true(RlistLast(list) == NULL);
-        RlistDestroy(list);
+        if(list) RlistDestroy(list);
         i++;
     }
 }

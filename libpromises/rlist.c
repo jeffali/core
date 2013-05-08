@@ -730,7 +730,7 @@ static Rlist *RlistParseStringBounded(const char *str, const char *left,
     printf("***cleaned****\n");
     if (newlist)
     {
-        free(newlist);
+        RlistDestroy(newlist);
     }
     return NULL;
 }
