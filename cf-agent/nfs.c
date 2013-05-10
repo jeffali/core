@@ -46,7 +46,7 @@ static int FSTAB_EDITS;
 static Item *FSTABLIST = NULL;
 
 static void AugmentMountInfo(Rlist **list, char *host, char *source, char *mounton, char *options);
-static int MatchFSInFstab(char *match);
+static int MatchFSInFstab(char *mountpt, char *host, *rmountpt, char *opts)
 static void DeleteThisItem(Item **liststart, Item *entry);
 
 static const char *VMOUNTCOMM[PLATFORM_CONTEXT_MAX] =
@@ -385,12 +385,19 @@ int VerifyInFstab(EvalContext *ctx, char *name, Attributes a, Promise *pp)
 
     CfOut(OUTPUT_LEVEL_VERBOSE, "", "Verifying %s in %s\n", mountpt, VFSTAB[VSYSTEMHARDCLASS]);
 
-    if (!MatchFSInFstab(mountpt))
+    int ret = MatchFSInFstab(mountpt, host, rmountpt, opts);
+
+    if (ret == PRESENT_NONE)
     {
         AppendItem(&FSTABLIST, fstab, NULL);
         FSTAB_EDITS++;
         cfPS(ctx, OUTPUT_LEVEL_INFORM, PROMISE_RESULT_CHANGE, "", pp, a, "Adding file system %s:%s seems to %s.\n", host, rmountpt,
              VFSTAB[VSYSTEMHARDCLASS]);
+    }
+    else if (ret == PRESENT_MOUNTP || ret == PRESENT_REMOTE)
+    {
+        //TODO: - delete from FSTABLIST wrong entry
+        //      - add    to   FSTABLIST right entry
     }
 
     free(opts);
@@ -431,7 +438,8 @@ int VerifyNotInFstab(EvalContext *ctx, char *name, Attributes a, Promise *pp)
     host = a.mount.mount_server;
     mountpt = name;
 
-    if (MatchFSInFstab(mountpt))
+    int ret = MatchFSInFstab(mountpt, host, a.mount.mount_source, opts);
+    if (ret == PRESENT_FULL)
     {
         if (a.mount.editfstab)
         {
@@ -480,6 +488,13 @@ int VerifyNotInFstab(EvalContext *ctx, char *name, Attributes a, Promise *pp)
 
             return 0;       /* ignore internal editing for aix , always returns 0 changes */
 #else
+            //TODO: remove entry from FSTABLIST
+            //   applies to PRESENT_(EXACT,REMOTE,MOUNTP)
+            //Implement DeleteFromFstabList
+            //(
+            // FSTABLIST, bool iPresence,
+            // mountpt,host,rmountpt,opts
+            //)
             snprintf(regex, CF_BUFSIZE, ".*[\\s]+%s[\\s]+.*", mountpt);
 
             for (ip = FSTABLIST; ip != NULL; ip = ip->next)
@@ -606,20 +621,121 @@ int VerifyUnmount(EvalContext *ctx, char *name, Attributes a, Promise *pp)
 }
 
 /*******************************************************************/
+static char *ConstructFstabLine(char *mountp, char *host, *source, char *opts)
+{
+    char *out;
+#if defined(__QNX__) || defined(__QNXNTO__)
+    snprintf(fstab, CF_BUFSIZE, "%s:%s \t %s %s\t%s 0 0", host, rmountpt, mountpt, fstype, opts);
+#elif defined(_CRAY)
+    char fstype_upper[CF_BUFSIZE];
+    strlcpy(fstype_upper, fstype, CF_BUFSIZE);
+    ToUpperStrInplace(fstype_upper);
 
-static int MatchFSInFstab(char *match)
+    snprintf(fstab, CF_BUFSIZE, "%s:%s \t %s %s\t%s", host, rmountpt, mountpt, fstype_upper, opts);
+    break;
+#elif defined(__hpux)
+    snprintf(fstab, CF_BUFSIZE, "%s:%s %s \t %s \t %s 0 0", host, rmountpt, mountpt, fstype, opts);
+#elif defined(_AIX)
+    snprintf(fstab, CF_BUFSIZE,
+             "%s:\n\tdev\t= %s\n\ttype\t= %s\n\tvfs\t= %s\n\tnodename\t= %s\n\tmount\t= true\n\toptions\t= %s\n\taccount\t= false\n",
+             mountpt, rmountpt, fstype, fstype, host, opts);
+#elif defined(__linux__)
+    snprintf(fstab, CF_BUFSIZE, "%s:%s \t %s \t %s \t %s", host, rmountpt, mountpt, fstype, opts);
+#elif defined(__NetBSD__) || defined(__OpenBSD__) || defined(__DragonFly__) || defined(__FreeBSD__)
+    snprintf(fstab, CF_BUFSIZE, "%s:%s \t %s \t %s \t %s 0 0", host, rmountpt, mountpt, fstype, opts);
+#elif defined(__sun) || defined(sco) || defined(__SCO_DS)
+    snprintf(fstab, CF_BUFSIZE, "%s:%s - %s %s - yes %s", host, rmountpt, mountpt, fstype, opts);
+#elif defined(__CYGWIN__)
+    snprintf(fstab, CF_BUFSIZE, "/bin/mount %s:%s %s", host, rmountpt, mountpt);
+#endif
+    return out;
+}
+
+static int DeconstructFstabLine(char *mountpt, char *host, *rmountpt, char *opts, char *ifstab)
+{
+    char *out;
+    char *fstype;  //should ignore ???
+    char *fstype_upper;
+    int ret;
+#if defined(__QNX__) || defined(__QNXNTO__)
+    ret = sscanf(ifstab, "%s:%s \t %s %s\t%s 0 0", host, rmountpt, mountpt, fstype, opts);
+#elif defined(_CRAY)
+    char fstype_upper[CF_BUFSIZE];
+    strlcpy(fstype_upper, fstype, CF_BUFSIZE);
+    ToUpperStrInplace(fstype_upper);
+
+    ret = sscanf(ifstab, "%s:%s \t %s %s\t%s", host, rmountpt, mountpt, fstype_upper, opts);
+    break;
+#elif defined(__hpux)
+    ret = sscanf(ifstab, "%s:%s %s \t %s \t %s 0 0", host, rmountpt, mountpt, fstype, opts);
+#elif defined(_AIX)
+    ret = sscanf(ifstab,
+             "%s:\n\tdev\t= %s\n\ttype\t= %s\n\tvfs\t= %s\n\tnodename\t= %s\n\tmount\t= true\n\toptions\t= %s\n\taccount\t= false\n",
+             mountpt, rmountpt, fstype, fstype, host, opts);
+#elif defined(__linux__)
+    ret = sscanf(ifstab, "%s:%s \t %s \t %s \t %s", host, rmountpt, mountpt, fstype, opts);
+#elif defined(__NetBSD__) || defined(__OpenBSD__) || defined(__DragonFly__) || defined(__FreeBSD__)
+    ret = sscanf(ifstab, "%s:%s \t %s \t %s \t %s 0 0", host, rmountpt, mountpt, fstype, opts);
+#elif defined(__sun) || defined(sco) || defined(__SCO_DS)
+    ret = sscanf(ifstab, "%s:%s - %s %s - yes %s", host, rmountpt, mountpt, fstype, opts);
+#elif defined(__CYGWIN__)
+    ret = sscanf(ifstab, "/bin/mount %s:%s %s", host, rmountpt, mountpt);
+#endif
+    //TODO: trim from spaces
+    return ret;
+}
+
+bool CompareNFSOptions(char *opts, char *opts2) {
+   Rlist *o1 = RlistFromSplitString(opts, ",");
+   Rlist *o2 = RlistFromSplitString(opts, ",");
+   bool ret = RlistCompareExact(o1, o2);
+   if(r1) RlistDestroy(r1);
+   if(r2) RlistDestroy(r2);
+   return ret;
+}
+
+static int MatchFSInFstab(char *mountpt, char *host, *rmountpt, char *opts)
+//@was : static int MatchFSInFstab(char *match)
+//@returns : storage state (not changes)
 {
     Item *ip;
+    char mountpt2 [CF_BUFSIZE];
+    char host2    [CF_BUFSIZE];
+    char rmountpt2[CF_BUFSIZE];
+    char opts2    [CF_BUFSIZE];
+    int  ret;
+    int  presence = PRESENT_NONE;
 
+    int n = 0;
     for (ip = FSTABLIST; ip != NULL; ip = ip->next)
     {
-        if (strstr(ip->name, match))
+        if (strstr(ip->name, mountpt))
         {
-            return true;
+            ret = DeconstructFstabLine(mountpt2, host2, rmountpt2, opts2, match);
+            if(ret)
+            {
+                 printf("Warning : maybe we are missing something very important\n");
+            }
+            if(!strncmp(mountpt, mountpt2, CF_BUFSIZE)) {
+                if(!strncmp(rmountpt, rmountpt2, CF_BUFSIZE) &&
+                   !strncmp(host,     host2,     CF_BUFSIZE))
+                {
+                    presence = PRESENT_REMOTE;
+                    if(!CompareNFSOptions(opts, opts2)) {
+                        presence = PRESENT_EXACT;
+                        n++;
+                    }
+                }
+                else
+                {
+                    presence = PRESENT_MOUNTP;
+                    n++;
+                }
+            }
         }
     }
 
-    return false;
+    return presence;
 }
 
 /*******************************************************************/
@@ -767,3 +883,32 @@ void CleanupNFS(void)
         FSTAB_EDITS = 0;
     }
 }
+#if 0
+Delete
+#if defined(__QNX__) || defined(__QNXNTO__)
+([^ \t:]+):([^ \t:]+) \t ([^ \t:]+) ([^ \t:]+)\t([^ \t:]+)[ ]+0[ ]+0
+  "%s:%s \t %s %s\t%s 0 0", host, rmountpt, mountpt, fstype, opts
+
+#elif defined(_CRAY)
+  "%s:%s \t %s %s\t%s", host, rmountpt, mountpt, fstype_upper, opts
+
+#elif defined(__hpux)
+  "%s:%s %s \t %s \t %s 0 0", host, rmountpt, mountpt, fstype, opts
+
+#elif defined(_AIX)
+  "%s:\n\tdev\t= %s\n\ttype\t= %s\n\tvfs\t= %s\n\tnodename\t= %s\n\tmount\t= true\n\toptions\t= %s\n\taccount\t= false\n",
+             mountpt, rmountpt, fstype, fstype, host, opts);
+
+#elif defined(__linux__)
+  "%s:%s \t %s \t %s \t %s", host, rmountpt, mountpt, fstype, opts
+
+#elif defined(__NetBSD__) || defined(__OpenBSD__) || defined(__DragonFly__) || defined(__FreeBSD__)
+  "%s:%s \t %s \t %s \t %s 0 0", host, rmountpt, mountpt, fstype, opts
+
+#elif defined(__sun) || defined(sco) || defined(__SCO_DS)
+  "%s:%s - %s %s - yes %s", host, rmountpt, mountpt, fstype, opts
+
+#elif defined(__CYGWIN__)
+  "/bin/mount %s:%s %s", host, rmountpt, mountpt
+
+#endif

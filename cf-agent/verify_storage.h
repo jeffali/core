@@ -30,6 +30,14 @@
 extern Rlist *MOUNTEDFSLIST;
 extern int CF_MOUNTALL;
 
+typedef enum 
+{
+    PRESENT_NONE,
+    PRESENT_MOUNTP,  /*Only the mount point is present                     */
+    PRESENT_REMOTE,  /*Presence of mount point, remote mount point and host*/
+    PRESENT_EXACT    /*Everything is present including NFS mount options   */
+} StorageMountState;
+
 void *FindAndVerifyStoragePromises(EvalContext *ctx, Promise *pp);
 void VerifyStoragePromise(EvalContext *ctx, char *path, Promise *pp);
 

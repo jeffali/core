@@ -84,6 +84,8 @@ Rlist *RlistLast(Rlist *start);
 void RlistFilter(Rlist **list, bool (*KeepPredicate)(void *item, void *predicate_data), void *predicate_user_data, void (*DestroyItem)(void *item));
 void RlistReverse(Rlist **list);
 
+bool RlistCompareExtact(Rlist *r1, Rlist *r2);
+
 /**
  * @brief Flattens an Rlist by expanding naked scalar list-variable members. Flattening is only one-level deep.
  */
