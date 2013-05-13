@@ -187,6 +187,23 @@ static void test_reverse(void)
     RlistDestroy(list);
 }
 
+static void test_compare_exact(void)
+{
+    Rlist *list1 = RlistFromSplitString("a,b,c,d,e,f", ',');
+    Rlist *list2 = RlistFromSplitString("f,e,a,b,c,d", ',');
+    Rlist *list3 = RlistFromSplitString("f,e,a,c,d", ',');
+    Rlist *list4 = RlistFromSplitString("f,e,a,b,c,d,g", ',');
+
+    assert_int_equal(RlistCompareExact(list1,list2), 1);
+    assert_int_equal(RlistCompareExact(list1,list3), 0);
+    assert_int_equal(RlistCompareExact(list1,list4), 0);
+
+    RlistDestroy(list1);
+    RlistDestroy(list2);
+    RlistDestroy(list3);
+    RlistDestroy(list4);
+}
+
 int main()
 {
     PRINT_TEST_BANNER();
@@ -206,6 +223,7 @@ int main()
         unit_test(test_filter),
         unit_test(test_filter_everything),
         unit_test(test_reverse),
+        unit_test(test_compare_exact),
     };
 
     return run_tests(tests);
