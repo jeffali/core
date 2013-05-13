@@ -47,6 +47,7 @@ static Item *FSTABLIST = NULL;
 
 static void AugmentMountInfo(Rlist **list, char *host, char *source, char *mounton, char *options);
 static int MatchFSInFstab(char *mountpt, char *host, char *rmountpt, char *opts);
+//static int MatchFSInFstab(char *match);
 static void DeleteThisItem(Item **liststart, Item *entry);
 
 static const char *VMOUNTCOMM[PLATFORM_CONTEXT_MAX] =
@@ -653,7 +654,7 @@ static char *ConstructFstabLine(char *mountpt, char *host, char *rmountpt, char 
     return out;
 }
 
-static int DeconstructFstabLine(char *mountpt, char *host, char *rmountpt, char *opts, char *ifstab)
+static int DeconstructFstabLine(char *ifstab, char *mountpt, char *host, char *rmountpt, char *opts)
 {
     char *out;
     char *fstype;  //should ignore ???
@@ -696,8 +697,8 @@ bool CompareNFSOptions(char *opts, char *opts2) {
    return ret;
 }
 
-static int MatchFSInFstab(char *mountpt, char *host, *rmountpt, char *opts)
-//@was : static int MatchFSInFstab(char *match)
+
+static int MatchFSInFstab(char *mountpt, char *host, char *rmountpt, char *opts)
 //@returns : storage state (not changes)
 {
     Item *ip;
@@ -713,7 +714,7 @@ static int MatchFSInFstab(char *mountpt, char *host, *rmountpt, char *opts)
     {
         if (strstr(ip->name, mountpt))
         {
-            ret = DeconstructFstabLine(mountpt2, host2, rmountpt2, opts2, match);
+            ret = DeconstructFstabLine(ip->name, mountpt2, host2, rmountpt2, opts2);
             if(ret)
             {
                  printf("Warning : maybe we are missing something very important\n");
@@ -912,5 +913,6 @@ Delete
 
 #elif defined(__CYGWIN__)
   "/bin/mount %s:%s %s", host, rmountpt, mountpt
+#endif
 
 #endif
