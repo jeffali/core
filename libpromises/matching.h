@@ -34,6 +34,7 @@ int MatchRlistItem(Rlist *listofregex, const char *teststring); /* Sets variable
 int MatchPolicy(const char *needle, const char *haystack, Rlist *insert_match, const Promise *pp); /* Sets variables */
 
 char *ExtractFirstReference(const char *regexp, const char *teststring); /* Pure, not thread-safe */
+char *ExtractNthReference(const char *regexp, int n, const char *teststring); /* Pure, not thread-safe */
 
 bool ValidateRegEx(const char *regex); /* Pure */
 int IsPathRegex(char *str); /* Pure */

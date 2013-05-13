@@ -108,7 +108,7 @@ static int RegExMatchFullString(pcre *rx, const char *teststring)
 }
 
 /* Pure, non-thread-safe */
-static char *FirstBackReference(pcre *rx, const char *teststring)
+static char *NthBackReference(pcre *rx, int n, const char *teststring)
 {
     static char backreference[CF_BUFSIZE];
 
@@ -116,7 +116,9 @@ static char *FirstBackReference(pcre *rx, const char *teststring)
 
     memset(backreference, 0, CF_BUFSIZE);
 
-    if ((rc = pcre_exec(rx, NULL, teststring, strlen(teststring), 0, 0, ovector, OVECCOUNT)) >= 0)
+    unsigned int offset = 0;
+
+    while ( offset < strlen(teststring) && (rc = pcre_exec(rx, NULL, teststring, strlen(teststring), 0, 0, ovector, OVECCOUNT)) >= 0)
     {
         for (i = 1; i < rc; i++)        /* make backref vars $(1),$(2) etc */
         {
@@ -126,15 +128,26 @@ static char *FirstBackReference(pcre *rx, const char *teststring)
             if (backref_len < CF_MAXVARSIZE)
             {
                 strncpy(backreference, backref_start, backref_len);
+                backreference[backref_len] = '\0';
+                printf("%2d: %.*s\n", i, ovector[2*i+1] - ovector[2*i], teststring + ovector[2*i]);
             }
 
-            break;
+            offset = ovector[1];
+            if (i==n) 
+            {
+                break;
+            }
         }
     }
-
     free(rx);
 
     return backreference;
+}
+
+/* Pure, non-thread-safe */
+static char *FirstBackReference(pcre *rx, const char *teststring)
+{
+    return NthBackReference(rx, 1, teststring);
 }
 
 bool ValidateRegEx(const char *regex)
@@ -172,7 +185,7 @@ int FullTextMatch(const char *regexp, const char *teststring)
     }
 }
 
-char *ExtractFirstReference(const char *regexp, const char *teststring)
+char *ExtractNthReference(const char *regexp, int n, const char *teststring)
 {
     static char *nothing = "";
     char *backreference;
@@ -191,7 +204,7 @@ char *ExtractFirstReference(const char *regexp, const char *teststring)
         return nothing;
     }
 
-    backreference = FirstBackReference(rx, teststring);
+    backreference = NthBackReference(rx, n, teststring);
 
     if (strlen(backreference) == 0)
     {
@@ -205,6 +218,11 @@ char *ExtractFirstReference(const char *regexp, const char *teststring)
     }
 
     return backreference;
+}
+
+char *ExtractFirstReference(const char *regexp, const char *teststring)
+{
+    return ExtractNthReference(regexp, 1, teststring);
 }
 
 int BlockTextMatch(const char *regexp, const char *teststring, int *start, int *end)
