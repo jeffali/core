@@ -954,25 +954,6 @@ void RlistReverse(Rlist **list)
     *list = prev;
 }
 
-/*TODO: unit test it*/
-bool RlistCompareExtact(Rlist *r1, Rlist *r2) {
-
-    if (RlistLen(r1) != RlistLen(r2))
-    {
-        return false;
-    }
-
-    Rlist *rp;
-    for (rp = r1; rp->next; rp = rp->next)
-    {
-        if (RlistKeyIn(r2, (char *) rp1->item) == NULL)
-        {
-            return false;
-        }
-    }
-    return true;
-}
-
 /* Human-readable serialization */
 
 static void FnCallPrint(Writer *writer, const FnCall *call)

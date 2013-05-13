@@ -27,6 +27,14 @@
 
 #include "cf3.defs.h"
 
+typedef enum 
+{
+    PRESENT_NONE,
+    PRESENT_MOUNTP,  /*Only the mount point is present                     */
+    PRESENT_REMOTE,  /*Presence of mount point, remote mount point and host*/
+    PRESENT_EXACT    /*Everything is present including NFS mount options   */
+} StorageMountState;
+
 bool LoadMountInfo(Rlist **list);
 void DeleteMountInfo(Rlist *list);
 int VerifyNotInFstab(EvalContext *ctx, char *name, Attributes a, Promise *pp);

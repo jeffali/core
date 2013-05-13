@@ -46,7 +46,7 @@ static int FSTAB_EDITS;
 static Item *FSTABLIST = NULL;
 
 static void AugmentMountInfo(Rlist **list, char *host, char *source, char *mounton, char *options);
-static int MatchFSInFstab(char *mountpt, char *host, *rmountpt, char *opts)
+static int MatchFSInFstab(char *mountpt, char *host, char *rmountpt, char *opts);
 static void DeleteThisItem(Item **liststart, Item *entry);
 
 static const char *VMOUNTCOMM[PLATFORM_CONTEXT_MAX] =
@@ -439,7 +439,7 @@ int VerifyNotInFstab(EvalContext *ctx, char *name, Attributes a, Promise *pp)
     mountpt = name;
 
     int ret = MatchFSInFstab(mountpt, host, a.mount.mount_source, opts);
-    if (ret == PRESENT_FULL)
+    if (ret == PRESENT_EXACT)
     {
         if (a.mount.editfstab)
         {
@@ -621,9 +621,11 @@ int VerifyUnmount(EvalContext *ctx, char *name, Attributes a, Promise *pp)
 }
 
 /*******************************************************************/
-static char *ConstructFstabLine(char *mountp, char *host, *source, char *opts)
+static char *ConstructFstabLine(char *mountpt, char *host, char *rmountpt, char *opts)
 {
     char *out;
+    char fstab[CF_BUFSIZE];
+    char fstype[CF_BUFSIZE];
 #if defined(__QNX__) || defined(__QNXNTO__)
     snprintf(fstab, CF_BUFSIZE, "%s:%s \t %s %s\t%s 0 0", host, rmountpt, mountpt, fstype, opts);
 #elif defined(_CRAY)
@@ -651,7 +653,7 @@ static char *ConstructFstabLine(char *mountp, char *host, *source, char *opts)
     return out;
 }
 
-static int DeconstructFstabLine(char *mountpt, char *host, *rmountpt, char *opts, char *ifstab)
+static int DeconstructFstabLine(char *mountpt, char *host, char *rmountpt, char *opts, char *ifstab)
 {
     char *out;
     char *fstype;  //should ignore ???
@@ -689,8 +691,8 @@ bool CompareNFSOptions(char *opts, char *opts2) {
    Rlist *o1 = RlistFromSplitString(opts, ",");
    Rlist *o2 = RlistFromSplitString(opts, ",");
    bool ret = RlistCompareExact(o1, o2);
-   if(r1) RlistDestroy(r1);
-   if(r2) RlistDestroy(r2);
+   if(o1) RlistDestroy(o1);
+   if(o2) RlistDestroy(o2);
    return ret;
 }
 
