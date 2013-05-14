@@ -21,6 +21,7 @@
   (COSL) may apply to this file if you as a licensee so wish it. See
   included file COSL.txt.
 */
+#define OUTPUT_LEVEL_VERBSTO OUTPUT_LEVEL_INFORM
 
 #include "verify_storage.h"
 
@@ -89,7 +90,7 @@ void VerifyStoragePromise(EvalContext *ctx, char *path, Promise *pp)
 #ifdef __MINGW32__
     if (!a.havemount)
     {
-        CfOut(OUTPUT_LEVEL_VERBOSE, "", "storage.mount is not supported on Windows");
+        CfOut(OUTPUT_LEVEL_VERBSTO, "", "storage.mount is not supported on Windows");
     }
 #endif
 
@@ -99,11 +100,11 @@ void VerifyStoragePromise(EvalContext *ctx, char *path, Promise *pp)
     {
         if ((a.mount.mount_source))
         {
-            CfOut(OUTPUT_LEVEL_VERBOSE, "", " !! An unmount promise indicates a mount-source information - probably an error\n");
+            CfOut(OUTPUT_LEVEL_VERBSTO, "", " !! An unmount promise indicates a mount-source information - probably an error\n");
         }
         if ((a.mount.mount_server))
         {
-            CfOut(OUTPUT_LEVEL_VERBOSE, "", " !! An unmount promise indicates a mount-server information - probably an error\n");
+            CfOut(OUTPUT_LEVEL_VERBSTO, "", " !! An unmount promise indicates a mount-server information - probably an error\n");
         }
     }
     else if (a.havemount)
@@ -171,7 +172,7 @@ static int VerifyFileSystem(EvalContext *ctx, char *name, Attributes a, Promise 
     long filecount = 0;
     char buff[CF_BUFSIZE];
 
-    CfOut(OUTPUT_LEVEL_VERBOSE, "", " -> Checking required filesystem %s\n", name);
+    CfOut(OUTPUT_LEVEL_VERBSTO, "", " -> Checking required filesystem %s\n", name);
 
     if (stat(name, &statbuf) == -1)
     {
@@ -229,7 +230,7 @@ static int VerifyFileSystem(EvalContext *ctx, char *name, Attributes a, Promise 
 
         if (sizeinbytes < 0)
         {
-            CfOut(OUTPUT_LEVEL_VERBOSE, "", "Internal error: count of byte size was less than zero!\n");
+            CfOut(OUTPUT_LEVEL_VERBSTO, "", "Internal error: count of byte size was less than zero!\n");
             return true;
         }
 
@@ -261,7 +262,7 @@ static int VerifyFreeSpace(EvalContext *ctx, char *file, Attributes a, Promise *
 #ifdef __MINGW32__
     if (!a.volume.check_foreign)
     {
-        CfOut(OUTPUT_LEVEL_VERBOSE, "", "storage.volume.check_foreign is not supported on Windows (checking every mount)");
+        CfOut(OUTPUT_LEVEL_VERBSTO, "", "storage.volume.check_foreign is not supported on Windows (checking every mount)");
     }
 #endif /* __MINGW32__ */
 
@@ -315,7 +316,7 @@ static int VerifyFreeSpace(EvalContext *ctx, char *file, Attributes a, Promise *
 
 static void VolumeScanArrivals(ARG_UNUSED char *file, ARG_UNUSED Attributes a, ARG_UNUSED Promise *pp)
 {
-    CfOut(OUTPUT_LEVEL_VERBOSE, "", "Scan arrival sequence . not yet implemented\n");
+    CfOut(OUTPUT_LEVEL_VERBSTO, "", "Scan arrival sequence . not yet implemented\n");
 }
 
 /*******************************************************************/
@@ -356,7 +357,7 @@ static int FileSystemMountedCorrectly(Rlist *list, char *name, char *options, At
             }
             else
             {
-                CfOut(OUTPUT_LEVEL_VERBOSE, "", " -> File system %s seems to be mounted correctly\n", mp->source);
+                CfOut(OUTPUT_LEVEL_VERBSTO, "", " -> File system %s seems to be mounted correctly\n", mp->source);
                 found = PRESENT_EXACT;
                 if ((mp->type) && (strstr(mp->type, "nfs"))) {
                     if(mp->host && a.mount.mount_server && !strcmp(mp->host, a.mount.mount_server)) {
@@ -378,7 +379,7 @@ static int FileSystemMountedCorrectly(Rlist *list, char *name, char *options, At
     {
         if (!a.mount.unmount)
         {
-            CfOut(OUTPUT_LEVEL_VERBOSE, "", " !! File system %s seems not to be mounted correctly\n", name);
+            CfOut(OUTPUT_LEVEL_VERBSTO, "", " !! File system %s seems not to be mounted correctly\n", name);
             CF_MOUNTALL = true;
         }
     }
@@ -410,7 +411,7 @@ static int IsForeignFileSystem(struct stat *childstat, char *dir)
 
     if (stat(vbuff, &parentstat) == -1)
     {
-        CfOut(OUTPUT_LEVEL_VERBOSE, "stat", " !! Unable to stat %s", vbuff);
+        CfOut(OUTPUT_LEVEL_VERBSTO, "stat", " !! Unable to stat %s", vbuff);
         return (false);
     }
 
@@ -445,7 +446,7 @@ static int VerifyMountPromise(EvalContext *ctx, char *name, Attributes a, Promis
     char dir[CF_BUFSIZE];
     int changes = 0;
 
-    CfOut(OUTPUT_LEVEL_VERBOSE, "", " -> Verifying mounted file systems on %s\n", name);
+    CfOut(OUTPUT_LEVEL_VERBSTO, "", " -> Verifying mounted file systems on %s\n", name);
 
     snprintf(dir, CF_BUFSIZE, "%s/.", name);
 
@@ -457,7 +458,7 @@ static int VerifyMountPromise(EvalContext *ctx, char *name, Attributes a, Promis
 
     options = Rlist2String(a.mount.mount_options, ",");
 
-    ret = FileSystemMountedCorrectly(MOUNTEDFSLIST, name, options, a);
+    int ret = FileSystemMountedCorrectly(MOUNTEDFSLIST, name, options, a);
     if (ret == PRESENT_NONE)
     {
         if (!a.mount.unmount)
@@ -496,12 +497,28 @@ static int VerifyMountPromise(EvalContext *ctx, char *name, Attributes a, Promis
     {
        /* Umount then Mount */
                 /* TODO: it is more complicated than this */
+        if (!a.mount.unmount)
+        {
                 VerifyUnmount(ctx, name, a, pp);
                 VerifyMount(ctx, name, a, pp);
                 /* if(edit && inFstab) DEL*/
                          /* DEL = VerifyNotInFstab */
+                if (a.mount.editfstab)
+                {
+                    VerifyNotInFstab(ctx, name, a, pp);
+                }
+
                 /* if(edit) ADD*/
                          /* ADD = VerifyInFstab */
+                if (a.mount.editfstab)
+                {
+                    VerifyInFstab(ctx, name, a, pp);
+                }
+
+        }
+        else
+        {
+        }
     }
     else  /*EXACT : no change */
     {
@@ -532,7 +549,7 @@ void DeleteStorageContext(void)
 
     if (!DONTDO && CF_MOUNTALL)
     {
-        CfOut(OUTPUT_LEVEL_VERBOSE, "", " -> Mounting all filesystems\n");
+        CfOut(OUTPUT_LEVEL_VERBSTO, "", " -> Mounting all filesystems\n");
         MountAll();
     }
 #endif /* !__MINGW32__ */

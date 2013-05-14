@@ -23,6 +23,7 @@
 */
 
 #include "cf3.defs.h"
+#define OUTPUT_LEVEL_VERBNFS OUTPUT_LEVEL_INFORM
 
 #include "files_names.h"
 #include "files_interfaces.h"
@@ -48,7 +49,7 @@ static Item *FSTABLIST = NULL;
 static void AugmentMountInfo(Rlist **list, char *host, char *source, char *mounton, char *options, char *type);
 static int MatchFSInFstab(char *mountpt, char *host, char *rmountpt, char *opts, char *where);
 //static int MatchFSInFstab(char *match);
-static void DeleteThisItem(Item **liststart, Item *entry);
+static int ConstructFstabLine(char *mountpt, char *host, char *rmountpt, char *opts, char *fstype, char *ofstab);
 
 static const char *VMOUNTCOMM[PLATFORM_CONTEXT_MAX] =
 {
@@ -120,7 +121,7 @@ static void ParseMountCommandOutput(char *iline, char *mountpt, char *remote, ch
    - if new regex/scanf DNW, revert to older %s%s%s
   */
     sscanf(iline, "%s on %s type %s (%s)", remote, mountpt, type, options);
-    printf("X1=[%s],X2=[%s],X3=[%s],X4=[%s]\n",iline,mountpt,remote,options,type);
+    printf("X1=[%s],X2=[%s],X3=[%s],X4=[%s]\n",mountpt,remote,options,type);
     //char *str2;
     //str2 = ExtractNthReference("[0-9]([0-9]+)([a-z]+)([0-9]+)", 2, "123456aazdfe18999");
 
@@ -396,9 +397,9 @@ int VerifyInFstab(EvalContext *ctx, char *name, Attributes a, Promise *pp)
     mountpt = name;
     fstype = a.mount.mount_type;
 
-    fstab = ConstructFstabLine(mountpt, host, rmountpt, opts, fstype);
+    ConstructFstabLine(mountpt, host, rmountpt, opts, fstype, fstab);
 
-    CfOut(OUTPUT_LEVEL_VERBOSE, "", "Verifying %s in %s\n", mountpt, VFSTAB[VSYSTEMHARDCLASS]);
+    CfOut(OUTPUT_LEVEL_VERBNFS, "", "Verifying %s in %s\n", mountpt, VFSTAB[VSYSTEMHARDCLASS]);
 
     char where[CF_BUFSIZE];
     where[0]='\0';
@@ -630,9 +631,8 @@ int VerifyUnmount(EvalContext *ctx, char *name, Attributes a, Promise *pp)
 }
 
 /*******************************************************************/
-static char *ConstructFstabLine(char *mountpt, char *host, char *rmountpt, char *opts, char *fstype)
+static int ConstructFstabLine(char *mountpt, char *host, char *rmountpt, char *opts, char *fstype, char *fstab)
 {
-    char fstab[CF_BUFSIZE];
 #if defined(__QNX__) || defined(__QNXNTO__)
     snprintf(fstab, CF_BUFSIZE, "%s:%s \t %s %s\t%s 0 0", host, rmountpt, mountpt, fstype, opts);
 #elif defined(_CRAY)
@@ -657,13 +657,13 @@ static char *ConstructFstabLine(char *mountpt, char *host, char *rmountpt, char 
 #elif defined(__CYGWIN__)
     snprintf(fstab, CF_BUFSIZE, "/bin/mount %s:%s %s", host, rmountpt, mountpt);
 #endif
-    return fstab;
+    return 0;
 }
 
 static int DeconstructFstabLine(char *ifstab, char *mountpt, char *host, char *rmountpt, char *opts)
 {
     char *out;
-    char *fstype;  //should ignore ???
+    char fstype[CF_BUFSIZE];  //should ignore ???
     char *fstype_upper;
     int ret;
 #if defined(__QNX__) || defined(__QNXNTO__)
@@ -691,12 +691,12 @@ static int DeconstructFstabLine(char *ifstab, char *mountpt, char *host, char *r
     ret = sscanf(ifstab, "/bin/mount %s:%s %s", host, rmountpt, mountpt);
 #endif
     //TODO: trim from spaces
-    return ret;
+    return 0;
 }
 
-bool CompareNFSOptions(char *opts, char *opts2) {
-   Rlist *o1 = RlistFromSplitString(opts, ",");
-   Rlist *o2 = RlistFromSplitString(opts, ",");
+bool CompareNFSOptions(char *opts1, char *opts2) {
+   Rlist *o1 = RlistFromSplitString(opts1, ',');
+   Rlist *o2 = RlistFromSplitString(opts2, ',');
    bool ret = RlistCompareExact(o1, o2);
    if(o1) RlistDestroy(o1);
    if(o2) RlistDestroy(o2);
@@ -759,12 +759,12 @@ void MountAll()
 
     if (DONTDO)
     {
-        CfOut(OUTPUT_LEVEL_VERBOSE, "", "Promised to mount filesystem, but not on this trial run\n");
+        CfOut(OUTPUT_LEVEL_VERBNFS, "", "Promised to mount filesystem, but not on this trial run\n");
         return;
     }
     else
     {
-        CfOut(OUTPUT_LEVEL_VERBOSE, "", " -> Attempting to mount all filesystems.\n");
+        CfOut(OUTPUT_LEVEL_VERBNFS, "", " -> Attempting to mount all filesystems.\n");
     }
 
 #if defined(__CYGWIN__)
@@ -849,40 +849,10 @@ void MountAll()
 /* Addendum                                                        */
 /*******************************************************************/
 
-static void DeleteThisItem(Item **liststart, Item *entry)
-{
-    Item *ip, *sp;
-
-    if (entry != NULL)
-    {
-        if (entry->name != NULL)
-        {
-            free(entry->name);
-        }
-
-        sp = entry->next;
-
-        if (entry == *liststart)
-        {
-            *liststart = sp;
-        }
-        else
-        {
-            for (ip = *liststart; ip->next != entry; ip = ip->next)
-            {
-            }
-
-            ip->next = sp;
-        }
-
-        free((char *) entry);
-    }
-}
-
 void CleanupNFS(void)
 {
     Attributes a = { {0} };
-    CfOut(OUTPUT_LEVEL_VERBOSE, "", " -> Number of changes observed in %s is %d\n", VFSTAB[VSYSTEMHARDCLASS], FSTAB_EDITS);
+    CfOut(OUTPUT_LEVEL_VERBNFS, "", " -> Number of changes observed in %s is %d\n", VFSTAB[VSYSTEMHARDCLASS], FSTAB_EDITS);
 
     if (FSTAB_EDITS && FSTABLIST && !DONTDO)
     {
