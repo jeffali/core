@@ -329,7 +329,7 @@ static int FileSystemMountedCorrectly(Rlist *list, char *name, char *options, At
 {
     Rlist *rp;
     Mount *mp;
-    int found = false;
+    int found = PRESENT_NONE;
 
     for (rp = list; rp != NULL; rp = rp->next)
     {
@@ -346,23 +346,35 @@ static int FileSystemMountedCorrectly(Rlist *list, char *name, char *options, At
         {
             /* We have found something mounted on the promiser dir */
 
-            found = true;
+            found = PRESENT_MOUNTP;
 
             if ((a.mount.mount_source) && (strcmp(mp->source, a.mount.mount_source) != 0))
             {
                 CfOut(OUTPUT_LEVEL_INFORM, "", "A different file system (%s:%s) is mounted on %s than what is promised\n",
                       mp->host, mp->source, name);
-                return false;
+                found = PRESENT_MOUNTP;
             }
             else
             {
                 CfOut(OUTPUT_LEVEL_VERBOSE, "", " -> File system %s seems to be mounted correctly\n", mp->source);
+                found = PRESENT_EXACT;
+                if ((mp->type) && (strstr(mp->type, "nfs"))) {
+                    if(mp->host && a.mount.mount_server && !strcmp(mp->host, a.mount.mount_server)) {
+                       if(mp->options && a.mount.mount_options && !strcmp(mp->options, a.mount.mount_options)) {
+                           found = PRESENT_EXACT;
+                       } else {
+                           found = PRESENT_REMOTE;
+                       } 
+                    } else {
+                      found = PRESENT_MOUNTP;
+                    }
+                }
                 break;
             }
         }
     }
 
-    if (!found)
+    if (found != PRESENT_EXACT)
     {
         if (!a.mount.unmount)
         {
@@ -513,3 +525,4 @@ void DeleteStorageContext(void)
     }
 #endif /* !__MINGW32__ */
 }
+

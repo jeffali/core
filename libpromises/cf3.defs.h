@@ -1001,6 +1001,7 @@ typedef struct
     char *source;
     char *mounton;
     char *options;
+    char *type;
     int unmount;
 } Mount;
 

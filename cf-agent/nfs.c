@@ -45,7 +45,7 @@
 static int FSTAB_EDITS;
 static Item *FSTABLIST = NULL;
 
-static void AugmentMountInfo(Rlist **list, char *host, char *source, char *mounton, char *options);
+static void AugmentMountInfo(Rlist **list, char *host, char *source, char *mounton, char *options, char *type);
 static int MatchFSInFstab(char *mountpt, char *host, char *rmountpt, char *opts);
 //static int MatchFSInFstab(char *match);
 static void DeleteThisItem(Item **liststart, Item *entry);
@@ -113,12 +113,36 @@ static const char *VMOUNTOPTS[PLATFORM_CONTEXT_MAX] =
     "defaults",                 /* vmstate */
 };
 
+static void ParseMountCommandOutput(char *iline, char *mountpt, char *remote, char *options, char *type)
+{
+  /*TODO: 
+   - filter blank
+   - if new regex/scanf DNW, revert to older %s%s%s
+  */
+    sscanf(iline, "%s on %s type %s (%s)", remote, mountpt, type, options);
+    printf("X1=[%s],X2=[%s],X3=[%s],X4=[%s]\n",iline,mountpt,remote,options,type);
+    //char *str2;
+    //str2 = ExtractNthReference("[0-9]([0-9]+)([a-z]+)([0-9]+)", 2, "123456aazdfe18999");
+
+#if defined(__QNX__) || defined(__QNXNTO__)
+#elif defined(_CRAY)
+#elif defined(__hpux)
+#elif defined(_AIX)
+#elif defined(__linux__)
+#elif defined(__NetBSD__) || defined(__OpenBSD__) || defined(__DragonFly__) || defined(__FreeBSD__)
+#elif defined(__sun) || defined(sco) || defined(__SCO_DS)
+#elif defined(__CYGWIN__)
+#endif
+
+}
+
 bool LoadMountInfo(Rlist **list)
 /* This is, in fact, the most portable way to read the mount info! */
 /* Depressing, isn't it? */
 {
     FILE *pp;
     char buf1[CF_BUFSIZE], buf2[CF_BUFSIZE], buf3[CF_BUFSIZE];
+    char buf4[CF_BUFSIZE]; /*fs type*/
     char host[CF_MAXVARSIZE], source[CF_BUFSIZE], mounton[CF_BUFSIZE], vbuff[CF_BUFSIZE];
     int i, nfs = false;
 
@@ -141,7 +165,6 @@ bool LoadMountInfo(Rlist **list)
     {
         vbuff[0] = buf1[0] = buf2[0] = buf3[0] = source[0] = '\0';
         nfs = false;
-
         ssize_t res = CfReadLine(vbuff, CF_BUFSIZE, pp);
 
         if (res == -1)
@@ -156,12 +179,16 @@ bool LoadMountInfo(Rlist **list)
             break;
         }
 
-        if (strstr(vbuff, "nfs"))
+        ParseMountCommandOutput(vbuff, buf3/*mountp*/, buf1/*srv/src*/, buf2/*opts*/, buf4/*type*/);
+ printf("VBUF=[%s]\n",vbuff);
+
+        if (strstr(/*vbuff*/buf4, "nfs"))  //TODO : is this really safe ?
         {
             nfs = true;
         }
 
-        sscanf(vbuff, "%s%s%s", buf1, buf2, buf3);
+        //sscanf(vbuff, "%s%s%s", buf1, buf2, buf3);
+ printf("B1=[%s],B2=[%s],B3=[%s]\n",buf1,buf2,buf3);
 
         if ((vbuff[0] == '\0') || (vbuff[0] == '\n'))
         {
@@ -245,11 +272,11 @@ bool LoadMountInfo(Rlist **list)
 
         if (nfs)
         {
-            AugmentMountInfo(list, host, source, mounton, "nfs");
+            AugmentMountInfo(list, host, source, mounton, buf2, "nfs");
         }
         else
         {
-            AugmentMountInfo(list, host, source, mounton, NULL);
+            AugmentMountInfo(list, host, source, mounton, buf2, NULL);
         }
     }
 
@@ -261,7 +288,7 @@ bool LoadMountInfo(Rlist **list)
 
 /*******************************************************************/
 
-static void AugmentMountInfo(Rlist **list, char *host, char *source, char *mounton, char *options)
+static void AugmentMountInfo(Rlist **list, char *host, char *source, char *mounton, char *options, char *type)
 {
     Mount *entry = xcalloc(1, sizeof(Mount));
 
@@ -283,6 +310,11 @@ static void AugmentMountInfo(Rlist **list, char *host, char *source, char *mount
     if (options)
     {
         entry->options = xstrdup(options);
+    }
+
+    if (type)
+    {
+        entry->type = xstrdup(type);
     }
 
     RlistAppendAlien(list, (void *) entry);
@@ -318,6 +350,11 @@ void DeleteMountInfo(Rlist *list)
         if (entry->options)
         {
             free(entry->options);
+        }
+
+        if (entry->type)
+        {
+            free(entry->type);
         }
 
         free((char *) entry);
@@ -624,7 +661,6 @@ int VerifyUnmount(EvalContext *ctx, char *name, Attributes a, Promise *pp)
 /*******************************************************************/
 static char *ConstructFstabLine(char *mountpt, char *host, char *rmountpt, char *opts)
 {
-    char *out;
     char fstab[CF_BUFSIZE];
     char fstype[CF_BUFSIZE];
 #if defined(__QNX__) || defined(__QNXNTO__)
@@ -651,7 +687,7 @@ static char *ConstructFstabLine(char *mountpt, char *host, char *rmountpt, char 
 #elif defined(__CYGWIN__)
     snprintf(fstab, CF_BUFSIZE, "/bin/mount %s:%s %s", host, rmountpt, mountpt);
 #endif
-    return out;
+    return fstab;
 }
 
 static int DeconstructFstabLine(char *ifstab, char *mountpt, char *host, char *rmountpt, char *opts)
