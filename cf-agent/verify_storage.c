@@ -457,7 +457,8 @@ static int VerifyMountPromise(EvalContext *ctx, char *name, Attributes a, Promis
 
     options = Rlist2String(a.mount.mount_options, ",");
 
-    if (!FileSystemMountedCorrectly(MOUNTEDFSLIST, name, options, a))
+    ret = FileSystemMountedCorrectly(MOUNTEDFSLIST, name, options, a);
+    if (ret == PRESENT_NONE)
     {
         if (!a.mount.unmount)
         {
@@ -491,7 +492,18 @@ static int VerifyMountPromise(EvalContext *ctx, char *name, Attributes a, Promis
             CF_MOUNTALL = true;
         }
     }
-    else
+    else if (ret == PRESENT_MOUNTP || ret == PRESENT_REMOTE)
+    {
+       /* Umount then Mount */
+                /* TODO: it is more complicated than this */
+                VerifyUnmount(ctx, name, a, pp);
+                VerifyMount(ctx, name, a, pp);
+                /* if(edit && inFstab) DEL*/
+                         /* DEL = VerifyNotInFstab */
+                /* if(edit) ADD*/
+                         /* ADD = VerifyInFstab */
+    }
+    else  /*EXACT : no change */
     {
         if (a.mount.unmount)
         {

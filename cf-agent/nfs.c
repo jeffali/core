@@ -46,7 +46,7 @@ static int FSTAB_EDITS;
 static Item *FSTABLIST = NULL;
 
 static void AugmentMountInfo(Rlist **list, char *host, char *source, char *mounton, char *options, char *type);
-static int MatchFSInFstab(char *mountpt, char *host, char *rmountpt, char *opts);
+static int MatchFSInFstab(char *mountpt, char *host, char *rmountpt, char *opts, char *where);
 //static int MatchFSInFstab(char *match);
 static void DeleteThisItem(Item **liststart, Item *entry);
 
@@ -396,34 +396,13 @@ int VerifyInFstab(EvalContext *ctx, char *name, Attributes a, Promise *pp)
     mountpt = name;
     fstype = a.mount.mount_type;
 
-#if defined(__QNX__) || defined(__QNXNTO__)
-    snprintf(fstab, CF_BUFSIZE, "%s:%s \t %s %s\t%s 0 0", host, rmountpt, mountpt, fstype, opts);
-#elif defined(_CRAY)
-    char fstype_upper[CF_BUFSIZE];
-    strlcpy(fstype_upper, fstype, CF_BUFSIZE);
-    ToUpperStrInplace(fstype_upper);
-
-    snprintf(fstab, CF_BUFSIZE, "%s:%s \t %s %s\t%s", host, rmountpt, mountpt, fstype_upper, opts);
-    break;
-#elif defined(__hpux)
-    snprintf(fstab, CF_BUFSIZE, "%s:%s %s \t %s \t %s 0 0", host, rmountpt, mountpt, fstype, opts);
-#elif defined(_AIX)
-    snprintf(fstab, CF_BUFSIZE,
-             "%s:\n\tdev\t= %s\n\ttype\t= %s\n\tvfs\t= %s\n\tnodename\t= %s\n\tmount\t= true\n\toptions\t= %s\n\taccount\t= false\n",
-             mountpt, rmountpt, fstype, fstype, host, opts);
-#elif defined(__linux__)
-    snprintf(fstab, CF_BUFSIZE, "%s:%s \t %s \t %s \t %s", host, rmountpt, mountpt, fstype, opts);
-#elif defined(__NetBSD__) || defined(__OpenBSD__) || defined(__DragonFly__) || defined(__FreeBSD__)
-    snprintf(fstab, CF_BUFSIZE, "%s:%s \t %s \t %s \t %s 0 0", host, rmountpt, mountpt, fstype, opts);
-#elif defined(__sun) || defined(sco) || defined(__SCO_DS)
-    snprintf(fstab, CF_BUFSIZE, "%s:%s - %s %s - yes %s", host, rmountpt, mountpt, fstype, opts);
-#elif defined(__CYGWIN__)
-    snprintf(fstab, CF_BUFSIZE, "/bin/mount %s:%s %s", host, rmountpt, mountpt);
-#endif
+    fstab = ConstructFstabLine(mountpt, host, rmountpt, opts, fstype);
 
     CfOut(OUTPUT_LEVEL_VERBOSE, "", "Verifying %s in %s\n", mountpt, VFSTAB[VSYSTEMHARDCLASS]);
 
-    int ret = MatchFSInFstab(mountpt, host, rmountpt, opts);
+    char where[CF_BUFSIZE];
+    where[0]='\0';
+    int ret = MatchFSInFstab(mountpt, host, rmountpt, opts, where);
 
     if (ret == PRESENT_NONE)
     {
@@ -434,8 +413,13 @@ int VerifyInFstab(EvalContext *ctx, char *name, Attributes a, Promise *pp)
     }
     else if (ret == PRESENT_MOUNTP || ret == PRESENT_REMOTE)
     {
-        //TODO: - delete from FSTABLIST wrong entry
-        //      - add    to   FSTABLIST right entry
+        //TODO: - delete from FSTABLIST wrong entry (extracted   fstab)
+        DeleteItemGeneral(&FSTABLIST, where, ITEM_MATCH_TYPE_LITERAL_COMPLETE);
+        //      - add    to   FSTABLIST right entry (constructed fstab)
+        AppendItem(&FSTABLIST, fstab, NULL);
+        FSTAB_EDITS++;
+        cfPS(ctx, OUTPUT_LEVEL_INFORM, PROMISE_RESULT_CHANGE, "", pp, a, "Replacing file system %s:%s entry in %s.\n", host, rmountpt,
+             VFSTAB[VSYSTEMHARDCLASS]);
     }
 
     free(opts);
@@ -476,8 +460,10 @@ int VerifyNotInFstab(EvalContext *ctx, char *name, Attributes a, Promise *pp)
     host = a.mount.mount_server;
     mountpt = name;
 
-    int ret = MatchFSInFstab(mountpt, host, a.mount.mount_source, opts);
-    if (ret == PRESENT_EXACT)
+    char where[CF_BUFSIZE];
+    where[0]='\0';
+    int ret = MatchFSInFstab(mountpt, host, a.mount.mount_source, opts, where);
+    if (ret == PRESENT_EXACT || ret == PRESENT_MOUNTP || ret == PRESENT_REMOTE)
     {
         if (a.mount.editfstab)
         {
@@ -526,25 +512,10 @@ int VerifyNotInFstab(EvalContext *ctx, char *name, Attributes a, Promise *pp)
 
             return 0;       /* ignore internal editing for aix , always returns 0 changes */
 #else
-            //TODO: remove entry from FSTABLIST
-            //   applies to PRESENT_(EXACT,REMOTE,MOUNTP)
-            //Implement DeleteFromFstabList
-            //(
-            // FSTABLIST, bool iPresence,
-            // mountpt,host,rmountpt,opts
-            //)
-            snprintf(regex, CF_BUFSIZE, ".*[\\s]+%s[\\s]+.*", mountpt);
+            DeleteItemGeneral(&FSTABLIST, where, ITEM_MATCH_TYPE_LITERAL_COMPLETE);
+            FSTAB_EDITS++;
+            cfPS(ctx, OUTPUT_LEVEL_INFORM, PROMISE_RESULT_CHANGE, "", pp, a, "Deleting file system mounted on %s.\n", host);
 
-            for (ip = FSTABLIST; ip != NULL; ip = ip->next)
-            {
-                if (FullTextMatch(regex, ip->name))
-                {
-                    cfPS(ctx, OUTPUT_LEVEL_INFORM, PROMISE_RESULT_CHANGE, "", pp, a, "Deleting file system mounted on %s.\n", host);
-                    // Check host name matches too?
-                    DeleteThisItem(&FSTABLIST, ip);
-                    FSTAB_EDITS++;
-                }
-            }
 #endif
         }
     }
@@ -659,10 +630,9 @@ int VerifyUnmount(EvalContext *ctx, char *name, Attributes a, Promise *pp)
 }
 
 /*******************************************************************/
-static char *ConstructFstabLine(char *mountpt, char *host, char *rmountpt, char *opts)
+static char *ConstructFstabLine(char *mountpt, char *host, char *rmountpt, char *opts, char *fstype)
 {
     char fstab[CF_BUFSIZE];
-    char fstype[CF_BUFSIZE];
 #if defined(__QNX__) || defined(__QNXNTO__)
     snprintf(fstab, CF_BUFSIZE, "%s:%s \t %s %s\t%s 0 0", host, rmountpt, mountpt, fstype, opts);
 #elif defined(_CRAY)
@@ -734,7 +704,7 @@ bool CompareNFSOptions(char *opts, char *opts2) {
 }
 
 
-static int MatchFSInFstab(char *mountpt, char *host, char *rmountpt, char *opts)
+static int MatchFSInFstab(char *imountpt, char *ihost, char *irmountpt, char *iopts, char *where)
 //@returns : storage state (not changes)
 {
     Item *ip;
@@ -748,19 +718,22 @@ static int MatchFSInFstab(char *mountpt, char *host, char *rmountpt, char *opts)
     int n = 0;
     for (ip = FSTABLIST; ip != NULL; ip = ip->next)
     {
-        if (strstr(ip->name, mountpt))
+        if (strstr(ip->name, imountpt))
         {
             ret = DeconstructFstabLine(ip->name, mountpt2, host2, rmountpt2, opts2);
             if(ret)
             {
                  printf("Warning : maybe we are missing something very important\n");
             }
-            if(!strncmp(mountpt, mountpt2, CF_BUFSIZE)) {
-                if(!strncmp(rmountpt, rmountpt2, CF_BUFSIZE) &&
-                   !strncmp(host,     host2,     CF_BUFSIZE))
+            if(!strncmp(imountpt, mountpt2, CF_BUFSIZE)) {
+
+                strlcpy(where, ip->name, CF_BUFSIZE);
+
+                if(!strncmp(irmountpt, rmountpt2, CF_BUFSIZE) &&
+                   !strncmp(ihost,     host2,     CF_BUFSIZE))
                 {
                     presence = PRESENT_REMOTE;
-                    if(!CompareNFSOptions(opts, opts2)) {
+                    if(!CompareNFSOptions(iopts, opts2)) {
                         presence = PRESENT_EXACT;
                         n++;
                     }
