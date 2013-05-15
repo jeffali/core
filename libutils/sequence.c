@@ -47,6 +47,30 @@ Seq *SeqNew(size_t initialCapacity, void (ItemDestroy) (void *item))
 
     return seq;
 }
+#ifndef DBG0
+
+void DumpSeqString(Seq *seq)
+{
+    if (seq == NULL) return;
+    printf("[SEQ]={");
+    for (size_t i = 0; i < seq->length; i++)
+    {
+        printf("[%s],", seq->data[i]);
+    }
+    printf("}\n");
+}
+
+void DumpSeq(Seq *seq, SeqItemPrinter pf)
+{
+    if (seq == NULL) return;
+    printf("[SEQ]={");
+    for (size_t i = 0; i < seq->length; i++)
+    {
+        pf(seq->data[i]);
+    }
+    printf("}\n");
+}
+#endif
 
 static void DestroyRange(Seq *seq, size_t start, size_t end)
 {

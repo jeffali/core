@@ -80,7 +80,9 @@ void SeqDestroy(Seq *seq);
   @retval 1 if the first argument is bigger than the second
   */
 typedef int (*SeqItemComparator) (const void *, const void *, void *user_data);
-
+#ifndef DBG0
+typedef void (*SeqItemPrinter)(const void *);
+#endif
 /**
   @brief Append a new item to the Sequence
   @param seq [in] The Sequence to append to.
