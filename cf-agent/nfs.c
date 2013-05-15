@@ -664,6 +664,7 @@ static int DeconstructFstabLine(char *ifstab, char *mountpt, char *host, char *r
 {
     char *out;
     char fstype[CF_BUFSIZE];  //should ignore ???
+    char regexp[CF_BUFSIZE];
     char *fstype_upper;
     int ret;
 #if defined(__QNX__) || defined(__QNXNTO__)
@@ -682,7 +683,13 @@ static int DeconstructFstabLine(char *ifstab, char *mountpt, char *host, char *r
              "%s:\n\tdev\t= %s\n\ttype\t= %s\n\tvfs\t= %s\n\tnodename\t= %s\n\tmount\t= true\n\toptions\t= %s\n\taccount\t= false\n",
              mountpt, rmountpt, fstype, fstype, host, opts);
 #elif defined(__linux__)
-    ret = sscanf(ifstab, "%s:%s \t %s \t %s \t %s", host, rmountpt, mountpt, fstype, opts);
+    strlcpy(regexp, "([^: \t]+):([^: \t]+)[\t ]+([^: \t]+)[\t ]+([^: \t]+)[\t ]+([^: \t]+)", CF_BUFSIZE);
+    strlcpy(host     , ExtractNthReference(regexp, 1, ifstab), CF_BUFSIZE);
+    strlcpy(rmountpt , ExtractNthReference(regexp, 2, ifstab), CF_BUFSIZE);
+    strlcpy(mountpt  , ExtractNthReference(regexp, 3, ifstab), CF_BUFSIZE);
+    strlcpy(fstype   , ExtractNthReference(regexp, 4, ifstab), CF_BUFSIZE);
+    strlcpy(opts     , ExtractNthReference(regexp, 5, ifstab), CF_BUFSIZE);
+
 #elif defined(__NetBSD__) || defined(__OpenBSD__) || defined(__DragonFly__) || defined(__FreeBSD__)
     ret = sscanf(ifstab, "%s:%s \t %s \t %s \t %s 0 0", host, rmountpt, mountpt, fstype, opts);
 #elif defined(__sun) || defined(sco) || defined(__SCO_DS)
@@ -691,6 +698,7 @@ static int DeconstructFstabLine(char *ifstab, char *mountpt, char *host, char *r
     ret = sscanf(ifstab, "/bin/mount %s:%s %s", host, rmountpt, mountpt);
 #endif
     //TODO: trim from spaces
+   printf("DEKO:I=[%s] H=[%s] S=[%s] M=[%s] T=[%s] O=[%s]\n", ifstab, host, rmountpt, mountpt, fstype, opts);
     return 0;
 }
 
@@ -708,10 +716,15 @@ static int MatchFSInFstab(char *imountpt, char *ihost, char *irmountpt, char *io
 //@returns : storage state (not changes)
 {
     Item *ip;
-    char mountpt2 [CF_BUFSIZE];
-    char host2    [CF_BUFSIZE];
-    char rmountpt2[CF_BUFSIZE];
-    char opts2    [CF_BUFSIZE];
+  char mountpt2 [CF_BUFSIZE];
+  char host2    [CF_BUFSIZE];
+  char rmountpt2[CF_BUFSIZE];
+  char opts2    [CF_BUFSIZE];
+//    char *mountpt2;
+//    char *host2;
+//    char *rmountpt2;
+//    char *opts2;
+
     int  ret;
     int  presence = PRESENT_NONE;
 
@@ -744,6 +757,10 @@ static int MatchFSInFstab(char *imountpt, char *ihost, char *irmountpt, char *io
                     n++;
                 }
             }
+//            if(mountpt2) free(mountpt2);
+//            if(host2) free(host2);
+//            if(rmountpt2) free(rmountpt2);
+//            if(opts2) free(opts2);
         }
     }
 
