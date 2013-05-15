@@ -2789,7 +2789,7 @@ static void ConstraintPostCheck(const char *bundle_subtype, const char *lval, Rv
     }
 }
 
-#ifndef DBG0
+#ifdef DBG0
 void DumpPolicyBundles(Policy *policy) {
     for (size_t i = 0; i < SeqLength(policy->bundles); i++)
     {
@@ -2799,7 +2799,44 @@ void DumpPolicyBundles(Policy *policy) {
     }
 }
 
+void DumpPolicyBundles2(Policy *policy) {
+    for (size_t i = 0; i < SeqLength(policy->bundles); i++)
+    {
+        Bundle *bp = SeqAt(policy->bundles, i);
+	printf("[BNDL] type=%s name=%s ns=%s\n", bp->type, bp->name, bp->ns);
+
+        for (size_t sti = 0; sti < SeqLength(bp->subtypes); sti++)
+        {
+            SubType *subtype = SeqAt(bp->subtypes, sti);
+
+            for (size_t ppi = 0; ppi < SeqLength(subtype->promises); ppi++)
+            {
+                Promise *promise = SeqAt(subtype->promises, ppi);
+		printf("\tst=%s pp(classes)=%s pp(type)=%c\n",subtype->name,promise->classes,promise->promisee.type);
+
+                for (size_t cpi = 0; cpi < SeqLength(promise->conlist); cpi++)
+                {
+                    Constraint *constraint = SeqAt(promise->conlist, cpi);
+                        //char *ns = RvalNamespaceComponent(&constraint->rval);
+                        //char *symbol = RvalSymbolComponent(&constraint->rval);
+
+                        //POLICY_ERROR_BODY_UNDEFINED, symbol, constraint->lval));
+                } // constraints
+            } // promises
+        } // subtypes
+    } // bundles
+
+}
+
 void DumpPolicyBodies(Policy *policy) {
+    for (size_t i = 0; i < SeqLength(policy->bodies); i++)
+    {
+        Body *bp = SeqAt(policy->bodies, i);
+
+	printf("[BODY] type=%s name=%s ns=%s\n", bp->type, bp->name, bp->ns);
+    }
+}
+void DumpPolicyBodies2(Policy *policy) {
     for (size_t i = 0; i < SeqLength(policy->bodies); i++)
     {
         Body *bp = SeqAt(policy->bodies, i);

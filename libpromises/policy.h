@@ -467,7 +467,7 @@ void *ConstraintGetRvalValue(EvalContext *ctx, const char *lval, const Promise *
  */
 int ConstraintsGetAsBoolean(EvalContext *ctx, const char *lval, const Seq *constraints);
 
-#ifndef DBG0
+#ifdef DBG0
 void DumpPolicyBundles(Policy *policy);
 void DumpPolicyBodies(Policy *policy);
 #endif
