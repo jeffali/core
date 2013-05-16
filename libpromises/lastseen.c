@@ -1,7 +1,7 @@
 /*
-   Copyright (C) Cfengine AS
+   Copyright (C) CFEngine AS
 
-   This file is part of Cfengine 3 - written and maintained by Cfengine AS.
+   This file is part of CFEngine 3 - written and maintained by CFEngine AS.
 
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
@@ -17,7 +17,7 @@
   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
 
   To the extent this program is licensed as part of the Enterprise
-  versions of Cfengine, the applicable Commerical Open Source License
+  versions of CFEngine, the applicable Commerical Open Source License
   (COSL) may apply to this file if you as a licensee so wish it. See
   included file COSL.txt.
 */
@@ -26,7 +26,6 @@
 
 #include "lastseen.h"
 #include "conversion.h"
-#include "logging_old.h"
 #include "files_hashes.h"
 #include "locks.h"
 
@@ -70,20 +69,19 @@ void UpdateLastSawHost(const char *hostkey, const char *address,
 
 /*****************************************************************************/
 
-void LastSaw(char *ipaddress, unsigned char digest[EVP_MAX_MD_SIZE + 1], LastSeenRole role)
+void LastSaw(const char *ipaddress, unsigned char digest[EVP_MAX_MD_SIZE + 1], LastSeenRole role)
 {
     char databuf[EVP_MAX_MD_SIZE * 4];
-    char *mapip;
 
     if (strlen(ipaddress) == 0)
     {
-        CfOut(OUTPUT_LEVEL_INFORM, "", "LastSeen registry for empty IP with role %d", role);
+        Log(LOG_LEVEL_INFO, "LastSeen registry for empty IP with role %d", role);
         return;
     }
 
     HashPrintSafe(CF_DEFAULT_DIGEST, digest, databuf);
 
-    mapip = MapAddress(ipaddress);
+    const char *mapip = MapAddress(ipaddress);
 
     UpdateLastSawHost(databuf, mapip, role == LAST_SEEN_ROLE_ACCEPT, time(NULL));
 }
@@ -96,7 +94,7 @@ void UpdateLastSawHost(const char *hostkey, const char *address,
     DBHandle *db = NULL;
     if (!OpenDB(&db, dbid_lastseen))
     {
-        CfOut(OUTPUT_LEVEL_ERROR, "", " !! Unable to open last seen db");
+        Log(LOG_LEVEL_ERR, "Unable to open last seen db");
         return;
     }
 
@@ -143,7 +141,7 @@ bool RemoveHostFromLastSeen(const char *hostkey)
     DBHandle *db;
     if (!OpenDB(&db, dbid_lastseen))
     {
-        CfOut(OUTPUT_LEVEL_ERROR, "", "Unable to open lastseen database");
+        Log(LOG_LEVEL_ERR, "Unable to open lastseen database");
         return false;
     }
 
@@ -260,13 +258,13 @@ bool ScanLastSeenQuality(LastSeenQualityCallback callback, void *ctx)
 
     if (!OpenDB(&db, dbid_lastseen))
     {
-        CfOut(OUTPUT_LEVEL_ERROR, "", "!! Unable to open lastseen database");
+        Log(LOG_LEVEL_ERR, "Unable to open lastseen database");
         return false;
     }
 
     if (!NewDBCursor(db, &cursor))
     {
-        CfOut(OUTPUT_LEVEL_ERROR, "", " !! Unable to create lastseen database cursor");
+        Log(LOG_LEVEL_ERR, "Unable to create lastseen database cursor");
         CloseDB(db);
         return false;
     }

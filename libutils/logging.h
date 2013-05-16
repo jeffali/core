@@ -1,7 +1,7 @@
 /*
-   Copyright (C) Cfengine AS
+   Copyright (C) CFEngine AS
 
-   This file is part of Cfengine 3 - written and maintained by Cfengine AS.
+   This file is part of CFEngine 3 - written and maintained by CFEngine AS.
 
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
@@ -17,7 +17,7 @@
   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
 
   To the extent this program is licensed as part of the Enterprise
-  versions of Cfengine, the applicable Commerical Open Source License
+  versions of CFEngine, the applicable Commerical Open Source License
   (COSL) may apply to this file if you as a licensee so wish it. See
   included file COSL.txt.
 */
@@ -36,11 +36,16 @@ typedef enum
     LOG_LEVEL_NOTICE,
     LOG_LEVEL_INFO,
     LOG_LEVEL_VERBOSE,
-    LOG_LEVEL_DEBUG,
+    LOG_LEVEL_DEBUG
 } LogLevel;
+
+const char *LogLevelToString(LogLevel level);
 
 void Log(LogLevel level, const char *fmt, ...) FUNC_ATTR_PRINTF(2, 3);
 void VLog(LogLevel level, const char *fmt, va_list ap);
+
+void LogSetGlobalLevel(LogLevel level);
+LogLevel LogGetGlobalLevel(void);
 
 /*
  * Portable strerror(errno)

@@ -1,7 +1,7 @@
 /*
-   Copyright (C) Cfengine AS
+   Copyright (C) CFEngine AS
 
-   This file is part of Cfengine 3 - written and maintained by Cfengine AS.
+   This file is part of CFEngine 3 - written and maintained by CFEngine AS.
 
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
@@ -17,7 +17,7 @@
   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
 
   To the extent this program is licensed as part of the Enterprise
-  versions of Cfengine, the applicable Commerical Open Source License
+  versions of CFEngine, the applicable Commerical Open Source License
   (COSL) may apply to this file if you as a licensee so wish it. See
   included file COSL.txt.
 */
@@ -28,13 +28,12 @@
 #include "server_transform.h"
 #include "bootstrap.h"
 #include "scope.h"
-#include "logging_old.h"
-#include "logging.h"
 #include "signals.h"
 #include "mutex.h"
 #include "locks.h"
 #include "exec_tools.h"
 #include "unix.h"
+#include "man.h"
 
 #include <assert.h>
 
@@ -45,10 +44,13 @@ int NO_FORK = false;
 /* Command line options                                            */
 /*******************************************************************/
 
-static const char *ID = "The server daemon provides two services: it acts as a\n"
-    "file server for remote file copying and it allows an\n"
-    "authorized cf-runagent to start a cf-agent process and\n"
-    "set certain additional classes with role-based access control.\n";
+static const char *CF_SERVERD_SHORT_DESCRIPTION = "CFEngine file server daemon";
+
+static const char *CF_SERVERD_MANPAGE_LONG_DESCRIPTION =
+        "cf-serverd is a socket listening daemon providing two services: it acts as a file server for remote file copying "
+        "and it allows an authorized cf-runagent to start a cf-agent run. cf-agent typically connects to a "
+        "cf-serverd instance to request updated policy code, but may also request additional files for download. "
+        "cf-serverd employs role based access control (defined in policy code) to authorize requests.";
 
 static const struct option OPTIONS[16] =
 {
@@ -65,6 +67,7 @@ static const struct option OPTIONS[16] =
     {"no-fork", no_argument, 0, 'F'},
     {"ld-library-path", required_argument, 0, 'L'},
     {"generate-avahi-conf", no_argument, 0, 'A'},
+    {"legacy-output", no_argument, 0, 'l'},
     {NULL, 0, 0, '\0'}
 };
 
@@ -83,6 +86,7 @@ static const char *HINTS[16] =
     "Run as a foreground processes (do not fork)",
     "Set the internal value of LD_LIBRARY_PATH for child processes",
     "Generates avahi configuration file to enable policy server to be discovered in the network",
+    "Use legacy output format",
     NULL
 };
 
@@ -93,22 +97,14 @@ static void KeepHardClasses(EvalContext *ctx)
     char name[CF_BUFSIZE];
     if (name != NULL)
     {
-        snprintf(name, sizeof(name), "%s%cpolicy_server.dat", CFWORKDIR, FILE_SEPARATOR);
-
-        FILE *fp = fopen(name, "r");
-
-        if (fp != NULL)
+        char *existing_policy_server = ReadPolicyServerFile(CFWORKDIR);
+        if (existing_policy_server)
         {
-            fclose(fp);
-            snprintf(name, sizeof(name), "%s/state/am_policy_hub", CFWORKDIR);
-            MapName(name);
-
-            struct stat sb;
-
-            if (stat(name, &sb) != -1)
+            if (GetAmPolicyHub(CFWORKDIR))
             {
                 EvalContextHeapAddHard(ctx, "am_policy_hub");
             }
+            free(existing_policy_server);
         }
     }
 
@@ -135,15 +131,19 @@ GenericAgentConfig *CheckOpts(int argc, char **argv)
     int c;
     GenericAgentConfig *config = GenericAgentConfigNewDefault(AGENT_TYPE_SERVER);
 
-    while ((c = getopt_long(argc, argv, "dvIKf:D:N:VSxLFMhA", OPTIONS, &optindex)) != EOF)
+    while ((c = getopt_long(argc, argv, "dvIKf:D:N:VSxLFMhAl", OPTIONS, &optindex)) != EOF)
     {
         switch ((char) c)
         {
+        case 'l':
+            LEGACY_OUTPUT = true;
+            break;
+
         case 'f':
 
             if (optarg && (strlen(optarg) < 5))
             {
-                CfOut(OUTPUT_LEVEL_ERROR, "", " -f used but argument \"%s\" incorrect", optarg);
+                Log(LOG_LEVEL_ERR, " -f used but argument \"%s\" incorrect", optarg);
                 exit(EXIT_FAILURE);
             }
 
@@ -168,11 +168,11 @@ GenericAgentConfig *CheckOpts(int argc, char **argv)
             break;
 
         case 'I':
-            INFORM = true;
+            LogSetGlobalLevel(LOG_LEVEL_INFO);
             break;
 
         case 'v':
-            VERBOSE = true;
+            LogSetGlobalLevel(LOG_LEVEL_VERBOSE);
             NO_FORK = true;
             break;
 
@@ -181,7 +181,7 @@ GenericAgentConfig *CheckOpts(int argc, char **argv)
             break;
 
         case 'L':
-            CfOut(OUTPUT_LEVEL_VERBOSE, "", "Setting LD_LIBRARY_PATH=%s\n", optarg);
+            Log(LOG_LEVEL_VERBOSE, "Setting LD_LIBRARY_PATH=%s", optarg);
             snprintf(ld_library_path, CF_BUFSIZE - 1, "LD_LIBRARY_PATH=%s", optarg);
             putenv(ld_library_path);
             break;
@@ -191,15 +191,23 @@ GenericAgentConfig *CheckOpts(int argc, char **argv)
             exit(0);
 
         case 'h':
-            Syntax("cf-serverd", OPTIONS, HINTS, ID, true);
+            PrintHelp("cf-serverd", OPTIONS, HINTS, true);
             exit(0);
 
         case 'M':
-            ManPage("cf-serverd - CFEngine's server agent", OPTIONS, HINTS, ID);
-            exit(0);
+            {
+                Writer *out = FileWriter(stdout);
+                ManPageWrite(out, "cf-serverd", time(NULL),
+                             CF_SERVERD_SHORT_DESCRIPTION,
+                             CF_SERVERD_MANPAGE_LONG_DESCRIPTION,
+                             OPTIONS, HINTS,
+                             true);
+                FileWriterDetach(out);
+                exit(EXIT_SUCCESS);
+            }
 
         case 'x':
-            CfOut(OUTPUT_LEVEL_ERROR, "", "Self-diagnostic functionality is retired.");
+            Log(LOG_LEVEL_ERR, "Self-diagnostic functionality is retired.");
             exit(0);
         case 'A':
 #ifdef HAVE_AVAHI_CLIENT_CLIENT_H
@@ -218,7 +226,7 @@ GenericAgentConfig *CheckOpts(int argc, char **argv)
 #endif
 
         default:
-            Syntax("cf-serverd", OPTIONS, HINTS, ID, true);
+            PrintHelp("cf-serverd", OPTIONS, HINTS, true);
             exit(1);
 
         }
@@ -286,18 +294,18 @@ void StartServer(EvalContext *ctx, Policy *policy, GenericAgentConfig *config)
         return;
     }
 
-    CfOut(OUTPUT_LEVEL_INFORM, "", "cf-serverd starting %.24s\n", ctime(&starttime));
+    Log(LOG_LEVEL_INFO, "cf-serverd starting %.24s", ctime(&starttime));
 
     if (sd != -1)
     {
-        CfOut(OUTPUT_LEVEL_VERBOSE, "", "Listening for connections ...\n");
+        Log(LOG_LEVEL_VERBOSE, "Listening for connections ...");
     }
 
 #ifdef __MINGW32__
 
     if (!NO_FORK)
     {
-        CfOut(OUTPUT_LEVEL_VERBOSE, "", "Windows does not support starting processes in the background - starting in foreground");
+        Log(LOG_LEVEL_VERBOSE, "Windows does not support starting processes in the background - starting in foreground");
     }
 
 #else /* !__MINGW32__ */
@@ -357,7 +365,7 @@ void StartServer(EvalContext *ctx, Policy *policy, GenericAgentConfig *config)
             timeout.tv_sec = 10;    /* Set a 10 second timeout for select */
             timeout.tv_usec = 0;
 
-            CfDebug(" -> Waiting at incoming select...\n");
+            Log(LOG_LEVEL_DEBUG, "Waiting at incoming select...");
 
             ret_val = select((sd + 1), &rset, NULL, NULL, &timeout);
 
@@ -369,7 +377,7 @@ void StartServer(EvalContext *ctx, Policy *policy, GenericAgentConfig *config)
                 }
                 else
                 {
-                    CfOut(OUTPUT_LEVEL_ERROR, "select", "select failed");
+                    Log(LOG_LEVEL_ERR, "select failed. (select: %s)", GetErrorStr());
                     exit(1);
                 }
             }
@@ -378,7 +386,7 @@ void StartServer(EvalContext *ctx, Policy *policy, GenericAgentConfig *config)
                 continue;
             }
 
-            CfOut(OUTPUT_LEVEL_VERBOSE, "", " -> Accepting a connection\n");
+            Log(LOG_LEVEL_VERBOSE, "Accepting a connection");
 
             if ((sd_reply = accept(sd, (struct sockaddr *) &cin, &addrlen)) != -1)
             {
@@ -406,13 +414,13 @@ int InitServer(size_t queue_size)
 
     if ((sd = OpenReceiverChannel()) == -1)
     {
-        CfOut(OUTPUT_LEVEL_ERROR, "", "Unable to start server");
+        Log(LOG_LEVEL_ERR, "Unable to start server");
         exit(1);
     }
 
     if (listen(sd, queue_size) == -1)
     {
-        CfOut(OUTPUT_LEVEL_ERROR, "listen", "listen failed");
+        Log(LOG_LEVEL_ERR, "listen failed. (listen: %s)", GetErrorStr());
         exit(1);
     }
 
@@ -438,7 +446,7 @@ int OpenReceiverChannel(void)
     /* Resolve listening interface. */
     if (getaddrinfo(ptr, STR_CFENGINEPORT, &query, &response) != 0)
     {
-        CfOut(OUTPUT_LEVEL_ERROR, "getaddrinfo", "DNS/service lookup failure");
+        Log(LOG_LEVEL_ERR, "DNS/service lookup failure. (getaddrinfo: %s)", GetErrorStr());
         return -1;
     }
 
@@ -454,8 +462,7 @@ int OpenReceiverChannel(void)
         if (setsockopt(sd, SOL_SOCKET, SO_REUSEADDR,
                        &yes, sizeof(yes)) == -1)
         {
-            CfOut(OUTPUT_LEVEL_ERROR, "setsockopt",
-                  "Socket option SO_REUSEADDR was not accepted");
+            Log(LOG_LEVEL_ERR, "Socket option SO_REUSEADDR was not accepted. (setsockopt: %s)", GetErrorStr());
             exit(1);
         }
 
@@ -466,35 +473,34 @@ int OpenReceiverChannel(void)
         if (setsockopt(sd, SOL_SOCKET, SO_LINGER,
                        &cflinger, sizeof(cflinger)) == -1)
         {
-            CfOut(OUTPUT_LEVEL_ERROR, "setsockopt",
-                  "Socket option SO_LINGER was not accepted");
+            Log(LOG_LEVEL_ERR, "Socket option SO_LINGER was not accepted. (setsockopt: %s)", GetErrorStr());
             exit(1);
         }
 
         if (bind(sd, ap->ai_addr, ap->ai_addrlen) != -1)
         {
-            if (DEBUG)
+            if (LogGetGlobalLevel() >= LOG_LEVEL_DEBUG)
             {
                 /* Convert IP address to string, no DNS lookup performed. */
                 char txtaddr[CF_MAX_IP_LEN] = "";
                 getnameinfo(ap->ai_addr, ap->ai_addrlen,
                             txtaddr, sizeof(txtaddr),
                             NULL, 0, NI_NUMERICHOST);
-                printf("Bound to address %s on %s=%d\n", txtaddr,
-                       CLASSTEXT[VSYSTEMHARDCLASS], VSYSTEMHARDCLASS);
+                Log(LOG_LEVEL_DEBUG, "Bound to address '%s' on '%s' = %d", txtaddr,
+                    CLASSTEXT[VSYSTEMHARDCLASS], VSYSTEMHARDCLASS);
             }
             break;
         }
         else
         {
-            CfOut(OUTPUT_LEVEL_ERROR, "bind", "Could not bind server address");
+            Log(LOG_LEVEL_ERR, "Could not bind server address. (bind: %s)", GetErrorStr());
             cf_closesocket(sd);
         }
     }
 
     if (sd < 0)
     {
-        CfOut(OUTPUT_LEVEL_ERROR, "", "Couldn't open/bind a socket\n");
+        Log(LOG_LEVEL_ERR, "Couldn't open/bind a socket");
         exit(1);
     }
 
@@ -508,15 +514,15 @@ int OpenReceiverChannel(void)
 
 void CheckFileChanges(EvalContext *ctx, Policy **policy, GenericAgentConfig *config)
 {
-    CfDebug("Checking file updates on %s\n", config->input_file);
+    Log(LOG_LEVEL_DEBUG, "Checking file updates for input file '%s'", config->input_file);
 
     if (NewPromiseProposals(ctx, config, InputFiles(ctx, *policy)))
     {
-        CfOut(OUTPUT_LEVEL_VERBOSE, "", " -> New promises detected...\n");
+        Log(LOG_LEVEL_VERBOSE, "New promises detected...");
 
         if (CheckPromises(config))
         {
-            CfOut(OUTPUT_LEVEL_INFORM, "", "Rereading config files %s..\n", config->input_file);
+            Log(LOG_LEVEL_INFO, "Rereading config files %s..", config->input_file);
 
             /* Free & reload -- lock this to avoid access errors during reload */
             
@@ -570,8 +576,11 @@ void CheckFileChanges(EvalContext *ctx, Policy **policy, GenericAgentConfig *con
             PolicyDestroy(*policy);
             *policy = NULL;
 
-            SetPolicyServer(ctx, POLICY_SERVER);
-            ScopeNewSpecialScalar(ctx, "sys", "policy_hub", POLICY_SERVER, DATA_TYPE_STRING);
+            {
+                char *existing_policy_server = ReadPolicyServerFile(GetWorkDir());
+                SetPolicyServer(ctx, existing_policy_server);
+                free(existing_policy_server);
+            }
 
             GetNameInfo3(ctx, AGENT_TYPE_SERVER);
             GetInterfacesInfo(ctx, AGENT_TYPE_SERVER);
@@ -590,13 +599,13 @@ void CheckFileChanges(EvalContext *ctx, Policy **policy, GenericAgentConfig *con
         }
         else
         {
-            CfOut(OUTPUT_LEVEL_INFORM, "", " !! File changes contain errors -- ignoring");
+            Log(LOG_LEVEL_INFO, "File changes contain errors -- ignoring");
             PROMISETIME = time(NULL);
         }
     }
     else
     {
-        CfDebug(" -> No new promises found\n");
+        Log(LOG_LEVEL_DEBUG, "No new promises found");
     }
 }
 
@@ -609,7 +618,7 @@ static int GenerateAvahiConfig(const char *path)
     fout = fopen(path, "w+");
     if (fout == NULL)
     {
-        CfOut(OUTPUT_LEVEL_ERROR, "", "Unable to open %s", path);
+        Log(LOG_LEVEL_ERR, "Unable to open %s", path);
         return -1;
     }
     writer = FileWriter(fout);

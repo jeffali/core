@@ -1,7 +1,7 @@
 /*
-   Copyright (C) Cfengine AS
+   Copyright (C) CFEngine AS
 
-   This file is part of Cfengine 3 - written and maintained by Cfengine AS.
+   This file is part of CFEngine 3 - written and maintained by CFEngine AS.
 
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
@@ -17,18 +17,19 @@
   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
 
   To the extent this program is licensed as part of the Enterprise
-  versions of Cfengine, the applicable Commerical Open Source License
+  versions of CFEngine, the applicable Commerical Open Source License
   (COSL) may apply to this file if you as a licensee so wish it. See
   included file COSL.txt.
 */
 
-#ifndef CFENGINE_LOGGING_OLD_H
-#define CFENGINE_LOGGING_OLD_H
+#ifndef CFENGINE_MAN_H
+#define CFENGINE_MAN_H
 
-#include "cf3.defs.h"
+#include "platform.h"
+#include "writer.h"
 
-/* Obsolete, please use Log instead */
-void CfOut(OutputLevel level, const char *errstr, const char *fmt, ...) FUNC_ATTR_PRINTF(3, 4);
-void CfVOut(OutputLevel level, const char *errstr, const char *fmt, va_list ap);
+void ManPageWrite(Writer *out, const char *program, time_t last_modified, const char *short_description,
+                  const char *long_description, const struct option options[], const char *option_hints[],
+                  bool accepts_file_argument);
 
 #endif

@@ -1,7 +1,7 @@
 /*
-   Copyright (C) Cfengine AS
+   Copyright (C) CFEngine AS
 
-   This file is part of Cfengine 3 - written and maintained by Cfengine AS.
+   This file is part of CFEngine 3 - written and maintained by CFEngine AS.
 
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
@@ -17,7 +17,7 @@
   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
 
   To the extent this program is licensed as part of the Enterprise
-  versions of Cfengine, the applicable Commerical Open Source License
+  versions of CFEngine, the applicable Commerical Open Source License
   (COSL) may apply to this file if you as a licensee so wish it. See
   included file COSL.txt.
 */
@@ -28,10 +28,12 @@
 #include "files_names.h"
 #include "scope.h"
 #include "files_interfaces.h"
-#include "logging_old.h"
 #include "exec_tools.h"
 #include "generic_agent.h" // PrintVersionBanner
 #include "audit.h"
+#include "logging.h"
+#include "string_lib.h"
+#include "files_lib.h"
 
 /*
 
@@ -70,154 +72,66 @@ bool BootstrapAllowed(void)
 
 /*****************************************************************************/
 
-void CheckAutoBootstrap(EvalContext *ctx)
+static char *AmPolicyHubFilename(const char *workdir)
 {
-    struct stat sb;
-    char name[CF_BUFSIZE];
-    int have_policy = false, am_appliance = false;
-
-    printf("** CFEngine BOOTSTRAP probe initiated\n");
-
-    PrintVersion();
-    printf("\n");
-
-    printf(" -> This host is: %s\n", VSYSNAME.nodename);
-    printf(" -> Operating System Type is %s\n", VSYSNAME.sysname);
-    printf(" -> Operating System Release is %s\n", VSYSNAME.release);
-    printf(" -> Architecture = %s\n", VSYSNAME.machine);
-    printf(" -> Internal soft-class is %s\n", CLASSTEXT[VSYSTEMHARDCLASS]);
-
-    if (!BootstrapAllowed())
-    {
-        FatalError(ctx, " !! Not enough privileges to bootstrap CFEngine");
-    }
-
-    snprintf(name, CF_BUFSIZE - 1, "%s/inputs/failsafe.cf", CFWORKDIR);
-    MapName(name);
-
-    CreateFailSafe(name);
-
-    snprintf(name, CF_BUFSIZE - 1, "%s/inputs/promises.cf", CFWORKDIR);
-    MapName(name);
-
-    if (stat(name, &sb) == -1)
-    {
-        printf(" -> No previous policy has been cached on this host\n");
-    }
-    else
-    {
-        printf(" -> An existing policy was cached on this host in %s/inputs\n", CFWORKDIR);
-        have_policy = true;
-    }
-
-    if (strlen(POLICY_SERVER) > 0)
-    {
-        printf(" -> Assuming the policy distribution point at: %s:%s/masterfiles\n", CFWORKDIR,
-              POLICY_SERVER);
-    }
-    else
-    {
-        if (have_policy)
-        {
-            printf(" -> No policy distribution host was discovered - it might be contained in the existing policy, otherwise this will function autonomously\n");
-        }
-        else
-        {
-            printf(" -> No policy distribution host was defined - use --policy-server to set one\n");
-        }
-    }
-
-    printf(" -> Attempting to initiate promised autonomous services...\n\n");
-
-    am_appliance = IsDefinedClass(ctx, CanonifyName(POLICY_SERVER), NULL);
-    snprintf(name, CF_MAXVARSIZE, "ipv4_%s", CanonifyName(POLICY_SERVER));
-    am_appliance |= IsDefinedClass(ctx, name, NULL);
-
-    if (strlen(POLICY_SERVER) == 0)
-    {
-        am_appliance = false;
-    }
-
-    snprintf(name, sizeof(name), "%s/state/am_policy_hub", CFWORKDIR);
-    MapName(name);
-
-    if (am_appliance)
-    {
-        EvalContextHeapAddHard(ctx, "am_policy_hub");
-        printf
-            (" ** This host recognizes itself as a CFEngine policy server, with policy distribution from %s/masterfiles.\n", WORKDIR);
-        creat(name, 0600);
-    }
-    else
-    {
-        unlink(name);
-    }
-
+    return StringFormat("%s%cstate%cam_policy_hub", workdir, FILE_SEPARATOR, FILE_SEPARATOR);
 }
 
-/********************************************************************/
-
-void SetPolicyServer(EvalContext *ctx, char *name)
-/* 
- * If name contains a string, it's written to file,
- * if not, name is filled with the contents of file.
- */
+bool WriteAmPolicyHubFile(const char *workdir, bool am_policy_hub)
 {
-    char file[CF_BUFSIZE];
-    FILE *fout, *fin;
-    char fileContents[CF_MAXVARSIZE] = { 0 };
-
-    snprintf(file, CF_BUFSIZE - 1, "%s/policy_server.dat", CFWORKDIR);
-    MapName(file);
-
-    if ((fin = fopen(file, "r")) != NULL)
+    char *filename = AmPolicyHubFilename(workdir);
+    if (am_policy_hub)
     {
-        if (fscanf(fin, "%1023s", fileContents) != 1)
+        if (!GetAmPolicyHub(workdir))
         {
-            CfDebug("Couldn't read string from policy_server.dat");
+            if (creat(filename, 0600) == -1)
+            {
+                Log(LOG_LEVEL_ERR, "Error writing marker file '%s'", filename);
+                free(filename);
+                return false;
+            }
         }
-        fclose(fin);
-    }
-
-    // update file if different and we know what to put there
-
-    if ((NULL_OR_EMPTY(name)) && (!NULL_OR_EMPTY(fileContents)))
-    {
-        snprintf(name, CF_MAXVARSIZE, "%s", fileContents);
-    }
-    else if ((!NULL_OR_EMPTY(name)) && (strcmp(name, fileContents) != 0))
-    {
-        if ((fout = fopen(file, "w")) == NULL)
-        {
-            CfOut(OUTPUT_LEVEL_ERROR, "fopen", "Unable to write policy server file! (%s)", file);
-            return;
-        }
-
-        fprintf(fout, "%s", name);
-        fclose(fout);
-    }
-
-    if (NULL_OR_EMPTY(name))
-    {
-        // avoids "Scalar item in servers => {  } in rvalue is out of bounds ..."
-        // when NovaBase is checked with unprivileged (not bootstrapped) cf-promises 
-        ScopeNewSpecialScalar(ctx, "sys", "policy_hub", "undefined", DATA_TYPE_STRING);
     }
     else
     {
-        ScopeNewSpecialScalar(ctx, "sys", "policy_hub", name, DATA_TYPE_STRING);
+        if (GetAmPolicyHub(workdir))
+        {
+            if (unlink(filename) != 0)
+            {
+                Log(LOG_LEVEL_ERR, "Error removing marker file '%s'", filename);
+                free(filename);
+                return false;
+            }
+        }
+    }
+    free(filename);
+    return true;
+}
+
+void SetPolicyServer(EvalContext *ctx, const char *new_policy_server)
+{
+    if (new_policy_server)
+    {
+        snprintf(POLICY_SERVER, CF_MAX_IP_LEN, "%s", new_policy_server);
+        ScopeNewSpecialScalar(ctx, "sys", "policy_hub", new_policy_server, DATA_TYPE_STRING);
+    }
+    else
+    {
+        POLICY_SERVER[0] = '\0';
+        ScopeNewSpecialScalar(ctx, "sys", "policy_hub", "undefined", DATA_TYPE_STRING);
     }
 
-// Get the timestamp on policy update
-
-    snprintf(file, CF_MAXVARSIZE, "%s/masterfiles/cf_promises_validated", CFWORKDIR);
-    MapName(file);
-
+    // Get the timestamp on policy update
     struct stat sb;
-    
-    if ((stat(file, &sb)) != 0)
     {
-        return;
+        char cf_promises_validated_filename[CF_MAXVARSIZE];
+        snprintf(cf_promises_validated_filename, CF_MAXVARSIZE, "%s/masterfiles/cf_promises_validated", CFWORKDIR);
+        MapName(cf_promises_validated_filename);
+
+        if ((stat(cf_promises_validated_filename, &sb)) != 0)
+        {
+            return;
+        }
     }
     
     char timebuf[26];
@@ -226,16 +140,22 @@ void SetPolicyServer(EvalContext *ctx, char *name)
     ScopeNewSpecialScalar(ctx, "sys", "last_policy_update", timebuf, DATA_TYPE_STRING);
 }
 
-char *GetPolicyServer(const char *workdir)
+static char *PolicyServerFilename(const char *workdir)
 {
-    char path[CF_BUFSIZE] = { 0 };
-    snprintf(path, sizeof(path), "%s%cpolicy_server.dat", workdir, FILE_SEPARATOR);
-    char contents[CF_BUFSIZE] = { 0 };
+    return StringFormat("%s%cpolicy_server.dat", workdir, FILE_SEPARATOR);
+}
 
-    FILE *fp = fopen(path, "r");
+char *ReadPolicyServerFile(const char *workdir)
+{
+    char contents[CF_MAX_IP_LEN] = "";
+
+    char *filename = PolicyServerFilename(workdir);
+    FILE *fp = fopen(filename, "r");
+    free(filename);
+
     if (fp)
     {
-        if (fscanf(fp, "%4095s", contents) != 1)
+        if (fscanf(fp, "%63s", contents) != 1)
         {
             fclose(fp);
             return NULL;
@@ -249,7 +169,40 @@ char *GetPolicyServer(const char *workdir)
     }
 }
 
-bool GetAmPolicyServer(const char *workdir)
+bool WritePolicyServerFile(const char *workdir, const char *new_policy_server)
+{
+    char *filename = PolicyServerFilename(workdir);
+
+    FILE *file = fopen(filename, "w");
+    if (!file)
+    {
+        Log(LOG_LEVEL_ERR, "Unable to write policy server file '%s' (fopen: %s)", filename, GetErrorStr());
+        free(filename);
+        return false;
+    }
+
+    fprintf(file, "%s", new_policy_server);
+    fclose(file);
+
+    free(filename);
+    return true;
+}
+
+bool RemovePolicyServerFile(const char *workdir)
+{
+    char *filename = PolicyServerFilename(workdir);
+
+    if (unlink(filename) != 0)
+    {
+        Log(LOG_LEVEL_ERR, "Unable to remove file '%s'. (unlink: %s)", filename, GetErrorStr());
+        free(filename);
+        return false;
+    }
+
+    return true;
+}
+
+bool GetAmPolicyHub(const char *workdir)
 {
     char path[CF_BUFSIZE] = { 0 };
     snprintf(path, sizeof(path), "%s/state/am_policy_hub", workdir);
@@ -259,19 +212,78 @@ bool GetAmPolicyServer(const char *workdir)
     return stat(path, &sb) == 0;
 }
 
-/********************************************************************/
-
-void CreateFailSafe(char *name)
+bool RemoveAllExistingPolicyInInputs(const char *workdir)
 {
-    FILE *fout;
+    char inputs_path[CF_BUFSIZE] = { 0 };
+    snprintf(inputs_path, sizeof(inputs_path), "%s/inputs/", workdir);
+    MapName(inputs_path);
 
-    if ((fout = fopen(name, "w")) == NULL)
+    Log(LOG_LEVEL_INFO, "Removing all files in '%s'", inputs_path);
+
+    struct stat sb;
+    if (stat(inputs_path, &sb) == -1)
     {
-        CfOut(OUTPUT_LEVEL_ERROR, "fopen", "Unable to write failsafe file! (%s)", name);
-        return;
+        if (errno == ENOENT)
+        {
+            return true;
+        }
+        else
+        {
+            Log(LOG_LEVEL_ERR, "Could not stat inputs directory at '%s'. (stat: %s)", inputs_path, GetErrorStr());
+            return false;
+        }
     }
 
-    printf(" -> No policy failsafe discovered, assume temporary bootstrap vector\n");
+    if (!S_ISDIR(sb.st_mode))
+    {
+        Log(LOG_LEVEL_ERR, "Inputs path exists at '%s', but it is not a directory", inputs_path);
+        return false;
+    }
+
+    return DeleteDirectoryTree(inputs_path);
+}
+
+bool MasterfileExists(const char *workdir)
+{
+    char filename[CF_BUFSIZE] = { 0 };
+    snprintf(filename, sizeof(filename), "%s/masterfiles/promises.cf", workdir);
+    MapName(filename);
+
+    struct stat sb;
+    if (stat(filename, &sb) == -1)
+    {
+        if (errno == ENOENT)
+        {
+            return false;
+        }
+        else
+        {
+            Log(LOG_LEVEL_ERR, "Could not stat file '%s'. (stat: %s)", filename, GetErrorStr());
+            return false;
+        }
+    }
+
+    if (!S_ISREG(sb.st_mode))
+    {
+        Log(LOG_LEVEL_ERR, "Path exists at '%s', but it is not a regular file", filename);
+        return false;
+    }
+
+    return true;
+}
+
+/********************************************************************/
+
+bool WriteBuiltinFailsafePolicyToPath(const char *filename)
+{
+    Log(LOG_LEVEL_INFO, "Writing built-in failsafe policy to '%s'", filename);
+
+    FILE *fout = fopen(filename, "w");
+    if (!fout)
+    {
+        Log(LOG_LEVEL_ERR, "Unable to write failsafe to '%s' (fopen: %s)", filename, GetErrorStr());
+        return false;
+    }
 
     fprintf(fout,
             "################################################################################\n"
@@ -370,25 +382,32 @@ void CreateFailSafe(char *name)
             "   \"This autonomous node assumes the role of voluntary client\"\n"
             "      handle => \"cfe_internal_bootstrap_update_reports_assume_voluntary_client\";\n"
             "  got_policy::\n"
-            "   \" -> Updated local policy from policy server\"\n"
+            "   \"Updated local policy from policy server\"\n"
             "      handle => \"cfe_internal_bootstrap_update_reports_got_policy\";\n"
             "  !got_policy.!have_promises_cf::\n"
-            "   \" !! Failed to copy policy from policy server at $(sys.policy_hub):/var/cfengine/masterfiles\"\n"
+            "   \"Failed to copy policy from policy server at $(sys.policy_hub):/var/cfengine/masterfiles\n"
+            "       Please check\n"
+            "       * cf-serverd is running on $(sys.policy_hub)\n"
+            "       * network connectivity to $(sys.policy_hub) on port 5308\n"
+            "       * masterfiles 'body server control' - in particular allowconnects, trustkeysfrom and skipverify\n"
+            "       * masterfiles 'bundle server' -> access: -> masterfiles -> admit/deny\n"
+            "       It is often useful to restart cf-serverd in verbose mode (cf-serverd -v) on $(sys.policy_hub) to diagnose connection issues.\n"
+            "       When updating masterfiles, wait (usually 5 minutes) for files to propagate to inputs on $(sys.policy_hub) before retrying.\"\n"
             "      handle => \"cfe_internal_bootstrap_update_reports_did_not_get_policy\";\n"
             "  server_started::\n"
-            "   \" -> Started the server\"\n"
+            "   \"Started the server\"\n"
             "      handle => \"cfe_internal_bootstrap_update_reports_started_serverd\";\n"
             "  am_policy_hub.!server_started.!have_promises_cf::\n"
-            "   \" !! Failed to start the server\"\n"
+            "   \"Failed to start the server\"\n"
             "      handle => \"cfe_internal_bootstrap_update_reports_failed_to_start_serverd\";\n"
             "  executor_started::\n"
-            "   \" -> Started the scheduler\"\n"
+            "   \"Started the scheduler\"\n"
             "      handle => \"cfe_internal_bootstrap_update_reports_started_execd\";\n"
             "  !executor_started.!have_promises_cf::\n"
-            "   \" !! Did not start the scheduler\"\n"
+            "   \"Did not start the scheduler\"\n"
             "      handle => \"cfe_internal_bootstrap_update_reports_failed_to_start_execd\";\n"
             "  !executor_started.have_promises_cf::\n"
-            "   \" -> You are running a hard-coded failsafe. Please use the following command instead.\n"
+            "   \"You are running a hard-coded failsafe. Please use the following command instead.\n"
             "    - 3.0.0: $(sys.cf_agent) -f $(sys.workdir)/inputs/failsafe/failsafe.cf\n"
             "    - 3.0.1: $(sys.cf_agent) -f $(sys.workdir)/inputs/update.cf\"\n"
             "      handle => \"cfe_internal_bootstrap_update_reports_run_another_failsafe_instead\";\n"
@@ -445,8 +464,20 @@ void CreateFailSafe(char *name)
 #endif /* !__MINGW32__ */
     fclose(fout);
 
-    if (chmod(name, S_IRUSR | S_IWUSR) == -1)
+    if (chmod(filename, S_IRUSR | S_IWUSR) == -1)
     {
-        CfOut(OUTPUT_LEVEL_ERROR, "chmod", "!! Failed setting permissions on bootstrap policy (%s)", name);
+        Log(LOG_LEVEL_ERR, "Failed setting permissions on generated failsafe file '%s'", filename);
+        return false;
     }
+
+    return true;
+}
+
+bool WriteBuiltinFailsafePolicy(const char *workdir)
+{
+    char failsafe_path[CF_BUFSIZE];
+    snprintf(failsafe_path, CF_BUFSIZE - 1, "%s/inputs/failsafe.cf", workdir);
+    MapName(failsafe_path);
+
+    return WriteBuiltinFailsafePolicyToPath(failsafe_path);
 }

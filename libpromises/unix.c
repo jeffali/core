@@ -1,7 +1,7 @@
 /*
-   Copyright (C) Cfengine AS
+   Copyright (C) CFEngine AS
 
-   This file is part of Cfengine 3 - written and maintained by Cfengine AS.
+   This file is part of CFEngine 3 - written and maintained by CFEngine AS.
 
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
@@ -17,7 +17,7 @@
   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
 
   To the extent this program is licensed as part of the Enterprise
-  versions of Cfengine, the applicable Commerical Open Source License
+  versions of CFEngine, the applicable Commerical Open Source License
   (COSL) may apply to this file if you as a licensee so wish it. See
   included file COSL.txt.
 */
@@ -31,7 +31,6 @@
 #include "item_lib.h"
 #include "conversion.h"
 #include "matching.h"
-#include "logging_old.h"
 #include "communication.h"
 #include "pipes.h"
 #include "exec_tools.h"
@@ -93,7 +92,8 @@ void ProcessSignalTerminate(pid_t pid)
 
     if(kill(pid, SIGINT) == -1)
     {
-        CfOut(OUTPUT_LEVEL_ERROR, "kill", "!! Could not send SIGINT to pid %" PRIdMAX , (intmax_t)pid);
+        Log(LOG_LEVEL_ERR, "Could not send SIGINT to pid '%" PRIdMAX "'. (kill: %s)",
+            (intmax_t)pid, GetErrorStr());
     }
 
     sleep(1);
@@ -101,7 +101,8 @@ void ProcessSignalTerminate(pid_t pid)
 
     if(kill(pid, SIGTERM) == -1)
     {
-        CfOut(OUTPUT_LEVEL_ERROR, "kill", "!! Could not send SIGTERM to pid %" PRIdMAX , (intmax_t)pid);
+        Log(LOG_LEVEL_ERR, "Could not send SIGTERM to pid '%" PRIdMAX "'. (kill: %s)",
+            (intmax_t)pid, GetErrorStr());
     }
 
     sleep(5);
@@ -109,7 +110,8 @@ void ProcessSignalTerminate(pid_t pid)
 
     if(kill(pid, SIGKILL) == -1)
     {
-        CfOut(OUTPUT_LEVEL_ERROR, "kill", "!! Could not send SIGKILL to pid %" PRIdMAX , (intmax_t)pid);
+        Log(LOG_LEVEL_ERR, "Could not send SIGKILL to pid '%" PRIdMAX "'. (kill: %s)",
+            (intmax_t)pid, GetErrorStr());
     }
 
     sleep(1);
@@ -131,7 +133,7 @@ static bool IsProcessRunning(pid_t pid)
         return false;
     }
 
-    CfOut(OUTPUT_LEVEL_ERROR, "kill", "!! Failed checking for process existence");
+    Log(LOG_LEVEL_ERR, "Failed checking for process existence. (kill: %s)", GetErrorStr());
 
     return false;
 }
@@ -147,7 +149,7 @@ int GetCurrentUserName(char *userName, int userNameLen)
 
     if (user_ptr == NULL)
     {
-        CfOut(OUTPUT_LEVEL_ERROR, "getpwuid", "Could not get user name of current process, using \"UNKNOWN\"");
+        Log(LOG_LEVEL_ERR, "Could not get user name of current process, using 'UNKNOWN'. (getpwuid: %s)", GetErrorStr());
         strncpy(userName, "UNKNOWN", userNameLen - 1);
         return false;
     }
@@ -166,14 +168,14 @@ int IsExecutable(const char *file)
 
     if (stat(file, &sb) == -1)
     {
-        CfOut(OUTPUT_LEVEL_ERROR, "", "Proposed executable file \"%s\" doesn't exist", file);
+        Log(LOG_LEVEL_ERR, "Proposed executable file \"%s\" doesn't exist", file);
         return false;
     }
 
     if (sb.st_mode & 02)
     {
-        CfOut(OUTPUT_LEVEL_ERROR, "", " !! SECURITY ALERT: promised executable \"%s\" is world writable! ", file);
-        CfOut(OUTPUT_LEVEL_ERROR, "", " !! SECURITY ALERT: cfengine will not execute this - requires human inspection");
+        Log(LOG_LEVEL_ERR, "SECURITY ALERT: promised executable \"%s\" is world writable! ", file);
+        Log(LOG_LEVEL_ERR, "SECURITY ALERT: cfengine will not execute this - requires human inspection");
         return false;
     }
 
@@ -225,7 +227,7 @@ bool ShellCommandReturnsZero(const char *command, bool useshell)
 
     if ((pid = fork()) < 0)
     {
-        CfOut(OUTPUT_LEVEL_ERROR, "", "Failed to fork new process: %s", command);
+        Log(LOG_LEVEL_ERR, "Failed to fork new process: %s", command);
         return false;
     }
     else if (pid == 0)          /* child */
@@ -236,7 +238,7 @@ bool ShellCommandReturnsZero(const char *command, bool useshell)
         {
             if (execl(SHELL_PATH, "sh", "-c", command, NULL) == -1)
             {
-                CfOut(OUTPUT_LEVEL_ERROR, "execl", "Command %s failed", command);
+                Log(LOG_LEVEL_ERR, "Command '%s' failed. (execl: %s)", command, GetErrorStr());
                 exit(1);
             }
         }
@@ -246,7 +248,7 @@ bool ShellCommandReturnsZero(const char *command, bool useshell)
 
             if (execv(argv[0], argv) == -1)
             {
-                CfOut(OUTPUT_LEVEL_ERROR, "execv", "Command %s failed", argv[0]);
+                Log(LOG_LEVEL_ERR, "Command '%s' failed. (execv: %s)", argv[0], GetErrorStr());
                 exit(1);
             }
         }
@@ -302,7 +304,7 @@ static bool IgnoreJailInterface(
     {
         if (fbsd_jia.s_addr == inaddr->sin_addr.s_addr)
         {
-            CfOut(OUTPUT_LEVEL_VERBOSE, "", "Interface %d belongs to a FreeBSD jail %s\n", ifaceidx, inet_ntoa(fbsd_jia));
+            Log(LOG_LEVEL_VERBOSE, "Interface %d belongs to a FreeBSD jail %s", ifaceidx, inet_ntoa(fbsd_jia));
             return true;
         }
     }
@@ -320,11 +322,11 @@ static void GetMacAddress(EvalContext *ctx, AgentType ag, int fd, struct ifreq *
 
     if (ag != AGENT_TYPE_GENDOC)
     {
-        snprintf(name, CF_MAXVARSIZE, "hardware_mac[%s]", ifp->ifr_name);
+        snprintf(name, sizeof(name), "hardware_mac[%s]", ifp->ifr_name);
     }
     else
     {
-        snprintf(name, CF_MAXVARSIZE, "hardware_mac[interface_name]");
+        snprintf(name, sizeof(name), "hardware_mac[interface_name]");
     }
 
     // mac address on a loopback interface doesn't make sense
@@ -338,11 +340,11 @@ static void GetMacAddress(EvalContext *ctx, AgentType ag, int fd, struct ifreq *
 
     if ((ioctl(fd, SIOCGIFHWADDR, ifr) == -1))
     {
-        CfOut(OUTPUT_LEVEL_ERROR, "ioctl", "Couldn't get mac address for %s interface\n", ifr->ifr_name);
+        Log(LOG_LEVEL_ERR, "Couldn't get mac address for '%s' interface. (ioctl: %s)", ifr->ifr_name, GetErrorStr());
         return;
     }
       
-    snprintf(hw_mac, CF_MAXVARSIZE - 1, "%.2x:%.2x:%.2x:%.2x:%.2x:%.2x",
+    snprintf(hw_mac, sizeof(hw_mac), "%.2x:%.2x:%.2x:%.2x:%.2x:%.2x",
              (unsigned char) ifr->ifr_hwaddr.sa_data[0],
              (unsigned char) ifr->ifr_hwaddr.sa_data[1],
              (unsigned char) ifr->ifr_hwaddr.sa_data[2],
@@ -354,7 +356,7 @@ static void GetMacAddress(EvalContext *ctx, AgentType ag, int fd, struct ifreq *
     RlistAppend(hardware, hw_mac, RVAL_TYPE_SCALAR);
     RlistAppend(interfaces, ifp->ifr_name, RVAL_TYPE_SCALAR);
 
-    snprintf(name, CF_MAXVARSIZE, "mac_%s", CanonifyName(hw_mac));
+    snprintf(name, sizeof(name), "mac_%s", CanonifyName(hw_mac));
     EvalContextHeapAddHard(ctx, name);
 
 # elif defined(HAVE_GETIFADDRS)
@@ -365,7 +367,7 @@ static void GetMacAddress(EvalContext *ctx, AgentType ag, int fd, struct ifreq *
 
     if (getifaddrs(&ifaddr) == -1)
     {
-        CfOut(OUTPUT_LEVEL_ERROR, "getifaddrs", "!! Could not get interface %s addresses\n", 
+        Log(LOG_LEVEL_ERR, "getifaddrs", "!! Could not get interface %s addresses",
           ifp->ifr_name);
 
         ScopeNewSpecialScalar(ctx, "sys", name, "mac_unknown", DATA_TYPE_STRING);
@@ -381,7 +383,7 @@ static void GetMacAddress(EvalContext *ctx, AgentType ag, int fd, struct ifreq *
                 sdl = (struct sockaddr_dl *)ifa->ifa_addr;
                 m = (char *) LLADDR(sdl);
                 
-                snprintf(hw_mac, CF_MAXVARSIZE - 1, "%.2x:%.2x:%.2x:%.2x:%.2x:%.2x",
+                snprintf(hw_mac, sizeof(hw_mac), "%.2x:%.2x:%.2x:%.2x:%.2x:%.2x",
                     (unsigned char) m[0],
                     (unsigned char) m[1],
                     (unsigned char) m[2],
@@ -393,7 +395,7 @@ static void GetMacAddress(EvalContext *ctx, AgentType ag, int fd, struct ifreq *
                 RlistAppend(hardware, hw_mac, RVAL_TYPE_SCALAR);
                 RlistAppend(interfaces, ifa->ifa_name, RVAL_TYPE_SCALAR);
 
-                snprintf(name, CF_MAXVARSIZE, "mac_%s", CanonifyName(hw_mac));
+                snprintf(name, sizeof(name), "mac_%s", CanonifyName(hw_mac));
                 EvalContextHeapAddHard(ctx, name);
             }
         }
@@ -417,11 +419,11 @@ void GetInterfaceFlags(EvalContext *ctx, AgentType ag, struct ifreq *ifr, Rlist 
 
     if (ag != AGENT_TYPE_GENDOC)
     {
-        snprintf(name, CF_MAXVARSIZE, "interface_flags[%s]", ifr->ifr_name);
+        snprintf(name, sizeof(name), "interface_flags[%s]", ifr->ifr_name);
     }
     else
     {
-        snprintf(name, CF_MAXVARSIZE, "interface_flags[interface_name]");
+        snprintf(name, sizeof(name), "interface_flags[interface_name]");
     }
 
     if (ifr->ifr_flags & IFF_UP) strcat(buffer, " up");
@@ -465,8 +467,6 @@ void GetInterfacesInfo(EvalContext *ctx, AgentType ag)
     char last_name[CF_BUFSIZE];
     Rlist *interfaces = NULL, *hardware = NULL, *flags = NULL, *ips = NULL;
 
-    CfDebug("GetInterfacesInfo()\n");
-
     // Long-running processes may call this many times
     DeleteItemList(IPADDRESSES);
     IPADDRESSES = NULL;
@@ -479,7 +479,7 @@ void GetInterfacesInfo(EvalContext *ctx, AgentType ag)
 
     if ((fd = socket(AF_INET, SOCK_DGRAM, 0)) == -1)
     {
-        CfOut(OUTPUT_LEVEL_ERROR, "socket", "Couldn't open socket");
+        Log(LOG_LEVEL_ERR, "Couldn't open socket. (socket: %s)", GetErrorStr());
         exit(1);
     }
 
@@ -492,7 +492,7 @@ void GetInterfacesInfo(EvalContext *ctx, AgentType ag)
     if ((ioctl(fd, OSIOCGIFCONF, &list) == -1) || (list.ifc_len < (sizeof(struct ifreq))))
 # endif
     {
-        CfOut(OUTPUT_LEVEL_ERROR, "ioctl", "Couldn't get interfaces - old kernel? Try setting CF_IFREQ to 1024");
+        Log(LOG_LEVEL_ERR, "Couldn't get interfaces - old kernel? Try setting CF_IFREQ to 1024. (ioctl: %s)", GetErrorStr());
         exit(1);
     }
 
@@ -522,13 +522,13 @@ void GetInterfacesInfo(EvalContext *ctx, AgentType ag)
         if (strstr(ifp->ifr_name, ":"))
         {
 #ifdef __linux__
-            CfOut(OUTPUT_LEVEL_VERBOSE, "", "Skipping apparent virtual interface %d: %s\n", j + 1, ifp->ifr_name);
+            Log(LOG_LEVEL_VERBOSE, "Skipping apparent virtual interface %d: %s", j + 1, ifp->ifr_name);
             continue;
 #endif
         }
         else
         {
-            CfOut(OUTPUT_LEVEL_VERBOSE, "", "Interface %d: %s\n", j + 1, ifp->ifr_name);
+            Log(LOG_LEVEL_VERBOSE, "Interface %d: %s", j + 1, ifp->ifr_name);
         }
 
 
@@ -547,7 +547,7 @@ void GetInterfacesInfo(EvalContext *ctx, AgentType ag)
             }
         }
 
-        snprintf(workbuf, CF_BUFSIZE, "net_iface_%s", CanonifyName(ifp->ifr_name));
+        snprintf(workbuf, sizeof(workbuf), "net_iface_%s", CanonifyName(ifp->ifr_name));
 
         EvalContextHeapAddHard(ctx, workbuf);
 
@@ -557,7 +557,7 @@ void GetInterfacesInfo(EvalContext *ctx, AgentType ag)
 
             if (ioctl(fd, SIOCGIFFLAGS, &ifr) == -1)
             {
-                CfOut(OUTPUT_LEVEL_ERROR, "ioctl", "No such network device");
+                Log(LOG_LEVEL_ERR, "No such network device. (ioctl: %s)", GetErrorStr());
                 continue;
             }
             else
@@ -571,30 +571,30 @@ void GetInterfacesInfo(EvalContext *ctx, AgentType ag)
 
                 if (IgnoreJailInterface(j + 1, sin))
                 {
-                    CfOut(OUTPUT_LEVEL_VERBOSE, "", "Ignoring interface %d", j + 1);
+                    Log(LOG_LEVEL_VERBOSE, "Ignoring interface %d", j + 1);
                     continue;
                 }
 
-                CfDebug("Adding hostip %s..\n", inet_ntoa(sin->sin_addr));
+                Log(LOG_LEVEL_DEBUG, "Adding hostip '%s'", inet_ntoa(sin->sin_addr));
                 EvalContextHeapAddHard(ctx, inet_ntoa(sin->sin_addr));
 
                 if ((hp =
                      gethostbyaddr((char *) &(sin->sin_addr.s_addr), sizeof(sin->sin_addr.s_addr), AF_INET)) == NULL)
                 {
-                    CfDebug("No hostinformation for %s found\n", inet_ntoa(sin->sin_addr));
+                    Log(LOG_LEVEL_DEBUG, "No hostinformation for '%s' found", inet_ntoa(sin->sin_addr));
                 }
                 else
                 {
                     if (hp->h_name != NULL)
                     {
-                        CfDebug("Adding hostname %s..\n", hp->h_name);
+                        Log(LOG_LEVEL_DEBUG, "Adding hostname '%s'", hp->h_name);
                         EvalContextHeapAddHard(ctx, hp->h_name);
 
                         if (hp->h_aliases != NULL)
                         {
                             for (i = 0; hp->h_aliases[i] != NULL; i++)
                             {
-                                CfOut(OUTPUT_LEVEL_VERBOSE, "", "Adding alias %s..\n", hp->h_aliases[i]);
+                                Log(LOG_LEVEL_VERBOSE, "Adding alias '%s'", hp->h_aliases[i]);
                                 EvalContextHeapAddHard(ctx, hp->h_aliases[i]);
                             }
                         }
@@ -604,7 +604,7 @@ void GetInterfacesInfo(EvalContext *ctx, AgentType ag)
                 if (strcmp(inet_ntoa(sin->sin_addr), "0.0.0.0") == 0)
                 {
                     // Maybe we need to do something windows specific here?
-                    CfOut(OUTPUT_LEVEL_VERBOSE, "", " !! Cannot discover hardware IP, using DNS value");
+                    Log(LOG_LEVEL_VERBOSE, "Cannot discover hardware IP, using DNS value");
                     strcpy(ip, "ipv4_");
                     strcat(ip, VIPADDRESS);
                     AppendItem(&IPADDRESSES, VIPADDRESS, "");
@@ -627,7 +627,7 @@ void GetInterfacesInfo(EvalContext *ctx, AgentType ag)
                         if (*sp == '.')
                         {
                             *sp = '\0';
-                            snprintf(name, CF_MAXVARSIZE - 1, "ipv4_%d[%s]", i--, CanonifyName(VIPADDRESS));
+                            snprintf(name, sizeof(name), "ipv4_%d[%s]", i--, CanonifyName(VIPADDRESS));
                             ScopeNewSpecialScalar(ctx, "sys", name, ip, DATA_TYPE_STRING);
                         }
                     }
@@ -664,11 +664,11 @@ void GetInterfacesInfo(EvalContext *ctx, AgentType ag)
 
                 if (ag != AGENT_TYPE_GENDOC)
                 {
-                    snprintf(name, CF_MAXVARSIZE - 1, "ipv4[%s]", CanonifyName(ifp->ifr_name));
+                    snprintf(name, sizeof(name), "ipv4[%s]", CanonifyName(ifp->ifr_name));
                 }
                 else
                 {
-                    snprintf(name, CF_MAXVARSIZE - 1, "ipv4[interface_name]");
+                    snprintf(name, sizeof(name), "ipv4[interface_name]");
                 }
 
                 ScopeNewSpecialScalar(ctx, "sys", name, ip, DATA_TYPE_STRING);
@@ -683,11 +683,11 @@ void GetInterfacesInfo(EvalContext *ctx, AgentType ag)
 
                         if (ag != AGENT_TYPE_GENDOC)
                         {
-                            snprintf(name, CF_MAXVARSIZE - 1, "ipv4_%d[%s]", i--, CanonifyName(ifp->ifr_name));
+                            snprintf(name, sizeof(name), "ipv4_%d[%s]", i--, CanonifyName(ifp->ifr_name));
                         }
                         else
                         {
-                            snprintf(name, CF_MAXVARSIZE - 1, "ipv4_%d[interface_name]", i--);
+                            snprintf(name, sizeof(name), "ipv4_%d[interface_name]", i--);
                         }
 
                         ScopeNewSpecialScalar(ctx, "sys", name, ip, DATA_TYPE_STRING);
@@ -729,7 +729,7 @@ static void FindV6InterfacesInfo(EvalContext *ctx)
    book shows the suggestion which has not been implemented...
 */
 
-    CfOut(OUTPUT_LEVEL_VERBOSE, "", "Trying to locate my IPv6 address\n");
+    Log(LOG_LEVEL_VERBOSE, "Trying to locate my IPv6 address");
 
 #if defined(__CYGWIN__)
     /* NT cannot do this */
@@ -737,19 +737,19 @@ static void FindV6InterfacesInfo(EvalContext *ctx)
 #elif defined(__hpux)
     if ((pp = cf_popen("/usr/sbin/ifconfig -a", "r", true)) == NULL)
     {
-        CfOut(OUTPUT_LEVEL_VERBOSE, "", "Could not find interface info\n");
+        Log(LOG_LEVEL_VERBOSE, "Could not find interface info");
         return;
     }
 #elif defined(_AIX)
     if ((pp = cf_popen("/etc/ifconfig -a", "r", true)) == NULL)
     {
-        CfOut(OUTPUT_LEVEL_VERBOSE, "", "Could not find interface info\n");
+        Log(LOG_LEVEL_VERBOSE, "Could not find interface info");
         return;
     }
 #else
     if ((pp = cf_popen("/sbin/ifconfig -a", "r", true)) == NULL)
     {
-        CfOut(OUTPUT_LEVEL_VERBOSE, "", "Could not find interface info\n");
+        Log(LOG_LEVEL_VERBOSE, "Could not find interface info");
         return;
     }
 #endif
@@ -758,7 +758,7 @@ static void FindV6InterfacesInfo(EvalContext *ctx)
 
     for(;;)
     {
-        if (fgets(buffer, CF_BUFSIZE, pp) == NULL)
+        if (fgets(buffer, sizeof(buffer), pp) == NULL)
         {
             if (ferror(pp))
             {
@@ -790,7 +790,7 @@ static void FindV6InterfacesInfo(EvalContext *ctx)
 
                 if ((IsIPV6Address(ip->name)) && ((strcmp(ip->name, "::1") != 0)))
                 {
-                    CfOut(OUTPUT_LEVEL_VERBOSE, "", "Found IPv6 address %s\n", ip->name);
+                    Log(LOG_LEVEL_VERBOSE, "Found IPv6 address %s", ip->name);
                     AppendItem(&IPADDRESSES, ip->name, "");
                     EvalContextHeapAddHard(ctx, ip->name);
                 }
@@ -814,7 +814,7 @@ static void InitIgnoreInterfaces()
 
     if ((fin = fopen(filename,"r")) == NULL)
     {
-        CfOut(OUTPUT_LEVEL_VERBOSE, "", " -> No interface exception file %s",filename);
+        Log(LOG_LEVEL_VERBOSE, "No interface exception file %s",filename);
         return;
     }
     
@@ -842,7 +842,7 @@ static bool IgnoreInterface(char *name)
     {
         if (FullTextMatch(rp->item,name))
         {
-            CfOut(OUTPUT_LEVEL_VERBOSE, "", " -> Ignoring interface \"%s\" because it matches %s",name,CF_IGNORE_INTERFACES);
+            Log(LOG_LEVEL_VERBOSE, "Ignoring interface \"%s\" because it matches %s",name,CF_IGNORE_INTERFACES);
             return true;
         }    
     }

@@ -1,7 +1,7 @@
 /*
-   Copyright (C) Cfengine AS
+   Copyright (C) CFEngine AS
 
-   This file is part of Cfengine 3 - written and maintained by Cfengine AS.
+   This file is part of CFEngine 3 - written and maintained by CFEngine AS.
 
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
@@ -17,7 +17,7 @@
   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
 
   To the extent this program is licensed as part of the Enterprise
-  versions of Cfengine, the applicable Commerical Open Source License
+  versions of CFEngine, the applicable Commerical Open Source License
   (COSL) may apply to this file if you as a licensee so wish it. See
   included file COSL.txt.
 */
@@ -256,11 +256,6 @@ int AuthenticateAgent(AgentConnection *conn, bool trust_key)
     BN_free(nonce_challenge);
     free(out);
 
-    if (DEBUG)
-    {
-        RSA_print_fp(stdout, PUBKEY, 0);
-    }
-
 /*Send the public key - we don't know if server has it */
 /* proposition C2 */
 
@@ -315,12 +310,12 @@ int AuthenticateAgent(AgentConnection *conn, bool trust_key)
         {
             if (trust_key)
             {
-                Log(LOG_LEVEL_VERBOSE, " -> Trusting server identity, promise to accept key from %s=%s", conn->this_server,
+                Log(LOG_LEVEL_VERBOSE, "Trusting server identity, promise to accept key from %s=%s", conn->this_server,
                       conn->remoteip);
             }
             else
             {
-                Log(LOG_LEVEL_ERR, " !! Not authorized to trust the server=%s's public key (trustkey=false)",
+                Log(LOG_LEVEL_ERR, "Not authorized to trust the server=%s's public key (trustkey=false)",
                       conn->this_server);
                 RSA_free(server_pubkey);
                 return false;
@@ -386,7 +381,7 @@ int AuthenticateAgent(AgentConnection *conn, bool trust_key)
     {
         RSA *newkey = RSA_new();
 
-        Log(LOG_LEVEL_VERBOSE, " -> Collecting public key from server!");
+        Log(LOG_LEVEL_VERBOSE, "Collecting public key from server!");
 
         /* proposition S4 - conditional */
         if ((len = ReceiveTransaction(conn->sd, in, NULL)) <= 0)
@@ -459,9 +454,9 @@ int AuthenticateAgent(AgentConnection *conn, bool trust_key)
     {
         char buffer[EVP_MAX_MD_SIZE * 4];
         HashPubKey(server_pubkey, conn->digest, CF_DEFAULT_DIGEST);
-        Log(LOG_LEVEL_VERBOSE, " -> Public key identity of host \"%s\" is \"%s\"", conn->remoteip,
+        Log(LOG_LEVEL_VERBOSE, "Public key identity of host \"%s\" is \"%s\"", conn->remoteip,
               HashPrintSafe(CF_DEFAULT_DIGEST, conn->digest, buffer));
-        SavePublicKey(conn->username, conn->remoteip, buffer, server_pubkey);       // FIXME: username is local
+        SavePublicKey(conn->username, buffer, server_pubkey);       // FIXME: username is local
         LastSaw(conn->remoteip, conn->digest, LAST_SEEN_ROLE_CONNECT);
     }
 

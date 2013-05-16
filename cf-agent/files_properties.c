@@ -1,7 +1,7 @@
 /*
-   Copyright (C) Cfengine AS
+   Copyright (C) CFEngine AS
 
-   This file is part of Cfengine 3 - written and maintained by Cfengine AS.
+   This file is part of CFEngine 3 - written and maintained by CFEngine AS.
 
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
@@ -17,7 +17,7 @@
   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
 
   To the extent this program is licensed as part of the Enterprise
-  versions of Cfengine, the applicable Commerical Open Source License
+  versions of CFEngine, the applicable Commerical Open Source License
   (COSL) may apply to this file if you as a licensee so wish it. See
   included file COSL.txt.
 */
@@ -27,7 +27,6 @@
 #include "files_names.h"
 #include "files_interfaces.h"
 #include "item_lib.h"
-#include "logging_old.h"
 
 static Item *SUSPICIOUSLIST = NULL;
 
@@ -52,7 +51,7 @@ static bool ConsiderFile(const char *nodename, const char *path, struct stat *st
 
     if (strlen(nodename) < 1)
     {
-        CfOut(OUTPUT_LEVEL_ERROR, "", "Empty (null) filename detected in %s\n", path);
+        Log(LOG_LEVEL_ERR, "Empty (null) filename detected in %s", path);
         return true;
     }
 
@@ -60,14 +59,14 @@ static bool ConsiderFile(const char *nodename, const char *path, struct stat *st
     {
         if (stat && (S_ISREG(stat->st_mode) || S_ISLNK(stat->st_mode)))
         {
-            CfOut(OUTPUT_LEVEL_ERROR, "", "Suspicious file %s found in %s\n", nodename, path);
+            Log(LOG_LEVEL_ERR, "Suspicious file %s found in %s", nodename, path);
                 return false;
         }
     }
 
     if (strcmp(nodename, "...") == 0)
     {
-        CfOut(OUTPUT_LEVEL_VERBOSE, "", "Possible DFS/FS cell node detected in %s...\n", path);
+        Log(LOG_LEVEL_VERBOSE, "Possible DFS/FS cell node detected in %s...", path);
         return true;
     }
 
@@ -75,7 +74,7 @@ static bool ConsiderFile(const char *nodename, const char *path, struct stat *st
     {
         if (strcmp(nodename, SKIPFILES[i]) == 0)
         {
-            CfDebug("Filename %s/%s is classified as ignorable\n", path, nodename);
+            Log(LOG_LEVEL_DEBUG, "Filename '%s/%s' is classified as ignorable", path, nodename);
             return false;
         }
     }
@@ -105,28 +104,27 @@ static bool ConsiderFile(const char *nodename, const char *path, struct stat *st
 
     if (stat == NULL)
     {
-        CfOut(OUTPUT_LEVEL_VERBOSE, "cf_lstat", "Couldn't stat %s/%s", path, nodename);
+        Log(LOG_LEVEL_VERBOSE, "Couldn't stat '%s/%s'. (cf_lstat: %s)", path, nodename, GetErrorStr());
         return true;
     }
 
-    if ((stat->st_size == 0) && (!(VERBOSE || INFORM)))   /* No sense in warning about empty files */
+    if ((stat->st_size == 0) && LogGetGlobalLevel() < LOG_LEVEL_INFO)   /* No sense in warning about empty files */
     {
         return false;
     }
 
-    CfOut(OUTPUT_LEVEL_ERROR, "", "Suspicious looking file object \"%s\" masquerading as hidden file in %s\n", nodename, path);
-    CfDebug("Filename looks suspicious\n");
+    Log(LOG_LEVEL_ERR, "Suspicious looking file object '%s' masquerading as hidden file in '%s'", nodename, path);
 
     if (S_ISLNK(stat->st_mode))
     {
-        CfOut(OUTPUT_LEVEL_INFORM, "", "   %s is a symbolic link\n", nodename);
+        Log(LOG_LEVEL_INFO, "   %s is a symbolic link", nodename);
     }
     else if (S_ISDIR(stat->st_mode))
     {
-        CfOut(OUTPUT_LEVEL_INFORM, "", "   %s is a directory\n", nodename);
+        Log(LOG_LEVEL_INFO, "   %s is a directory", nodename);
     }
 
-    CfOut(OUTPUT_LEVEL_VERBOSE, "", "[%s] has size %ld and full mode %o\n", nodename, (unsigned long) (stat->st_size),
+    Log(LOG_LEVEL_VERBOSE, "[%s] has size %ld and full mode %o", nodename, (unsigned long) (stat->st_size),
           (unsigned int) (stat->st_mode));
     return true;
 }
@@ -148,7 +146,7 @@ bool ConsiderAbstractFile(const char *filename, const char *directory, FileCopy 
 {
     struct stat stat;
     char buf[CF_BUFSIZE];
-    snprintf(buf, sizeof(buf), "%s/%s", filename, directory);
+    snprintf(buf, sizeof(buf), "%s/%s", directory, filename);
     MapName(buf);
 
     if (cf_lstat(buf, &stat, fc, conn) == -1)

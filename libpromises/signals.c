@@ -1,7 +1,7 @@
 /*
-   Copyright (C) Cfengine AS
+   Copyright (C) CFEngine AS
 
-   This file is part of Cfengine 3 - written and maintained by Cfengine AS.
+   This file is part of CFEngine 3 - written and maintained by CFEngine AS.
 
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
@@ -17,14 +17,12 @@
   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
 
   To the extent this program is licensed as part of the Enterprise
-  versions of Cfengine, the applicable Commerical Open Source License
+  versions of CFEngine, the applicable Commerical Open Source License
   (COSL) may apply to this file if you as a licensee so wish it. See
   included file COSL.txt.
 */
 
 #include "signals.h"
-
-#include "logging_old.h"
 
 static const char *SIGNALS[] =
 {
@@ -58,10 +56,10 @@ bool IsPendingTermination(void)
 
 void HandleSignalsForAgent(int signum)
 {
-    CfOut(OUTPUT_LEVEL_ERROR, "", "Received signal %d (%s) while doing [%s]", signum, SIGNALS[signum] ? SIGNALS[signum] : "NOSIG",
+    Log(LOG_LEVEL_ERR, "Received signal %d (%s) while doing [%s]", signum, SIGNALS[signum] ? SIGNALS[signum] : "NOSIG",
           CFLOCK);
-    CfOut(OUTPUT_LEVEL_ERROR, "", "Logical start time %s ", ctime(&CFSTARTTIME));
-    CfOut(OUTPUT_LEVEL_ERROR, "", "This sub-task started really at %s\n", ctime(&CFINITSTARTTIME));
+    Log(LOG_LEVEL_ERR, "Logical start time %s ", ctime(&CFSTARTTIME));
+    Log(LOG_LEVEL_ERR, "This sub-task started really at %s", ctime(&CFINITSTARTTIME));
     fflush(stdout);
 
     if ((signum == SIGTERM) || (signum == SIGINT))
@@ -70,11 +68,11 @@ void HandleSignalsForAgent(int signum)
     }
     else if (signum == SIGUSR1)
     {
-        DEBUG = true;
+        LogSetGlobalLevel(LOG_LEVEL_DEBUG);
     }
     else if (signum == SIGUSR2)
     {
-        DEBUG = false;
+        LogSetGlobalLevel(LOG_LEVEL_NOTICE);
     }
 
 /* Reset the signal handler */
@@ -85,10 +83,10 @@ void HandleSignalsForAgent(int signum)
 
 void HandleSignalsForDaemon(int signum)
 {
-    CfOut(OUTPUT_LEVEL_ERROR, "", "Received signal %d (%s) while doing [%s]", signum, SIGNALS[signum] ? SIGNALS[signum] : "NOSIG",
+    Log(LOG_LEVEL_ERR, "Received signal %d (%s) while doing [%s]", signum, SIGNALS[signum] ? SIGNALS[signum] : "NOSIG",
           CFLOCK);
-    CfOut(OUTPUT_LEVEL_ERROR, "", "Logical start time %s ", ctime(&CFSTARTTIME));
-    CfOut(OUTPUT_LEVEL_ERROR, "", "This sub-task started really at %s\n", ctime(&CFINITSTARTTIME));
+    Log(LOG_LEVEL_ERR, "Logical start time %s ", ctime(&CFSTARTTIME));
+    Log(LOG_LEVEL_ERR, "This sub-task started really at %s", ctime(&CFINITSTARTTIME));
     fflush(stdout);
 
     if ((signum == SIGTERM) || (signum == SIGINT) || (signum == SIGHUP) || (signum == SIGSEGV) || (signum == SIGKILL)
@@ -98,11 +96,11 @@ void HandleSignalsForDaemon(int signum)
     }
     else if (signum == SIGUSR1)
     {
-        DEBUG = true;
+        LogSetGlobalLevel(LOG_LEVEL_DEBUG);
     }
     else if (signum == SIGUSR2)
     {
-        DEBUG = false;
+        LogSetGlobalLevel(LOG_LEVEL_NOTICE);
     }
 
 /* Reset the signal handler */

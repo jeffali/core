@@ -19,6 +19,7 @@ libutils_la_SOURCES = \
 	list.c list.h list_p.h \
 	logging.c logging.h \
 	buffer.c buffer.h \
+    ip_address.c ip_address.h \
 	map.c map.h map_common.h \
 	array_map.c array_map_priv.h \
 	hash_map.c hash_map_priv.h \
@@ -26,7 +27,8 @@ libutils_la_SOURCES = \
 	writer.c writer.h \
 	csv_writer.c csv_writer.h \
 	xml_writer.c xml_writer.h \
-	file_lib.c file_lib.h
+	file_lib.c file_lib.h \
+	man.c man.h
 
 CLEANFILES = *.gcno *.gcda
 

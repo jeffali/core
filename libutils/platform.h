@@ -1,7 +1,7 @@
 /*
-   Copyright (C) Cfengine AS
+   Copyright (C) CFEngine AS
 
-   This file is part of Cfengine 3 - written and maintained by Cfengine AS.
+   This file is part of CFEngine 3 - written and maintained by CFEngine AS.
 
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
@@ -17,7 +17,7 @@
   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
 
   To the extent this program is licensed as part of the Enterprise
-  versions of Cfengine, the applicable Commerical Open Source License
+  versions of CFEngine, the applicable Commerical Open Source License
   (COSL) may apply to this file if you as a licensee so wish it. See
   included file COSL.txt.
 */
@@ -309,6 +309,8 @@ char *strsep(char **stringp, const char *delim);
 # include <sys/ioctl.h>
 # include <net/if.h>
 # include <netinet/in.h>
+# include <netinet/in_systm.h>
+# include <netinet/ip.h>
 # include <netinet/tcp.h>
 # include <arpa/inet.h>
 # include <netdb.h>
@@ -323,9 +325,11 @@ char *strsep(char **stringp, const char *delim);
 # ifdef __GLIBC__
 #  include <net/route.h>
 #  include <netinet/in.h>
+#  include <netinet/ip.h>
 # else
 #  include <linux/route.h>
 #  include <linux/in.h>
+#  include <linux/ip.h>
 # endif
 #endif
 

@@ -1,7 +1,7 @@
 /*
-   Copyright (C) Cfengine AS
+   Copyright (C) CFEngine AS
 
-   This file is part of Cfengine 3 - written and maintained by Cfengine AS.
+   This file is part of CFEngine 3 - written and maintained by CFEngine AS.
 
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
@@ -17,7 +17,7 @@
   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
 
   To the extent this program is licensed as part of the Enterprise
-  versions of Cfengine, the applicable Commerical Open Source License
+  versions of CFEngine, the applicable Commerical Open Source License
   (COSL) may apply to this file if you as a licensee so wish it. See
   included file COSL.txt.
 */
@@ -29,7 +29,6 @@
 #include "files_names.h"
 #include "files_interfaces.h"
 #include "files_lib.h"
-#include "logging_old.h"
 #include "pipes.h"
 
 /* Globals */
@@ -181,8 +180,6 @@ void MonNetworkGatherData(double *cf_this)
     char vbuff[CF_BUFSIZE];
     enum cf_netstat_type { cfn_new, cfn_old } type = cfn_new;
     enum cf_packet_type { cfn_udp4, cfn_udp6, cfn_tcp4, cfn_tcp6} packet = cfn_tcp4;
-
-    CfDebug("GatherSocketData()\n");
 
     for (i = 0; i < ATTR; i++)
     {
@@ -379,13 +376,13 @@ void MonNetworkGatherData(double *cf_this)
         struct stat statbuf;
         time_t now = time(NULL);
 
-        CfDebug("save incoming %s\n", ECGSOCKS[i].name);
+        Log(LOG_LEVEL_DEBUG, "save incoming '%s'", ECGSOCKS[i].name);
         snprintf(vbuff, CF_MAXVARSIZE, "%s/state/cf_incoming.%s", CFWORKDIR, ECGSOCKS[i].name);
         if (stat(vbuff, &statbuf) != -1)
         {
             if ((ByteSizeList(in[i]) < statbuf.st_size) && (now < statbuf.st_mtime + 40 * 60))
             {
-                CfOut(OUTPUT_LEVEL_VERBOSE, "", "New state %s is smaller, retaining old for 40 mins longer\n", ECGSOCKS[i].name);
+                Log(LOG_LEVEL_VERBOSE, "New state '%s' is smaller, retaining old for 40 mins longer", ECGSOCKS[i].name);
                 DeleteItemList(in[i]);
                 continue;
             }
@@ -394,7 +391,7 @@ void MonNetworkGatherData(double *cf_this)
         SetNetworkEntropyClasses(CanonifyName(ECGSOCKS[i].name), "in", in[i]);
         RawSaveItemList(in[i], vbuff);
         DeleteItemList(in[i]);
-        CfDebug("Saved in netstat data in %s\n", vbuff);
+        Log(LOG_LEVEL_DEBUG, "Saved in netstat data in '%s'", vbuff);
     }
 
     for (i = 0; i < ATTR; i++)
@@ -402,14 +399,14 @@ void MonNetworkGatherData(double *cf_this)
         struct stat statbuf;
         time_t now = time(NULL);
 
-        CfDebug("save outgoing %s\n", ECGSOCKS[i].name);
+        Log(LOG_LEVEL_DEBUG, "save outgoing '%s'", ECGSOCKS[i].name);
         snprintf(vbuff, CF_MAXVARSIZE, "%s/state/cf_outgoing.%s", CFWORKDIR, ECGSOCKS[i].name);
 
         if (stat(vbuff, &statbuf) != -1)
         {
             if ((ByteSizeList(out[i]) < statbuf.st_size) && (now < statbuf.st_mtime + 40 * 60))
             {
-                CfOut(OUTPUT_LEVEL_VERBOSE, "", "New state %s is smaller, retaining old for 40 mins longer\n", ECGSOCKS[i].name);
+                Log(LOG_LEVEL_VERBOSE, "New state '%s' is smaller, retaining old for 40 mins longer", ECGSOCKS[i].name);
                 DeleteItemList(out[i]);
                 continue;
             }
@@ -417,7 +414,7 @@ void MonNetworkGatherData(double *cf_this)
 
         SetNetworkEntropyClasses(CanonifyName(ECGSOCKS[i].name), "out", out[i]);
         RawSaveItemList(out[i], vbuff);
-        CfDebug("Saved out netstat data in %s\n", vbuff);
+        Log(LOG_LEVEL_DEBUG, "Saved out netstat data in '%s'", vbuff);
         DeleteItemList(out[i]);
     }
 }

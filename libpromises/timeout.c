@@ -1,7 +1,7 @@
 /*
-   Copyright (C) Cfengine AS
+   Copyright (C) CFEngine AS
 
-   This file is part of Cfengine 3 - written and maintained by Cfengine AS.
+   This file is part of CFEngine 3 - written and maintained by CFEngine AS.
 
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
@@ -17,7 +17,7 @@
   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
 
   To the extent this program is licensed as part of the Enterprise
-  versions of Cfengine, the applicable Commerical Open Source License
+  versions of CFEngine, the applicable Commerical Open Source License
   (COSL) may apply to this file if you as a licensee so wish it. See
   included file COSL.txt.
 */
@@ -25,7 +25,6 @@
 #include "cf3.defs.h"
 
 #include "env_context.h"
-#include "logging_old.h"
 #include "process_lib.h"
 
 /* Prototypes */
@@ -50,12 +49,12 @@ void TimeOut()
 
     if (ALARM_PID != -1)
     {
-        CfOut(OUTPUT_LEVEL_VERBOSE, "", "Time out of process %jd\n", (intmax_t)ALARM_PID);
+        Log(LOG_LEVEL_VERBOSE, "Time out of process %jd", (intmax_t)ALARM_PID);
         GracefulTerminate(ALARM_PID, PROCESS_START_TIME_UNKNOWN);
     }
     else
     {
-        CfOut(OUTPUT_LEVEL_VERBOSE, "", "%s> Time out\n", VPREFIX);
+        Log(LOG_LEVEL_VERBOSE, "%s> Time out", VPREFIX);
     }
 }
 
@@ -68,14 +67,14 @@ void SetReferenceTime(EvalContext *ctx, int setclasses)
 
     if ((tloc = time((time_t *) NULL)) == -1)
     {
-        CfOut(OUTPUT_LEVEL_ERROR, "time", "Couldn't read system clock\n");
+        Log(LOG_LEVEL_ERR, "Couldn't read system clock. (time: %s)", GetErrorStr());
     }
 
     CFSTARTTIME = tloc;
 
     snprintf(vbuff, CF_BUFSIZE, "%s", ctime(&tloc));
 
-    CfOut(OUTPUT_LEVEL_VERBOSE, "", "Reference time set to %s\n", ctime(&tloc));
+    Log(LOG_LEVEL_VERBOSE, "Reference time set to '%s'", ctime(&tloc));
 
     if (setclasses)
     {
@@ -92,12 +91,12 @@ void SetStartTime(void)
 
     if ((tloc = time((time_t *) NULL)) == -1)
     {
-        CfOut(OUTPUT_LEVEL_ERROR, "time", "Couldn't read system clock\n");
+        Log(LOG_LEVEL_ERR, "Couldn't read system clock. (time: %s)", GetErrorStr());
     }
 
     CFINITSTARTTIME = tloc;
 
-    CfDebug("Job start time set to %s\n", ctime(&tloc));
+    Log(LOG_LEVEL_DEBUG, "Job start time set to '%s'", ctime(&tloc));
 }
 
 /*********************************************************************/
@@ -110,7 +109,7 @@ static void RemoveTimeClass(EvalContext *ctx, time_t time)
 
     if (localtime_r(&time, &parsed_time) == NULL)
     {
-        CfOut(OUTPUT_LEVEL_ERROR, "localtime_r", "Unable to parse passed time");
+        Log(LOG_LEVEL_ERR, "Unable to parse passed time. (localtime_r: %s)", GetErrorStr());
         return;
     }
 
@@ -213,13 +212,13 @@ static void AddTimeClass(EvalContext *ctx, time_t time)
 
     if (localtime_r(&time, &parsed_time) == NULL)
     {
-        CfOut(OUTPUT_LEVEL_ERROR, "localtime_r", "Unable to parse passed time");
+        Log(LOG_LEVEL_ERR, "Unable to parse passed time. (localtime_r: %s)", GetErrorStr());
         return;
     }
 
     if (gmtime_r(&time, &gmt_parsed_time) == NULL)
     {
-        CfOut(OUTPUT_LEVEL_ERROR, "gmtime_r", "Unable to parse passed date");
+        Log(LOG_LEVEL_ERR, "Unable to parse passed date. (gmtime_r: %s)", GetErrorStr());
         return;
     }
 

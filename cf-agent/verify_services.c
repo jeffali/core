@@ -1,7 +1,7 @@
 /*
-   Copyright (C) Cfengine AS
+   Copyright (C) CFEngine AS
 
-   This file is part of Cfengine 3 - written and maintained by Cfengine AS.
+   This file is part of CFEngine 3 - written and maintained by CFEngine AS.
 
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
@@ -17,7 +17,7 @@
   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
 
   To the extent this program is licensed as part of the Enterprise
-  versions of Cfengine, the applicable Commerical Open Source License
+  versions of CFEngine, the applicable Commerical Open Source License
   (COSL) may apply to this file if you as a licensee so wish it. See
   included file COSL.txt.
 */
@@ -28,7 +28,6 @@
 #include "promises.h"
 #include "vars.h"
 #include "attributes.h"
-#include "logging_old.h"
 #include "fncall.h"
 #include "locks.h"
 #include "rlist.h"
@@ -75,17 +74,17 @@ static int ServicesSanityChecks(Attributes a, Promise *pp)
     case SERVICE_POLICY_RELOAD:
         if (strcmp(a.service.service_autostart_policy, "none") != 0)
         {
-            CfOut(OUTPUT_LEVEL_ERROR, "",
+            Log(LOG_LEVEL_ERR,
                   "!! Autostart policy of service promiser \"%s\" needs to be \"none\" when service policy is not \"start\", but is \"%s\"",
                   pp->promiser, a.service.service_autostart_policy);
-            PromiseRef(OUTPUT_LEVEL_ERROR, pp);
+            PromiseRef(LOG_LEVEL_ERR, pp);
             return false;
         }
         break;
 
     default:
-        CfOut(OUTPUT_LEVEL_ERROR, "", "!! Invalid service policy for service \"%s\"", pp->promiser);
-        PromiseRef(OUTPUT_LEVEL_ERROR, pp);
+        Log(LOG_LEVEL_ERR, "Invalid service policy for service \"%s\"", pp->promiser);
+        PromiseRef(LOG_LEVEL_ERR, pp);
         return false;
     }
 
@@ -93,16 +92,16 @@ static int ServicesSanityChecks(Attributes a, Promise *pp)
     {
         if (strcmp(pp->promiser, dep->item) == 0)
         {
-            CfOut(OUTPUT_LEVEL_ERROR, "", "!! Service promiser \"%s\" has itself as dependency", pp->promiser);
-            PromiseRef(OUTPUT_LEVEL_ERROR, pp);
+            Log(LOG_LEVEL_ERR, "Service promiser \"%s\" has itself as dependency", pp->promiser);
+            PromiseRef(LOG_LEVEL_ERR, pp);
             return false;
         }
     }
 
     if (a.service.service_type == NULL)
     {
-        CfOut(OUTPUT_LEVEL_ERROR, "", "!! Service type for service \"%s\" is not known", pp->promiser);
-        PromiseRef(OUTPUT_LEVEL_ERROR, pp);
+        Log(LOG_LEVEL_ERR, "Service type for service \"%s\" is not known", pp->promiser);
+        PromiseRef(LOG_LEVEL_ERR, pp);
         return false;
     }
 
@@ -110,9 +109,9 @@ static int ServicesSanityChecks(Attributes a, Promise *pp)
 
     if (strcmp(a.service.service_type, "windows") != 0)
     {
-        CfOut(OUTPUT_LEVEL_ERROR, "", "!! Service type for promiser \"%s\" must be \"windows\" on this system, but is \"%s\"",
+        Log(LOG_LEVEL_ERR, "Service type for promiser \"%s\" must be \"windows\" on this system, but is \"%s\"",
               pp->promiser, a.service.service_type);
-        PromiseRef(OUTPUT_LEVEL_ERROR, pp);
+        PromiseRef(LOG_LEVEL_ERR, pp);
         return false;
     }
 
@@ -256,7 +255,7 @@ static void DoVerifyServices(EvalContext *ctx, Attributes a, Promise *pp)
 
     if (default_bundle && bp == NULL)
     {
-        cfPS(ctx, OUTPUT_LEVEL_INFORM, PROMISE_RESULT_FAIL, "", pp, a, " !! Service %s could not be invoked successfully\n", pp->promiser);
+        cfPS(ctx, LOG_LEVEL_INFO, PROMISE_RESULT_FAIL, pp, a, "Service %s could not be invoked successfully\n", pp->promiser);
     }
 
     if (!DONTDO)

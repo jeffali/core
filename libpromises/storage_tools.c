@@ -1,7 +1,7 @@
 /*
-   Copyright (C) Cfengine AS
+   Copyright (C) CFEngine AS
 
-   This file is part of Cfengine 3 - written and maintained by Cfengine AS.
+   This file is part of CFEngine 3 - written and maintained by CFEngine AS.
 
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
@@ -17,14 +17,12 @@
   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
 
   To the extent this program is licensed as part of the Enterprise
-  versions of Cfengine, the applicable Commerical Open Source License
+  versions of CFEngine, the applicable Commerical Open Source License
   (COSL) may apply to this file if you as a licensee so wish it. See
   included file COSL.txt.
 */
 
 #include "cf3.defs.h"
-
-#include "logging_old.h"
 
 #ifdef HAVE_SYS_STATFS_H
 # include <sys/statfs.h>
@@ -56,19 +54,19 @@ off_t GetDiskUsage(char *file, enum cfsizes type)
 # if defined __sun || defined sco || defined __OpenBSD__ || (defined(__NetBSD__) && __NetBSD_Version__ >= 200040000)
     if (statvfs(file, &buf) != 0)
     {
-        CfOut(OUTPUT_LEVEL_ERROR, "statvfs", "Couldn't get filesystem info for %s\n", file);
+        Log(LOG_LEVEL_ERR, "statvfs", "Couldn't get filesystem info for %s", file);
         return CF_INFINITY;
     }
 # elif defined __SCO_DS || defined _CRAY || (defined(__NetBSD__) && __NetBSD_Version__ >= 200040000)
     if (statfs(file, &buf, sizeof(struct statfs), 0) != 0)
     {
-        CfOut(OUTPUT_LEVEL_ERROR, "statfs", "Couldn't get filesystem info for %s\n", file);
+        Log(LOG_LEVEL_ERR, "statfs", "Couldn't get filesystem info for %s", file);
         return CF_INFINITY;
     }
 # else
     if (statfs(file, &buf) != 0)
     {
-        CfOut(OUTPUT_LEVEL_ERROR, "statfs", "Couldn't get filesystem info for %s\n", file);
+        Log(LOG_LEVEL_ERR, "Couldn't get filesystem info for '%s'. (statfs: %s)", file, GetErrorStr());
         return CF_INFINITY;
     }
 # endif
@@ -95,7 +93,7 @@ off_t GetDiskUsage(char *file, enum cfsizes type)
 
     capacity = (double) (avail) / (double) (avail + used) * 100;
 
-    CfDebug("GetDiskUsage(%s) = %" PRIdMAX "/%" PRIdMAX "\n", file, (intmax_t) avail, (intmax_t) capacity);
+    Log(LOG_LEVEL_DEBUG, "GetDiskUsage(%s) = %" PRIdMAX "/%" PRIdMAX, file, (intmax_t) avail, (intmax_t) capacity);
 
     if (type == cfabs)
     {

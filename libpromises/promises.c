@@ -1,7 +1,7 @@
 /*
-   Copyright (C) Cfengine AS
+   Copyright (C) CFEngine AS
 
-   This file is part of Cfengine 3 - written and maintained by Cfengine AS.
+   This file is part of CFEngine 3 - written and maintained by CFEngine AS.
 
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
@@ -17,7 +17,7 @@
   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
 
   To the extent this program is licensed as part of the Enterprise
-  versions of Cfengine, the applicable Commerical Open Source License
+  versions of CFEngine, the applicable Commerical Open Source License
   (COSL) may apply to this file if you as a licensee so wish it. See
   included file COSL.txt.
 */
@@ -30,7 +30,6 @@
 #include "files_names.h"
 #include "scope.h"
 #include "vars.h"
-#include "logging_old.h"
 #include "args.h"
 #include "locks.h"
 #include "misc_lib.h"
@@ -117,20 +116,6 @@ Promise *DeRefCopyPromise(EvalContext *ctx, const Promise *pp)
     Promise *pcopy;
     Rval returnval;
 
-    if (pp->promisee.item)
-    {
-        CfDebug("CopyPromise(%s->", pp->promiser);
-        if (DEBUG)
-        {
-            RvalShow(stdout, pp->promisee);
-        }
-        CfDebug("\n");
-    }
-    else
-    {
-        CfDebug("CopyPromise(%s->)\n", pp->promiser);
-    }
-
     pcopy = xcalloc(1, sizeof(Promise));
 
     if (pp->promiser)
@@ -166,8 +151,7 @@ Promise *DeRefCopyPromise(EvalContext *ctx, const Promise *pp)
     pcopy->has_subbundles = pp->has_subbundles;
     pcopy->conlist = SeqNew(10, ConstraintDestroy);
     pcopy->org_pp = pp->org_pp;
-
-    CfDebug("Copying promise constraints\n\n");
+    pcopy->offset = pp->offset;
 
 /* No further type checking should be necessary here, already done by CheckConstraintTypeMatch */
 
@@ -213,16 +197,17 @@ Promise *DeRefCopyPromise(EvalContext *ctx, const Promise *pp)
 
             if (strcmp(bp->type, cp->lval) != 0)
             {
-                CfOut(OUTPUT_LEVEL_ERROR, "",
+                Log(LOG_LEVEL_ERR,
                       "Body type mismatch for body reference \"%s\" in promise at line %zu of %s (%s != %s)\n",
                       bodyname, pp->offset.line, PromiseGetBundle(pp)->source_path, bp->type, cp->lval);
             }
 
             /* Keep the referent body type as a boolean for convenience when checking later */
 
-            PromiseAppendConstraint(pcopy, cp->lval, (Rval) {xstrdup("true"), RVAL_TYPE_SCALAR }, cp->classes, false);
-
-            CfDebug("Handling body-lval \"%s\"\n", cp->lval);
+            {
+                Constraint *cp_copy = PromiseAppendConstraint(pcopy, cp->lval, (Rval) {xstrdup("true"), RVAL_TYPE_SCALAR }, cp->classes, false);
+                cp_copy->offset = cp->offset;
+            }
 
             if (bp->args != NULL)
             {
@@ -230,13 +215,13 @@ Promise *DeRefCopyPromise(EvalContext *ctx, const Promise *pp)
 
                 if (fp == NULL || fp->args == NULL)
                 {
-                    CfOut(OUTPUT_LEVEL_ERROR, "", "Argument mismatch for body reference \"%s\" in promise at line %zu of %s\n",
+                    Log(LOG_LEVEL_ERR, "Argument mismatch for body reference \"%s\" in promise at line %zu of %s",
                           bodyname, pp->offset.line, PromiseGetBundle(pp)->source_path);
                 }
 
                 if (fp && bp && fp->args && bp->args && !ScopeMapBodyArgs(ctx, "body", fp->args, bp->args))
                 {
-                    CfOut(OUTPUT_LEVEL_ERROR, "",
+                    Log(LOG_LEVEL_ERR,
                           "Number of arguments does not match for body reference \"%s\" in promise at line %zu of %s\n",
                           bodyname, pp->offset.line, PromiseGetBundle(pp)->source_path);
                 }
@@ -245,9 +230,11 @@ Promise *DeRefCopyPromise(EvalContext *ctx, const Promise *pp)
                 {
                     Constraint *scp = SeqAt(bp->conlist, k);
 
-                    CfDebug("Doing arg-mapped sublval = %s (promises.c)\n", scp->lval);
                     returnval = ExpandPrivateRval(ctx, "body", scp->rval);
-                    PromiseAppendConstraint(pcopy, scp->lval, returnval, scp->classes, false);
+                    {
+                        Constraint *scp_copy = PromiseAppendConstraint(pcopy, scp->lval, returnval, scp->classes, false);
+                        scp_copy->offset = scp->offset;
+                    }
                 }
 
                 ScopeClear("body");
@@ -258,7 +245,7 @@ Promise *DeRefCopyPromise(EvalContext *ctx, const Promise *pp)
 
                 if (fp != NULL)
                 {
-                    CfOut(OUTPUT_LEVEL_ERROR, "",
+                    Log(LOG_LEVEL_ERR,
                           "An apparent body \"%s()\" was undeclared or could have incorrect args, but used in a promise near line %zu of %s (possible unquoted literal value)",
                           bodyname, pp->offset.line, PromiseGetBundle(pp)->source_path);
                 }
@@ -268,8 +255,6 @@ Promise *DeRefCopyPromise(EvalContext *ctx, const Promise *pp)
                     {
                         Constraint *scp = SeqAt(bp->conlist, k);
 
-                        CfDebug("Doing sublval = %s (promises.c)\n", scp->lval);
-
                         Rval newrv = RvalCopy(scp->rval);
                         if (newrv.type == RVAL_TYPE_LIST)
                         {
@@ -278,7 +263,10 @@ Promise *DeRefCopyPromise(EvalContext *ctx, const Promise *pp)
                             newrv.item = new_list;
                         }
 
-                        PromiseAppendConstraint(pcopy, scp->lval, newrv, scp->classes, false);
+                        {
+                            Constraint *scp_copy = PromiseAppendConstraint(pcopy, scp->lval, newrv, scp->classes, false);
+                            scp_copy->offset = scp->offset;
+                        }
                     }
                 }
             }
@@ -291,7 +279,7 @@ Promise *DeRefCopyPromise(EvalContext *ctx, const Promise *pp)
 
             if (cp->references_body && !IsBundle(policy->bundles, bodyname))
             {
-                CfOut(OUTPUT_LEVEL_ERROR, "",
+                Log(LOG_LEVEL_ERR,
                       "Apparent body \"%s()\" was undeclared, but used in a promise near line %zu of %s (possible unquoted literal value)",
                       bodyname, pp->offset.line, PromiseGetBundle(pp)->source_path);
             }
@@ -304,7 +292,10 @@ Promise *DeRefCopyPromise(EvalContext *ctx, const Promise *pp)
                 newrv.item = new_list;
             }
 
-            PromiseAppendConstraint(pcopy, cp->lval, newrv, cp->classes, false);
+            {
+                Constraint *cp_copy = PromiseAppendConstraint(pcopy, cp->lval, newrv, cp->classes, false);
+                cp_copy->offset = cp->offset;
+            }
         }
     }
 
@@ -317,8 +308,6 @@ Promise *ExpandDeRefPromise(EvalContext *ctx, const char *scopeid, const Promise
 {
     Promise *pcopy;
     Rval returnval, final;
-
-    CfDebug("ExpandDerefPromise()\n");
 
     pcopy = xcalloc(1, sizeof(Promise));
 
@@ -373,7 +362,10 @@ Promise *ExpandDeRefPromise(EvalContext *ctx, const char *scopeid, const Promise
             RvalDestroy(returnval);
         }
 
-        PromiseAppendConstraint(pcopy, cp->lval, final, cp->classes, false);
+        {
+            Constraint *cp_copy = PromiseAppendConstraint(pcopy, cp->lval, final, cp->classes, false);
+            cp_copy->offset = cp->offset;
+        }
 
         if (strcmp(cp->lval, "comment") == 0)
         {
@@ -400,7 +392,7 @@ Promise *ExpandDeRefPromise(EvalContext *ctx, const char *scopeid, const Promise
     return pcopy;
 }
 
-void PromiseRef(OutputLevel level, const Promise *pp)
+void PromiseRef(LogLevel level, const Promise *pp)
 {
     if (pp == NULL)
     {
@@ -409,36 +401,36 @@ void PromiseRef(OutputLevel level, const Promise *pp)
 
     if (PromiseGetBundle(pp)->source_path)
     {
-        CfOut(level, "", "Promise belongs to bundle \'%s\' in file \'%s\' near line %zu\n", PromiseGetBundle(pp)->name,
+        Log(level, "Promise belongs to bundle '%s' in file '%s' near line %zu", PromiseGetBundle(pp)->name,
              PromiseGetBundle(pp)->source_path, pp->offset.line);
     }
     else
     {
-        CfOut(level, "", "Promise belongs to bundle \'%s\' near line %zu\n", PromiseGetBundle(pp)->name,
+        Log(level, "Promise belongs to bundle '%s' near line %zu", PromiseGetBundle(pp)->name,
               pp->offset.line);
     }
 
     if (pp->comment)
     {
-        CfOut(level, "", "Comment: %s\n", pp->comment);
+        Log(level, "Comment is '%s'", pp->comment);
     }
 
     switch (pp->promisee.type)
     {
-       case RVAL_TYPE_SCALAR:
-           CfOut(level, "", "This was a promise to: %s\n", (char *)(pp->promisee.item));
-           break;
-       case RVAL_TYPE_LIST:
-       {
-           Writer *w = StringWriter();
-           RlistWrite(w, pp->promisee.item);
-           char *p = StringWriterClose(w);
-           CfOut(level, "", "This was a promise to: %s", p);
-           free(p);
-           break;
-       }
-       default:
-           break;
+    case RVAL_TYPE_SCALAR:
+        Log(level, "This was a promise to '%s'", (char *)(pp->promisee.item));
+        break;
+    case RVAL_TYPE_LIST:
+    {
+        Writer *w = StringWriter();
+        RlistWrite(w, pp->promisee.item);
+        char *p = StringWriterClose(w);
+        Log(level, "This was a promise to '%s'", p);
+        free(p);
+        break;
+    }
+    default:
+        break;
     }
 }
 

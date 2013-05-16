@@ -1,7 +1,7 @@
 /*
-   Copyright (C) Cfengine AS
+   Copyright (C) CFEngine AS
 
-   This file is part of Cfengine 3 - written and maintained by Cfengine AS.
+   This file is part of CFEngine 3 - written and maintained by CFEngine AS.
 
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
@@ -17,7 +17,7 @@
   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
 
   To the extent this program is licensed as part of the Enterprise
-  versions of Cfengine, the applicable Commerical Open Source License
+  versions of CFEngine, the applicable Commerical Open Source License
   (COSL) may apply to this file if you as a licensee so wish it. See
   included file COSL.txt.
 */
@@ -27,7 +27,6 @@
 #include "files_names.h"
 #include "files_interfaces.h"
 #include "instrumentation.h"
-#include "logging_old.h"
 #include "policy.h"
 #include "files_lib.h"
 #include "string_lib.h"
@@ -50,7 +49,7 @@ static bool CopyData(const char *source, int sd, const char *destination, int dd
                 continue;
             }
 
-            CfOut(OUTPUT_LEVEL_ERROR, "read", "Unable to read source file while doing %s to %s", source, destination);
+            Log(LOG_LEVEL_ERR, "Unable to read source file while copying '%s' to '%s'. (read: %s)", source, destination, GetErrorStr());
             return false;
         }
 
@@ -64,7 +63,7 @@ static bool CopyData(const char *source, int sd, const char *destination, int dd
              */
             if (ftruncate(dd, n_read_total) < 0)
             {
-                CfOut(OUTPUT_LEVEL_ERROR, "ftruncate", "Copy failed (no space?) while doing %s to %s", source, destination);
+                Log(LOG_LEVEL_ERR, "Copy failed (no space?) while copying '%s' to '%s'. (ftruncate: %s)", source, destination, GetErrorStr());
                 return false;
             }
 
@@ -85,7 +84,7 @@ static bool CopyData(const char *source, int sd, const char *destination, int dd
             {
                 if (lseek(dd, skip_span - cur, SEEK_CUR) < 0)
                 {
-                    CfOut(OUTPUT_LEVEL_ERROR, "lseek", "Copy failed (no space?) while doing %s to %s", source, destination);
+                    Log(LOG_LEVEL_ERR, "Failed while copying '%s' to '%s' (no space?). (lseek: %s)", source, destination, GetErrorStr());
                     return false;
                 }
 
@@ -98,7 +97,7 @@ static bool CopyData(const char *source, int sd, const char *destination, int dd
             {
                 if (FullWrite(dd, cur, copy_span - cur) < 0)
                 {
-                    CfOut(OUTPUT_LEVEL_ERROR, "write", "Copy failed (no space?) while doing %s to %s", source, destination);
+                    Log(LOG_LEVEL_ERR, "Failed while copying '%s' to '%s' (no space?). (write: %s)", source, destination, GetErrorStr());
                     return false;
                 }
 
@@ -114,7 +113,7 @@ bool CopyRegularFileDisk(const char *source, const char *destination)
 
     if ((sd = open(source, O_RDONLY | O_BINARY)) == -1)
     {
-        CfOut(OUTPUT_LEVEL_INFORM, "open", "Can't copy %s!\n", source);
+        Log(LOG_LEVEL_INFO, "Can't copy '%s'. (open: %s)", source, GetErrorStr());
         unlink(destination);
         return false;
     }
@@ -125,7 +124,7 @@ bool CopyRegularFileDisk(const char *source, const char *destination)
 
     if (stat(source, &statbuf) == -1)
     {
-        CfOut(OUTPUT_LEVEL_INFORM, "stat", "Can't copy %s!\n", source);
+        Log(LOG_LEVEL_INFO, "Can't copy '%s'. (stat: %s)", source, GetErrorStr());
         unlink(destination);
         return false;
     }
@@ -134,7 +133,7 @@ bool CopyRegularFileDisk(const char *source, const char *destination)
 
     if ((dd = open(destination, O_WRONLY | O_CREAT | O_TRUNC | O_EXCL | O_BINARY, statbuf.st_mode)) == -1)
     {
-        CfOut(OUTPUT_LEVEL_INFORM, "open", "Unable to open destination file while doing %s to %s", source, destination);
+        Log(LOG_LEVEL_INFO, "Unable to open destination file while copying '%s' to '%s'. (open: %s)", source, destination, GetErrorStr());
         close(sd);
         unlink(destination);
         return false;

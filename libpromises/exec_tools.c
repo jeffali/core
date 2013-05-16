@@ -1,7 +1,7 @@
 /*
-   Copyright (C) Cfengine AS
+   Copyright (C) CFEngine AS
 
-   This file is part of Cfengine 3 - written and maintained by Cfengine AS.
+   This file is part of CFEngine 3 - written and maintained by CFEngine AS.
 
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
@@ -17,7 +17,7 @@
   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
 
   To the extent this program is licensed as part of the Enterprise
-  versions of Cfengine, the applicable Commerical Open Source License
+  versions of CFEngine, the applicable Commerical Open Source License
   (COSL) may apply to this file if you as a licensee so wish it. See
   included file COSL.txt.
 */
@@ -26,7 +26,6 @@
 
 #include "files_names.h"
 #include "files_interfaces.h"
-#include "logging_old.h"
 #include "pipes.h"
 #include "string_lib.h"
 #include "misc_lib.h"
@@ -41,8 +40,6 @@ bool GetExecOutput(const char *command, char *buffer, bool useshell)
     char line[CF_EXPANDSIZE];
     FILE *pp;
 
-    CfDebug("GetExecOutput(%s,%s) - use shell = %d\n", command, buffer, useshell);
-
     if (useshell)
     {
         pp = cf_popen_sh(command, "r");
@@ -54,7 +51,7 @@ bool GetExecOutput(const char *command, char *buffer, bool useshell)
 
     if (pp == NULL)
     {
-        CfOut(OUTPUT_LEVEL_ERROR, "cf_popen", "Couldn't open pipe to command %s\n", command);
+        Log(LOG_LEVEL_ERR, "Couldn't open pipe to command '%s'. (cf_popen: %s)", command, GetErrorStr());
         return false;
     }
 
@@ -70,14 +67,14 @@ bool GetExecOutput(const char *command, char *buffer, bool useshell)
 
         if (res == -1)
         {
-            CfOut(OUTPUT_LEVEL_ERROR, "fread", "Unable to read output of command %s", command);
+            Log(LOG_LEVEL_ERR, "Unable to read output of command '%s'. (fread: %s)", command, GetErrorStr());
             cf_pclose(pp);
             return false;
         }
 
         if (strlen(line) + offset > CF_EXPANDSIZE - 10)
         {
-            CfOut(OUTPUT_LEVEL_ERROR, "", "Buffer exceeded %d bytes in exec %s\n", CF_EXPANDSIZE, command);
+            Log(LOG_LEVEL_ERR, "Buffer exceeded %d bytes in exec '%s'", CF_EXPANDSIZE, command);
             break;
         }
 
@@ -90,11 +87,11 @@ bool GetExecOutput(const char *command, char *buffer, bool useshell)
     {
         if (Chop(buffer, CF_EXPANDSIZE) == -1)
         {
-            CfOut(OUTPUT_LEVEL_ERROR, "", "Chop was called on a string that seemed to have no terminator");
+            Log(LOG_LEVEL_ERR, "Chop was called on a string that seemed to have no terminator");
         }
     }
 
-    CfDebug("GetExecOutput got: [%s]\n", buffer);
+    Log(LOG_LEVEL_DEBUG, "GetExecOutput got '%s'", buffer);
 
     cf_pclose(pp);
     return true;
@@ -120,12 +117,12 @@ void ActAsDaemon(int preserve)
     {
         if (dup2(fd, STDIN_FILENO) == -1)
         {
-            CfOut(OUTPUT_LEVEL_ERROR, "dup2", "Could not dup");
+            Log(LOG_LEVEL_ERR, "Could not dup. (dup2: %s)", GetErrorStr());
         }
 
         if (dup2(fd, STDOUT_FILENO) == -1)
         {
-            CfOut(OUTPUT_LEVEL_ERROR, "dup2", "Could not dup");
+            Log(LOG_LEVEL_ERR, "Could not dup. (dup2: %s)", GetErrorStr());
         }
 
         dup2(fd, STDERR_FILENO);

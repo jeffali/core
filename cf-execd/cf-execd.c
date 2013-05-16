@@ -1,7 +1,7 @@
 /*
-   Copyright (C) Cfengine AS
+   Copyright (C) CFEngine AS
 
-   This file is part of Cfengine 3 - written and maintained by Cfengine AS.
+   This file is part of CFEngine 3 - written and maintained by CFEngine AS.
 
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
@@ -17,7 +17,7 @@
   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
 
   To the extent this program is licensed as part of the Enterprise
-  versions of Cfengine, the applicable Commerical Open Source License
+  versions of CFEngine, the applicable Commerical Open Source License
   (COSL) may apply to this file if you as a licensee so wish it. See
   included file COSL.txt.
 */
@@ -36,14 +36,13 @@
 #include "scope.h"
 #include "hashes.h"
 #include "unix.h"
-#include "logging_old.h"
-#include "logging.h"
 #include "string_lib.h"
 #include "signals.h"
 #include "locks.h"
 #include "exec_tools.h"
 #include "rlist.h"
 #include "processes_select.h"
+#include "man.h"
 
 #include <assert.h>
 
@@ -77,10 +76,13 @@ void StartServer(EvalContext *ctx, Policy *policy, GenericAgentConfig *config, E
 /* Command line options                                            */
 /*******************************************************************/
 
-static const char *ID = "The executor daemon is a scheduler and wrapper for\n"
-    "execution of cf-agent. It collects the output of the\n"
-    "agent and can email it to a specified address. It can\n"
-    "splay the start time of executions across the network\n" "and work as a class-based clock for scheduling.";
+static const char *CF_EXECD_SHORT_DESCRIPTION = "scheduling daemon for cf-agent";
+
+static const char *CF_EXECD_MANPAGE_LONG_DESCRIPTION =
+        "cf-execd is the scheduling daemon for cf-agent. It runs cf-agent locally according to a schedule specified in "
+        "policy code (executor control body). After a cf-agent run is completed, cf-execd gathers output from cf-agent, "
+        "and may be configured to email the output to a specified address. It may also be configured to splay (randomize) the "
+        "execution schedule to prevent synchronized cf-agent runs across a network.";
 
 static const struct option OPTIONS[] =
 {
@@ -99,6 +101,7 @@ static const struct option OPTIONS[] =
     {"once", no_argument, 0, 'O'},
     {"no-winsrv", no_argument, 0, 'W'},
     {"ld-library-path", required_argument, 0, 'L'},
+    {"legacy-output", no_argument, 0, 'l'},
     {NULL, 0, 0, '\0'}
 };
 
@@ -117,8 +120,9 @@ static const char *HINTS[sizeof(OPTIONS)/sizeof(OPTIONS[0])] =
     "Activate internal diagnostics (developers only)",
     "Run as a foreground processes (do not fork)",
     "Run once and then exit (implies no-fork)",
-    "Do not run as a service on windows - use this when running from a command shell (Cfengine Nova only)",
+    "Do not run as a service on windows - use this when running from a command shell (CFEngine Nova only)",
     "Set the internal value of LD_LIBRARY_PATH for child processes",
+    "Use legacy output format",
     NULL
 };
 
@@ -144,7 +148,7 @@ int main(int argc, char *argv[])
     }
     else
     {
-        CfOut(OUTPUT_LEVEL_ERROR, "", "CFEngine was not able to get confirmation of promises from cf-promises, so going to failsafe\n");
+        Log(LOG_LEVEL_ERR, "CFEngine was not able to get confirmation of promises from cf-promises, so going to failsafe");
         EvalContextHeapAddHard(ctx, "failsafe_fallback");
         GenericAgentConfigSetInputFile(config, GetWorkDir(), "failsafe.cf");
         policy = GenericAgentLoadPolicy(ctx, config);
@@ -187,15 +191,19 @@ static GenericAgentConfig *CheckOpts(EvalContext *ctx, int argc, char **argv)
     char ld_library_path[CF_BUFSIZE];
     GenericAgentConfig *config = GenericAgentConfigNewDefault(AGENT_TYPE_EXECUTOR);
 
-    while ((c = getopt_long(argc, argv, "dvnKIf:D:N:VxL:hFOV1gMW", OPTIONS, &optindex)) != EOF)
+    while ((c = getopt_long(argc, argv, "dvnKIf:D:N:VxL:hFOV1gMWl", OPTIONS, &optindex)) != EOF)
     {
         switch ((char) c)
         {
+        case 'l':
+            LEGACY_OUTPUT = true;
+            break;
+
         case 'f':
 
             if (optarg && strlen(optarg) < 5)
             {
-                CfOut(OUTPUT_LEVEL_ERROR, "", " -f used but argument \"%s\" incorrect", optarg);
+                Log(LOG_LEVEL_ERR, " -f used but argument \"%s\" incorrect", optarg);
                 exit(EXIT_FAILURE);
             }
 
@@ -220,12 +228,12 @@ static GenericAgentConfig *CheckOpts(EvalContext *ctx, int argc, char **argv)
             break;
 
         case 'I':
-            INFORM = true;
+            LogSetGlobalLevel(LOG_LEVEL_INFO);
             break;
 
         case 'v':
-            VERBOSE = true;
-            NO_FORK = true;
+            LogSetGlobalLevel(LOG_LEVEL_VERBOSE);
+            NO_FORK = true; // TODO: really?
             break;
 
         case 'n':
@@ -259,19 +267,27 @@ static GenericAgentConfig *CheckOpts(EvalContext *ctx, int argc, char **argv)
             exit(0);
 
         case 'h':
-            Syntax("cf-execd", OPTIONS, HINTS, ID, true);
+            PrintHelp("cf-execd", OPTIONS, HINTS, true);
             exit(0);
 
         case 'M':
-            ManPage("cf-execd - cfengine's execution agent", OPTIONS, HINTS, ID);
-            exit(0);
+            {
+                Writer *out = FileWriter(stdout);
+                ManPageWrite(out, "cf-execd", time(NULL),
+                             CF_EXECD_SHORT_DESCRIPTION,
+                             CF_EXECD_MANPAGE_LONG_DESCRIPTION,
+                             OPTIONS, HINTS,
+                             true);
+                FileWriterDetach(out);
+                exit(EXIT_SUCCESS);
+            }
 
         case 'x':
-            CfOut(OUTPUT_LEVEL_ERROR, "", "Self-diagnostic functionality is retired.");
+            Log(LOG_LEVEL_ERR, "Self-diagnostic functionality is retired.");
             exit(0);
 
         default:
-            Syntax("cf-execd", OPTIONS, HINTS, ID, true);
+            PrintHelp("cf-execd", OPTIONS, HINTS, true);
             exit(1);
 
         }
@@ -320,14 +336,14 @@ void StartServer(EvalContext *ctx, Policy *policy, GenericAgentConfig *config, E
 
     if (!NO_FORK)
     {
-        CfOut(OUTPUT_LEVEL_VERBOSE, "", "Windows does not support starting processes in the background - starting in foreground");
+        Log(LOG_LEVEL_VERBOSE, "Windows does not support starting processes in the background - starting in foreground");
     }
 
 #else /* !__MINGW32__ */
 
     if ((!NO_FORK) && (fork() != 0))
     {
-        CfOut(OUTPUT_LEVEL_INFORM, "", "cf-execd starting %.24s\n", ctime(&now));
+        Log(LOG_LEVEL_INFO, "cf-execd starting %.24s", ctime(&now));
         _exit(0);
     }
 
@@ -359,12 +375,12 @@ void StartServer(EvalContext *ctx, Policy *policy, GenericAgentConfig *config, E
         {
             if (ScheduleRun(ctx, &policy, config, exec_config))
             {
-                CfOut(OUTPUT_LEVEL_VERBOSE, "", "Sleeping for splaytime %d seconds\n\n", exec_config->splay_time);
+                Log(LOG_LEVEL_VERBOSE, "Sleeping for splaytime %d seconds", exec_config->splay_time);
                 sleep(exec_config->splay_time);
 
                 if (!LocalExecInThread(exec_config))
                 {
-                    CfOut(OUTPUT_LEVEL_INFORM, "", "Unable to run agent in thread, falling back to blocking execution");
+                    Log(LOG_LEVEL_INFO, "Unable to run agent in thread, falling back to blocking execution");
                     LocalExec(exec_config);
                 }
             }
@@ -402,7 +418,7 @@ static bool LocalExecInThread(const ExecConfig *config)
     else
     {
         ExecConfigDestroy(thread_config);
-        CfOut(OUTPUT_LEVEL_INFORM, "pthread_create", "Can't create thread!");
+        Log(LOG_LEVEL_INFO, "Can't create thread. (pthread_create: %s)", GetErrorStr());
         return false;
     }
 }
@@ -441,7 +457,8 @@ static void Apoptosis(void)
                 }
                 else
                 {
-                    CfOut(OUTPUT_LEVEL_ERROR, "kill", "Unable to kill stale cf-execd process (pid=%d)", (int)pid);
+                    Log(LOG_LEVEL_ERR, "Unable to kill stale cf-execd process pid=%d. (kill: %s)",
+                        (int)pid, GetErrorStr());
                 }
             }
         }
@@ -449,7 +466,7 @@ static void Apoptosis(void)
 
     DeleteItemList(PROCESSTABLE);
 
-    CfOut(OUTPUT_LEVEL_VERBOSE, "", " !! Pruning complete");
+    Log(LOG_LEVEL_VERBOSE, "Pruning complete");
 }
 
 #endif
@@ -464,7 +481,7 @@ static Reload CheckNewPromises(EvalContext *ctx, const GenericAgentConfig *confi
 {
     if (NewPromiseProposals(ctx, config, input_files))
     {
-        CfOut(OUTPUT_LEVEL_VERBOSE, "", " -> New promises detected...\n");
+        Log(LOG_LEVEL_VERBOSE, "New promises detected...");
 
         if (CheckPromises(config))
         {
@@ -472,13 +489,13 @@ static Reload CheckNewPromises(EvalContext *ctx, const GenericAgentConfig *confi
         }
         else
         {
-            CfOut(OUTPUT_LEVEL_INFORM, "", " !! New promises file contains syntax errors -- ignoring");
+            Log(LOG_LEVEL_INFO, "New promises file contains syntax errors -- ignoring");
             PROMISETIME = time(NULL);
         }
     }
     else
     {
-        CfDebug(" -> No new promises found\n");
+        Log(LOG_LEVEL_DEBUG, "No new promises found");
     }
 
     return RELOAD_ENVIRONMENT;
@@ -486,7 +503,7 @@ static Reload CheckNewPromises(EvalContext *ctx, const GenericAgentConfig *confi
 
 static bool ScheduleRun(EvalContext *ctx, Policy **policy, GenericAgentConfig *config, ExecConfig *exec_config)
 {
-    CfOut(OUTPUT_LEVEL_VERBOSE, "", "Sleeping for pulse time %d seconds...\n", CFPULSETIME);
+    Log(LOG_LEVEL_VERBOSE, "Sleeping for pulse time %d seconds...", CFPULSETIME);
     sleep(CFPULSETIME);         /* 1 Minute resolution is enough */
 
     /*
@@ -497,7 +514,7 @@ static bool ScheduleRun(EvalContext *ctx, Policy **policy, GenericAgentConfig *c
     {
         /* Full reload */
 
-        CfOut(OUTPUT_LEVEL_INFORM, "", "Re-reading promise file %s..\n", config->input_file);
+        Log(LOG_LEVEL_INFO, "Re-reading promise file %s..", config->input_file);
 
         EvalContextHeapClear(ctx);
 
@@ -507,12 +524,16 @@ static bool ScheduleRun(EvalContext *ctx, Policy **policy, GenericAgentConfig *c
         ScopeDeleteAll();
 
         strcpy(VDOMAIN, "undefined.domain");
-        POLICY_SERVER[0] = '\0';
 
         PolicyDestroy(*policy);
         *policy = NULL;
 
-        SetPolicyServer(ctx, POLICY_SERVER);
+        {
+            char *existing_policy_server = ReadPolicyServerFile(GetWorkDir());
+            SetPolicyServer(ctx, existing_policy_server);
+            free(existing_policy_server);
+        }
+
         ScopeNewSpecialScalar(ctx, "sys", "policy_hub", POLICY_SERVER, DATA_TYPE_STRING);
 
         GetNameInfo3(ctx, AGENT_TYPE_EXECUTOR);
@@ -559,13 +580,13 @@ static bool ScheduleRun(EvalContext *ctx, Policy **policy, GenericAgentConfig *c
         {
             if (IsDefinedClass(ctx, time_context, NULL))
             {
-                CfOut(OUTPUT_LEVEL_VERBOSE, "", "Waking up the agent at %s ~ %s \n", ctime(&CFSTARTTIME), time_context);
+                Log(LOG_LEVEL_VERBOSE, "Waking up the agent at %s ~ %s ", ctime(&CFSTARTTIME), time_context);
                 return true;
             }
         }
     }
 
-    CfOut(OUTPUT_LEVEL_VERBOSE, "", "Nothing to do at %s\n", ctime(&CFSTARTTIME));
+    Log(LOG_LEVEL_VERBOSE, "Nothing to do at %s", ctime(&CFSTARTTIME));
     return false;
 }
 

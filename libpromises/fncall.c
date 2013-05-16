@@ -1,7 +1,7 @@
 /*
-   Copyright (C) Cfengine AS
+   Copyright (C) CFEngine AS
 
-   This file is part of Cfengine 3 - written and maintained by Cfengine AS.
+   This file is part of CFEngine 3 - written and maintained by CFEngine AS.
 
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
@@ -17,7 +17,7 @@
   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
 
   To the extent this program is licensed as part of the Enterprise
-  versions of Cfengine, the applicable Commerical Open Source License
+  versions of CFEngine, the applicable Commerical Open Source License
   (COSL) may apply to this file if you as a licensee so wish it. See
   included file COSL.txt.
 */
@@ -28,7 +28,6 @@
 #include "files_names.h"
 #include "expand.h"
 #include "vars.h"
-#include "logging_old.h"
 #include "args.h"
 #include "evalfunction.h"
 #include "policy.h"
@@ -50,7 +49,6 @@ bool FnCallIsBuiltIn(Rval rval)
 
     if (FnCallTypeGet(fp->name))
     {
-        CfDebug("%s is a builtin function\n", fp->name);
         return true;
     }
     else
@@ -65,19 +63,11 @@ FnCall *FnCallNew(const char *name, Rlist *args)
 {
     FnCall *fp;
 
-    CfDebug("Installing Function Call %s\n", name);
-
     fp = xmalloc(sizeof(FnCall));
 
     fp->name = xstrdup(name);
     fp->args = args;
 
-    CfDebug("Installed ");
-    if (DEBUG)
-    {
-        FnCallShow(stdout, fp);
-    }
-    CfDebug("\n\n");
     return fp;
 }
 
@@ -85,7 +75,6 @@ FnCall *FnCallNew(const char *name, Rlist *args)
 
 FnCall *FnCallCopy(const FnCall *f)
 {
-    CfDebug("CopyFnCall()\n");
     return FnCallNew(f->name, RlistCopy(f->args));
 }
 
@@ -105,7 +94,6 @@ void FnCallDestroy(FnCall *fp)
 
 FnCall *ExpandFnCall(EvalContext *ctx, const char *contextid, FnCall *f)
 {
-    CfDebug("ExpandFnCall()\n");
     return FnCallNew(f->name, ExpandList(ctx, contextid, f->args, false));
 }
 
@@ -144,25 +132,16 @@ FnCallResult FnCallEvaluate(EvalContext *ctx, FnCall *fp, const Promise *caller)
     Rlist *expargs;
     const FnCallType *fp_type = FnCallTypeGet(fp->name);
 
-    if (fp_type)
-    {
-        if (DEBUG)
-        {
-            printf("EVALUATE FN CALL %s\n", fp->name);
-            FnCallShow(stdout, fp);
-            printf("\n");
-        }
-    }
-    else
+    if (!fp_type)
     {
         if (caller)
         {
-            CfOut(OUTPUT_LEVEL_ERROR, "", "No such FnCall \"%s()\" in promise @ %s near line %zd\n",
+            Log(LOG_LEVEL_ERR, "No such FnCall \"%s()\" in promise @ %s near line %zd",
                   fp->name, PromiseGetBundle(caller)->source_path, caller->offset.line);
         }
         else
         {
-            CfOut(OUTPUT_LEVEL_ERROR, "", "No such FnCall \"%s()\" - context info unavailable\n", fp->name);
+            Log(LOG_LEVEL_ERR, "No such FnCall \"%s()\" - context info unavailable", fp->name);
         }
 
         return (FnCallResult) { FNCALL_FAILURE, { FnCallCopy(fp), RVAL_TYPE_FNCALL } };

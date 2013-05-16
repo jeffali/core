@@ -1,7 +1,7 @@
 /*
-   Copyright (C) Cfengine AS
+   Copyright (C) CFEngine AS
 
-   This file is part of Cfengine 3 - written and maintained by Cfengine AS.
+   This file is part of CFEngine 3 - written and maintained by CFEngine AS.
 
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
@@ -17,7 +17,7 @@
   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
 
   To the extent this program is licensed as part of the Enterprise
-  versions of Cfengine, the applicable Commerical Open Source License
+  versions of CFEngine, the applicable Commerical Open Source License
   (COSL) may apply to this file if you as a licensee so wish it. See
   included file COSL.txt.
 */
@@ -35,7 +35,7 @@
 #include "env_context.h"
 #include "crypto.h"
 #include "sysinfo.h"
-#include "logging_old.h"
+#include "man.h"
 
 #include "cf-key-functions.h"
 
@@ -54,7 +54,9 @@ static GenericAgentConfig *CheckOpts(int argc, char **argv);
 /* Command line options                                            */
 /*******************************************************************/
 
-static const char *ID = "The CFEngine key generator makes key pairs for remote authentication.\n";
+static const char *CF_KEY_SHORT_DESCRIPTION = "make private/public key-pairs for CFEngine authentication";
+
+static const char *CF_KEY_MANPAGE_LONG_DESCRIPTION = "The CFEngine key generator makes key pairs for remote authentication.\n";
 
 static const struct option OPTIONS[17] =
 {
@@ -167,7 +169,7 @@ static GenericAgentConfig *CheckOpts(int argc, char **argv)
             break;
 
         case 'd':
-            DEBUG = true;
+            LogSetGlobalLevel(LOG_LEVEL_DEBUG);
             break;
 
         case 'V':
@@ -175,7 +177,7 @@ static GenericAgentConfig *CheckOpts(int argc, char **argv)
             exit(0);
 
         case 'v':
-            VERBOSE = true;
+            LogSetGlobalLevel(LOG_LEVEL_VERBOSE);
             break;
 
         case 'p': /* print digest */
@@ -201,15 +203,23 @@ static GenericAgentConfig *CheckOpts(int argc, char **argv)
             break;
 
         case 'h':
-            Syntax("cf-key", OPTIONS, HINTS, ID, false);
+            PrintHelp("cf-key", OPTIONS, HINTS, false);
             exit(0);
 
         case 'M':
-            ManPage("cf-key - CFEngine's key generator", OPTIONS, HINTS, ID);
-            exit(0);
+            {
+                Writer *out = FileWriter(stdout);
+                ManPageWrite(out, "cf-key", time(NULL),
+                             CF_KEY_SHORT_DESCRIPTION,
+                             CF_KEY_MANPAGE_LONG_DESCRIPTION,
+                             OPTIONS, HINTS,
+                             false);
+                FileWriterDetach(out);
+                exit(EXIT_SUCCESS);
+            }
 
         default:
-            Syntax("cf-key", OPTIONS, HINTS, ID, false);
+            PrintHelp("cf-key", OPTIONS, HINTS, false);
             exit(1);
 
         }

@@ -1,7 +1,7 @@
 /*
-   Copyright (C) Cfengine AS
+   Copyright (C) CFEngine AS
 
-   This file is part of Cfengine 3 - written and maintained by Cfengine AS.
+   This file is part of CFEngine 3 - written and maintained by CFEngine AS.
 
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
@@ -17,7 +17,7 @@
   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
 
   To the extent this program is licensed as part of the Enterprise
-  versions of Cfengine, the applicable Commerical Open Source License
+  versions of CFEngine, the applicable Commerical Open Source License
   (COSL) may apply to this file if you as a licensee so wish it. See
   included file COSL.txt.
 */
@@ -317,8 +317,6 @@ void PrependItemList(Item **liststart, const char *itemstring)
 int ListLen(const Item *list)
 {
     int count = 0;
-
-    CfDebug("Check ListLen\n");
 
     for (const Item *ip = list; ip != NULL; ip = ip->next)
     {
@@ -620,8 +618,6 @@ Item *SplitString(const char *string, char sep)
     char before[CF_BUFSIZE];
     int i = 0;
 
-    CfDebug("SplitString([%s],%c=%d)\n", string, sep, sep);
-
     for (sp = string; (*sp != '\0'); sp++, i++)
     {
         before[i] = *sp;
@@ -665,8 +661,6 @@ Item *SplitStringAsItemList(const char *string, char sep)
     Item *liststart = NULL;
     char format[9];
     char node[CF_MAXVARSIZE];
-
-    CfDebug("SplitStringAsItemList(%s,%c)\n", string, sep);
 
     sprintf(format, "%%255[^%c]", sep); /* set format string to search */
 

@@ -1,7 +1,7 @@
 /*
-   Copyright (C) Cfengine AS
+   Copyright (C) CFEngine AS
 
-   This file is part of Cfengine 3 - written and maintained by Cfengine AS.
+   This file is part of CFEngine 3 - written and maintained by CFEngine AS.
 
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
@@ -17,7 +17,7 @@
   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
 
   To the extent this program is licensed as part of the Enterprise
-  versions of Cfengine, the applicable Commerical Open Source License
+  versions of CFEngine, the applicable Commerical Open Source License
   (COSL) may apply to this file if you as a licensee so wish it. See
   included file COSL.txt.
 */
@@ -25,7 +25,7 @@
 #include "audit.h"
 #include "misc_lib.h"
 #include "conversion.h"
-#include "logging_old.h"
+#include "logging.h"
 #include "string_lib.h"
 
 int PR_KEPT;
@@ -96,20 +96,20 @@ void EndAudit(const EvalContext *ctx, int background_tasks)
             char name[CF_MAXVARSIZE], datestr[CF_MAXVARSIZE];
             time_t now = time(NULL);
 
-            CfOut(OUTPUT_LEVEL_INFORM, "", " -> Recording promise valuations");
+            Log(LOG_LEVEL_INFO, "Recording promise valuations");
 
             snprintf(name, CF_MAXVARSIZE, "%s/state/%s", CFWORKDIR, CF_VALUE_LOG);
             snprintf(datestr, CF_MAXVARSIZE, "%s", ctime(&now));
 
             if ((fout = fopen(name, "a")) == NULL)
             {
-                CfOut(OUTPUT_LEVEL_INFORM, "", " !! Unable to write to the value log %s\n", name);
+                Log(LOG_LEVEL_INFO, "Unable to write to the value log %s", name);
                 return;
             }
 
             if (Chop(datestr, CF_EXPANDSIZE) == -1)
             {
-                CfOut(OUTPUT_LEVEL_ERROR, "", "Chop was called on a string that seemed to have no terminator");
+                Log(LOG_LEVEL_ERR, "Chop was called on a string that seemed to have no terminator");
             }
             fprintf(fout, "%s,%.4lf,%.4lf,%.4lf\n", datestr, VAL_KEPT, VAL_REPAIRED, VAL_NOTKEPT);
             TrackValue(datestr, VAL_KEPT, VAL_REPAIRED, VAL_NOTKEPT);
@@ -131,7 +131,7 @@ void EndAudit(const EvalContext *ctx, int background_tasks)
     if (total == 0)
     {
         *string = '\0';
-        CfOut(OUTPUT_LEVEL_VERBOSE, "", "Outcome of version %s: No checks were scheduled\n", sp);
+        Log(LOG_LEVEL_VERBOSE, "Outcome of version %s: No checks were scheduled", sp);
         return;
     }
     else
@@ -150,7 +150,7 @@ void FatalError(const EvalContext *ctx, char *s, ...)
         va_start(ap, s);
         vsnprintf(buf, CF_BUFSIZE - 1, s, ap);
         va_end(ap);
-        CfOut(OUTPUT_LEVEL_ERROR, "", "Fatal CFEngine error: %s", buf);
+        Log(LOG_LEVEL_ERR, "Fatal CFEngine error: %s", buf);
     }
 
     EndAudit(ctx, 0);

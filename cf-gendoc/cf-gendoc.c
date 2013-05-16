@@ -1,7 +1,7 @@
 /*
-   Copyright (C) Cfengine AS
+   Copyright (C) CFEngine AS
 
-   This file is part of Cfengine 3 - written and maintained by Cfengine AS.
+   This file is part of CFEngine 3 - written and maintained by CFEngine AS.
 
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
@@ -17,7 +17,7 @@
   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
 
   To the extent this program is licensed as part of the Enterprise
-  versions of Cfengine, the applicable Commerical Open Source License
+  versions of CFEngine, the applicable Commerical Open Source License
   (COSL) may apply to this file if you as a licensee so wish it. See
   included file COSL.txt.
 */
@@ -31,7 +31,6 @@
 #include "sort.h"
 #include "conversion.h"
 #include "expand.h"
-#include "logging_old.h"
 #include "misc_lib.h"
 
 static void GenerateManual(EvalContext *ctx);
@@ -43,8 +42,6 @@ char SOURCE_DIR[CF_BUFSIZE];
 char OUTPUT_FILE[CF_BUFSIZE];
 
 int GENERATE_XML = false;
-
-static const char *ID = "The documentation generation tool produces reference manual for CFEngine.";
 
 static const struct option OPTIONS[] =
 {
@@ -107,7 +104,7 @@ static GenericAgentConfig *CheckOpts(int argc, char **argv)
         switch ((char) c)
         {
         case 'h':
-            Syntax("cf-gendoc", OPTIONS, HINTS, ID, false);
+            PrintHelp("cf-gendoc", OPTIONS, HINTS, false);
             exit(0);
 
         case 'x':
@@ -122,14 +119,14 @@ static GenericAgentConfig *CheckOpts(int argc, char **argv)
             break;
 
         default:
-            Syntax("cf-gendoc", OPTIONS, HINTS, ID, false);
+            PrintHelp("cf-gendoc", OPTIONS, HINTS, false);
             exit(1);
         }
     }
 
     if (argv[optind] != NULL)
     {
-        CfOut(OUTPUT_LEVEL_ERROR, "", "Unexpected argument: %s\n", argv[optind]);
+        Log(LOG_LEVEL_ERR, "Unexpected argument: %s", argv[optind]);
     }
 
     return config;
@@ -145,7 +142,7 @@ static void GenerateXml(void)
     if (OUTPUT_FILE == NULL)
     {
         /* Reconsider this once agents do not output any error messages to stdout */
-        CfOut(OUTPUT_LEVEL_ERROR, "", "Please specify output file");
+        Log(LOG_LEVEL_ERR, "Please specify output file");
         exit(EXIT_FAILURE);
     }
     else
@@ -154,7 +151,7 @@ static void GenerateXml(void)
 
         if (out == NULL)
         {
-            CfOut(OUTPUT_LEVEL_ERROR, "", "Unable to open %s for writing\n", OUTPUT_FILE);
+            Log(LOG_LEVEL_ERR, "Unable to open %s for writing", OUTPUT_FILE);
             exit(EXIT_FAILURE);
         }
         XmlManual(SOURCE_DIR, out);

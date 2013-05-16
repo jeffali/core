@@ -1,7 +1,7 @@
 /*
-   Copyright (C) Cfengine AS
+   Copyright (C) CFEngine AS
 
-   This file is part of Cfengine 3 - written and maintained by Cfengine AS.
+   This file is part of CFEngine 3 - written and maintained by CFEngine AS.
 
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
@@ -17,7 +17,7 @@
   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
 
   To the extent this program is licensed as part of the Enterprise
-  versions of Cfengine, the applicable Commerical Open Source License
+  versions of CFEngine, the applicable Commerical Open Source License
   (COSL) may apply to this file if you as a licensee so wish it. See
   included file COSL.txt.
 */
@@ -31,6 +31,7 @@
 #include <assert.h>
 
 #define STRING_MATCH_OVECCOUNT 30
+#define NULL_OR_EMPTY(str) ((str == NULL) || (str[0] == '\0'))
 
 char ToLower(char ch)
 {
@@ -839,3 +840,23 @@ char *MemSpanInverse(const char *mem, char c, size_t n)
 
     return (char *)mem;
 }
+
+bool CompareStringOrRegex(const char *value, const char *compareTo, bool regex)
+{
+    if (regex)
+    {
+        if (!NULL_OR_EMPTY(compareTo) && !StringMatchFull(compareTo, value))
+        {
+            return false;
+        }
+    }
+    else
+    {
+        if (!NULL_OR_EMPTY(compareTo)  && strcmp(compareTo, value) != 0)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+

@@ -1,7 +1,7 @@
 /*
-   Copyright (C) Cfengine AS
+   Copyright (C) CFEngine AS
 
-   This file is part of Cfengine 3 - written and maintained by Cfengine AS.
+   This file is part of CFEngine 3 - written and maintained by CFEngine AS.
 
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
@@ -17,7 +17,7 @@
   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
 
   To the extent this program is licensed as part of the Enterprise
-  versions of Cfengine, the applicable Commerical Open Source License
+  versions of CFEngine, the applicable Commerical Open Source License
   (COSL) may apply to this file if you as a licensee so wish it. See
   included file COSL.txt.
 */
@@ -376,7 +376,6 @@ SyntaxTypeMatch CheckConstraintTypeMatch(const char *lval, Rval rval, DataType d
 
     case DATA_TYPE_BODY:
     case DATA_TYPE_BUNDLE:
-        CfDebug("Nothing to check for body reference\n");
         break;
 
     case DATA_TYPE_OPTION:
@@ -398,7 +397,6 @@ SyntaxTypeMatch CheckConstraintTypeMatch(const char *lval, Rval rval, DataType d
         break;
     }
 
-    CfDebug("end CheckConstraintTypeMatch---------\n");
     return SYNTAX_TYPE_MATCH_OK;
 }
 
@@ -410,8 +408,6 @@ DataType StringDataType(EvalContext *ctx, const char *scopeid, const char *strin
     Rval rval;
     int islist = false;
     char var[CF_BUFSIZE];
-
-    CfDebug("StringDataType(%s)\n", string);
 
 /*-------------------------------------------------------
 What happens if we embed vars in a literal string
@@ -468,8 +464,6 @@ vars:
 
 static SyntaxTypeMatch CheckParseString(const char *lval, const char *s, const char *range)
 {
-    CfDebug("\nCheckParseString(%s => %s/%s)\n", lval, s, range);
-
     if (s == NULL)
     {
         return SYNTAX_TYPE_MATCH_OK;
@@ -539,9 +533,7 @@ static SyntaxTypeMatch CheckParseInt(const char *lval, const char *s, const char
     int n;
     long max = CF_LOWINIT, min = CF_HIGHINIT, val;
 
-/* Numeric types are registered by range separated by comma str "min,max" */
-    CfDebug("\nCheckParseInt(%s => %s/%s)\n", lval, s, range);
-
+    // Numeric types are registered by range separated by comma str "min,max"
     split = SplitString(range, ',');
 
     if ((n = ListLen(split)) != 2)
@@ -584,8 +576,6 @@ static SyntaxTypeMatch CheckParseInt(const char *lval, const char *s, const char
         return SYNTAX_TYPE_MATCH_ERROR_INT_OUT_OF_RANGE;
     }
 
-    CfDebug("CheckParseInt - syntax verified\n\n");
-
     return SYNTAX_TYPE_MATCH_OK;
 }
 
@@ -597,9 +587,7 @@ static SyntaxTypeMatch CheckParseIntRange(const char *lval, const char *s, const
     int n;
     long max = CF_LOWINIT, min = CF_HIGHINIT, val;
 
-/* Numeric types are registered by range separated by comma str "min,max" */
-    CfDebug("\nCheckParseIntRange(%s => %s/%s)\n", lval, s, range);
-
+    // Numeric types are registered by range separated by comma str "min,max"
     if (*s == '[' || *s == '(')
     {
         return SYNTAX_TYPE_MATCH_ERROR_RANGE_BRACKETED;
@@ -665,8 +653,6 @@ static SyntaxTypeMatch CheckParseReal(const char *lval, const char *s, const cha
     double max = (double) CF_LOWINIT, min = (double) CF_HIGHINIT, val;
     int n;
 
-    CfDebug("\nCheckParseReal(%s => %s/%s)\n", lval, s, range);
-
     if (strcmp(s, "inf") == 0)
     {
         return SYNTAX_TYPE_MATCH_ERROR_REAL_INF;
@@ -715,8 +701,6 @@ static SyntaxTypeMatch CheckParseRealRange(const char *lval, const char *s, cons
     Item *split, *rangep, *ip;
     double max = (double) CF_LOWINIT, min = (double) CF_HIGHINIT, val;
     int n;
-
-    CfDebug("\nCheckParseRealRange(%s => %s/%s)\n", lval, s, range);
 
     if (*s == '[' || *s == '(')
     {
@@ -783,8 +767,6 @@ static SyntaxTypeMatch CheckParseOpts(const char *lval, const char *s, const cha
     Item *split;
 
 /* List/menu types are separated by comma str "a,b,c,..." */
-
-    CfDebug("\nCheckParseOpts(%s => %s/%s)\n", lval, s, range);
 
     if (IsNakedVar(s, '@') || IsNakedVar(s, '$'))
     {
@@ -880,8 +862,6 @@ static SyntaxTypeMatch CheckFnCallType(const char *lval, const char *s, DataType
 {
     DataType dt;
     const FnCallType *fn;
-
-    CfDebug("CheckFnCallType(%s => %s/%s)\n", lval, s, range);
 
     fn = FnCallTypeGet(s);
 
@@ -1185,6 +1165,51 @@ static JsonElement *BodyTypesToJson(void)
     return body_types;
 }
 
+static JsonElement *FnCallTypeToJson(const FnCallType *fn_syntax)
+{
+    JsonElement *json_fn = JsonObjectCreate(10);
+
+    JsonObjectAppendString(json_fn, "status", SyntaxStatusToString(fn_syntax->status));
+    JsonObjectAppendString(json_fn, "returnType", DataTypeToString(fn_syntax->dtype));
+
+    {
+        JsonElement *params = JsonArrayCreate(10);
+        for (int i = 0; fn_syntax->args[i].pattern; i++)
+        {
+            const FnCallArg *param = &fn_syntax->args[i];
+
+            JsonElement *json_param = JsonObjectCreate(2);
+            JsonObjectAppendString(json_param, "type", DataTypeToString(param->dtype));
+            JsonObjectAppendString(json_param, "range", param->pattern);
+            JsonArrayAppendObject(params, json_param);
+        }
+        JsonObjectAppendArray(json_fn, "parameters", params);
+    }
+
+    JsonObjectAppendBool(json_fn, "variadic", fn_syntax->varargs);
+
+    return json_fn;
+}
+
+static JsonElement *FunctionsToJson(void)
+{
+    JsonElement *functions = JsonObjectCreate(500);
+
+    for (int i = 0; CF_FNCALL_TYPES[i].name; i++)
+    {
+        const FnCallType *fn_syntax = &CF_FNCALL_TYPES[i];
+
+        if (fn_syntax->status == SYNTAX_STATUS_REMOVED)
+        {
+            continue;
+        }
+
+        JsonObjectAppendObject(functions, fn_syntax->name, FnCallTypeToJson(fn_syntax));
+    }
+
+    return functions;
+}
+
 JsonElement *SyntaxToJson(void)
 {
     JsonElement *syntax_tree = JsonObjectCreate(3);
@@ -1192,6 +1217,7 @@ JsonElement *SyntaxToJson(void)
     JsonObjectAppendObject(syntax_tree, "bundleTypes", BundleTypesToJson());
     JsonObjectAppendObject(syntax_tree, "promiseTypes", PromiseTypesToJson());
     JsonObjectAppendObject(syntax_tree, "bodyTypes", BodyTypesToJson());
+    JsonObjectAppendObject(syntax_tree, "functions", FunctionsToJson());
 
     return syntax_tree;
 }
