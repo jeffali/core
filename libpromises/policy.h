@@ -62,92 +62,6 @@ typedef struct
     size_t context;
 } SourceOffset;
 
-#ifndef DBG0
-/*
-    Seq *bundles;
-    Seq *bodies;
-    Seq *promises;
-    Seq *subtypes;
-    Seq *conlist;
-    Seq *stack;
-    Seq *errors;
-typedef struct Bundle_ Bundle;
-typedef struct Body_ Body;
-typedef struct Promise_ Promise;
-typedef struct SubType_ SubType;
-struct Constraint_
-*/
-void PrintSeqBundle(Bundle *b)
-{
-/*
-    char *type;
-    char *name;
-    char *ns;
-    Rlist *args;
-    Seq *subtypes;
-    char *source_path;
-*/
-}
-void PrintSeqBody(Body *b)
-{
-/*
-    char *type;
-    char *name;
-    char *ns;
-    Rlist *args;
-    Seq *conlist;
-    char *source_path;
-*/
-}
-void PrintSeqPromise(Promise *p)
-{
-/*
-    SubType *parent_subtype;
-
-    char *classes;
-    char *ref; 
-    char ref_alloc;
-    char *promiser;
-    Rval promisee;
-    char *bundle;
-    Audit *audit;
-
-    Seq *conlist;
-
-    char *agentsubtype;
-    char *bundletype; 
-    char *ns;        
-    int done;       
-    int *donep;    
-    int makeholes;
-    char *this_server;
-    int has_subbundles;
-*/
-}
-void PrintSeqSutbype(Subtype *s)
-{
-/*
-    char *name;
-    Seq *promises;
-*/
-}
-void PrintSeqConstraint(Constraint *c)
-{
-/*
-    PolicyElementType type;
-    union {
-        Promise *promise;
-        Body *body;
-    } parent;
-
-    char *lval;
-    Rval rval;
-    char *classes;
-    bool references_body;
-*/
-}
-
-#endif
 
 struct Bundle_
 {
@@ -467,9 +381,17 @@ void *ConstraintGetRvalValue(EvalContext *ctx, const char *lval, const Promise *
  */
 int ConstraintsGetAsBoolean(EvalContext *ctx, const char *lval, const Seq *constraints);
 
-#ifdef DBG0
+#ifndef DBG0
 void DumpPolicyBundles(Policy *policy);
 void DumpPolicyBodies(Policy *policy);
+#endif
+
+#ifndef DBG0
+void PrintSeqBundle(Bundle *b);
+void PrintSeqBody(Body *b);
+void PrintSeqPromise(Promise *p);
+void PrintSeqSubType(SubType *s);
+void PrintSeqConstraint(Constraint *c);
 #endif
 
 #endif

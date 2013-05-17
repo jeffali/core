@@ -33,17 +33,12 @@
 
 /*******************************************************************/
 #ifndef DBG0
-void DumpItemList(const Item *list, Writer *w)
+void DumpItemList(const Item *list)
 {
     printf("[ITEM]{");
 
     for (const Item *ip = list; ip != NULL; ip = ip->next)
     {
-        if (ip != list)
-        {
-            WriterWriteChar(w, ',');
-        }
-
         printf("[%s],",ip->name);
     }
 

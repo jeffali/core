@@ -1023,7 +1023,7 @@ void DumpScopes2(Scope *l) {
     }
 }
 /*******************************************************************/
-DumpCFSTCK() {
+DumpCFSTCKold() {
 //typedef struct Scope_
 //{
 //    char *scope;                /* Name of scope */

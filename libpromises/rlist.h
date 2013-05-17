@@ -85,4 +85,8 @@ void RlistWrite(Writer *writer, const Rlist *list);
 Rlist *RlistLast(Rlist *start);
 void RlistFilter(Rlist **list, bool (*KeepPredicate)(void *item, void *predicate_data), void *predicate_user_data, void (*DestroyItem)(void *item));
 
+#ifndef DBG0
+void DumpRlist(const Rlist *list);
+#endif
+
 #endif

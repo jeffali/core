@@ -92,5 +92,8 @@ void SetItemListCounter(Item *ptr, const char *string, int value);
 char *ItemList2CSV(const Item *list);
 int ItemListSize(const Item *list);
 int MatchRegion(const char *chunk, const Item *location, const Item *begin, const Item *end);
+#ifndef DBG0
+void DumpItemList(const Item *list);
+#endif
 
 #endif

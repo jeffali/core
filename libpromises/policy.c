@@ -2789,7 +2789,7 @@ static void ConstraintPostCheck(const char *bundle_subtype, const char *lval, Rv
     }
 }
 
-#ifdef DBG0
+#ifndef DBG0
 void DumpPolicyBundles(Policy *policy) {
     for (size_t i = 0; i < SeqLength(policy->bundles); i++)
     {
@@ -2844,4 +2844,96 @@ void DumpPolicyBodies2(Policy *policy) {
 	printf("[BODY] type=%s name=%s ns=%s\n", bp->type, bp->name, bp->ns);
     }
 }
+#endif
+
+#ifndef DBG0
+/*
+    Seq *bundles;
+    Seq *bodies;
+    Seq *promises;
+    Seq *subtypes;
+    Seq *conlist;
+    Seq *stack;
+    Seq *errors;
+typedef struct Bundle_ Bundle;
+typedef struct Body_ Body;
+typedef struct Promise_ Promise;
+typedef struct SubType_ SubType;
+struct Constraint_
+*/
+void PrintSeqBundle(Bundle *b)
+{
+/*
+    char *type;
+    char *name;
+    char *ns;
+    Rlist *args;
+    Seq *subtypes;
+    char *source_path;
+*/
+   printf("%s:%s:%s:etc..", b->type, b->name, b->ns);
+}
+void PrintSeqBody(Body *b)
+{
+/*
+    char *type;
+    char *name;
+    char *ns;
+    Rlist *args;
+    Seq *conlist;
+    char *source_path;
+*/
+   printf("%s:%s:%s:etc..",b->type,b->name,b->ns);
+}
+void PrintSeqPromise(Promise *p)
+{
+/*
+    SubType *parent_subtype;
+
+    char *classes;
+    char *ref; 
+    char ref_alloc;
+    char *promiser;
+    Rval promisee;
+    char *bundle;
+    Audit *audit;
+
+    Seq *conlist;
+
+    char *agentsubtype;
+    char *bundletype; 
+    char *ns;        
+    int done;       
+    int *donep;    
+    int makeholes;
+    char *this_server;
+    int has_subbundles;
+*/
+   printf("%s:%s:%s:etc..",p->promiser,p->bundle,p->ns);
+}
+void PrintSeqSubType(SubType *s)
+{
+/*
+    char *name;
+    Seq *promises;
+*/
+   printf("%s:etc..",s->name);
+}
+void PrintSeqConstraint(Constraint *c)
+{
+/*
+    PolicyElementType type;
+    union {
+        Promise *promise;
+        Body *body;
+    } parent;
+
+    char *lval;
+    Rval rval;
+    char *classes;
+    bool references_body;
+*/
+   printf("%s:%s:etc..",c->lval,c->classes);
+}
+
 #endif
