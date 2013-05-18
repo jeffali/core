@@ -353,8 +353,30 @@ bool ScanLastSeenQuality(LastSeenQualityCallback callback, void *ctx)
     return true;
 }
 /*****************************************************************************/
+int DeleteKeyFromLastSeen(char *key)
+{
+    DBHandle *db;
+    DBCursor *cursor;
 
+    if (!OpenDB(&db, dbid_lastseen))
+    {
+        CfOut(OUTPUT_LEVEL_ERROR, "", "!! Unable to open lastseen database");
+        return false;
+    }
+    /*
+get its host get host = k$key
+del a$host
+del kSHA=$key
+del if any qiSHA=$key and qoSHA=$key
 
+        DeleteDB(db, address_key);
+*/
+
+    CloseDB(db);
+    return 0;
+}
+
+/*****************************************************************************/
 bool ScanLastSeenQualityOLD(LastSeenQualityCallback callback, void *ctx)
 {
     DBHandle *db;
