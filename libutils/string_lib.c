@@ -124,16 +124,17 @@ int StringSafeCompare(const char *a, const char *b)
 
 bool StringSafeEqual(const char *a, const char *b)
 {
-    if (a == b)
-    {
-        return true;
-    }
 
     if ((a == NULL) || (b == NULL))
     {
         return false;
     }
+    if (a == b)
+    {
+        return true;
+    }
 
+    printf("[%s] versus [%s]\n", a,b);
     return strcmp(a, b) == 0;
 }
 
@@ -792,6 +793,7 @@ bool StringStartsWith(const char *str, const char *prefix)
 char *StringVFormat(const char *fmt, va_list ap)
 {
     char *value;
+    printf("FMT=[%s]\n", fmt);
     int ret = xvasprintf(&value, fmt, ap);
     if (ret < 0)
     {

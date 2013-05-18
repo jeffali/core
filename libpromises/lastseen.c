@@ -29,6 +29,7 @@
 #include "logging_old.h"
 #include "files_hashes.h"
 #include "locks.h"
+#include "item_lib.h"
 
 void UpdateLastSawHost(const char *hostkey, const char *address,
                        bool incoming, time_t timestamp);
@@ -135,10 +136,10 @@ void UpdateLastSawHost(const char *hostkey, const char *address,
 
     CloseDB(db);
 }
-
 /*****************************************************************************/
+#if 0
 
-bool RemoveHostFromLastSeen(const char *hostkey)
+bool RemoveHostFromLastSeen(const char *host)
 {
     DBHandle *db;
     if (!OpenDB(&db, dbid_lastseen))
@@ -149,15 +150,15 @@ bool RemoveHostFromLastSeen(const char *hostkey)
 
     /* Lookup corresponding address entry */
 
-    char hostkey_key[CF_BUFSIZE];
-    snprintf(hostkey_key, CF_BUFSIZE, "k%s", hostkey);
+    char digest[CF_BUFSIZE];
     char address[CF_BUFSIZE];
+    snprintf(address, CF_BUFSIZE, "a%s", host);
 
-    if (ReadDB(db, hostkey_key, &address, sizeof(address)) == true)
+    if (ReadDB(db, address, &digest, sizeof(digest)) == true)
     {
         /* Remove address entry */
         char address_key[CF_BUFSIZE];
-        snprintf(address_key, CF_BUFSIZE, "a%s", address);
+        snprintf(address_key, CF_BUFSIZE, "kSHA=%s", address);
 
         DeleteDB(db, address_key);
     }
@@ -181,6 +182,52 @@ bool RemoveHostFromLastSeen(const char *hostkey)
     return true;
 }
 
+
+/*****************************************************************************/
+
+bool RemoveDigestFromLastSeen(const char *digest)
+{
+    DBHandle *db;
+    if (!OpenDB(&db, dbid_lastseen))
+    {
+        CfOut(OUTPUT_LEVEL_ERROR, "", "Unable to open lastseen database");
+        return false;
+    }
+
+    /* Lookup corresponding address entry */
+
+    char hostkey_key[CF_BUFSIZE];
+    snprintf(hostkey_key, CF_BUFSIZE, "k%s", digest);
+    char address[CF_BUFSIZE];
+
+    if (ReadDB(db, hostkey_key, &address, sizeof(address)) == true)
+    {
+        /* Remove address entry */
+        char address_key[CF_BUFSIZE];
+        snprintf(address_key, CF_BUFSIZE, "a%s", address);
+
+        DeleteDB(db, address_key);
+    }
+
+    /* Remove quality-of-connection entries */
+
+    char quality_key[CF_BUFSIZE];
+
+    snprintf(quality_key, CF_BUFSIZE, "qi%s", digest);
+    DeleteDB(db, quality_key);
+
+    snprintf(quality_key, CF_BUFSIZE, "qo%s", digest);
+    DeleteDB(db, quality_key);
+
+    /* Remove main entry */
+
+    DeleteDB(db, hostkey_key);
+
+    CloseDB(db);
+
+    return true;
+}
+#endif
 /*****************************************************************************/
 
 static bool Address2HostkeyInDB(DBHandle *db, const char *address, char *result)
@@ -252,7 +299,230 @@ bool Address2Hostkey(const char *address, char *result)
 }
 
 /*****************************************************************************/
+bool IsLastSeenCoherent(void)
+{
+    DBHandle *db;
+    DBCursor *cursor;
 
+    if (!OpenDB(&db, dbid_lastseen))
+    {
+        CfOut(OUTPUT_LEVEL_ERROR, "", "!! Unable to open lastseen database");
+        return false;
+    }
+
+    if (!NewDBCursor(db, &cursor))
+    {
+        CfOut(OUTPUT_LEVEL_ERROR, "", " !! Unable to create lastseen database cursor");
+        CloseDB(db);
+        return false;
+    }
+
+    char *key;
+    void *value;
+    int ksize, vsize;
+
+    Item *qkeys=NULL;
+    Item *akeys=NULL;
+    Item *kkeys=NULL;
+    Item *ahosts=NULL;
+    Item *khosts=NULL;
+
+    char val[CF_BUFSIZE];
+    while (NextDB(cursor, &key, &ksize, &value, &vsize))
+    {
+        if (key[0] != 'k' && key[0] != 'q' && key[0] != 'a' )
+        {
+            continue;
+        }
+
+        if (key[0] == 'q' )
+        {
+          if(strncmp(key,"qiSHA=",6)==0 ||strncmp(key,"qoSHA=",6)==0)
+          {
+            if(IsItemIn(qkeys, key+6)==false)
+            {
+               PrependItem(&qkeys, key+6, NULL);
+            }
+          }
+        }
+
+        if (key[0] == 'k' )
+        {
+          if(strncmp(key, "kSHA=", 5)==0)
+          {
+            PrependItem(&kkeys, key+5, NULL);
+            if (ReadDB(db, key, &val, vsize))
+            {
+              PrependItem(&khosts, val, NULL);
+            }
+          }
+        }
+
+        if (key[0] == 'a' )
+        {
+            PrependItem(&ahosts, key+1, NULL);
+            if (ReadDB(db, key, &val, vsize))
+            {
+              PrependItem(&akeys, val, NULL);
+            }
+        }
+
+    }
+
+    DeleteDBCursor(cursor);
+    CloseDB(db);
+
+    printf("%d %d %d\n", ListLen(qkeys), ListLen(akeys), ListLen(kkeys));
+    printf("%d %d\n", ListLen(khosts), ListLen(ahosts));
+
+    DumpItemList(qkeys);
+    DumpItemList(akeys);
+    DumpItemList(kkeys);
+    DumpItemList(ahosts);
+    DumpItemList(khosts);
+
+    if (ListsCompare(ahosts, khosts))
+    {
+        printf("Problem1: Hosts differ\n");
+    }
+    if (ListsCompare(akeys, kkeys))
+    {
+        printf("Problem2: Keys differ\n");
+    }
+
+    DeleteItemList(qkeys);
+    DeleteItemList(akeys);
+    DeleteItemList(kkeys);
+    DeleteItemList(ahosts);
+    DeleteItemList(khosts);
+
+    printf("Yeah it's gooooooooood\n");
+    return true;
+}
+/*****************************************************************************/
+int DeleteHostFromLastSeen(const char *host)
+{
+    DBHandle *db;
+    DBCursor *cursor;
+
+    if (!OpenDB(&db, dbid_lastseen))
+    {
+        CfOut(OUTPUT_LEVEL_ERROR, "", "!! Unable to open lastseen database");
+        return false;
+    }
+    /*
+get its host get host = "kSHA=$key"
+del a$host
+del kSHA=$key
+del if any qiSHA=$key and qoSHA=$key
+
+        DeleteDB(db, address_key);
+*/
+    char bufkey[CF_BUFSIZE + 1];
+    char bufhost[CF_BUFSIZE + 1];
+
+    //strcpy(bufkey, "kSHA=");
+    strcpy(bufhost, "a");
+    strlcat(bufhost, host, CF_BUFSIZE);
+
+    char key[CF_BUFSIZE];
+    if (ReadDB(db, bufhost, &key, sizeof(key)) == true)
+    {
+        strcpy(bufkey, "k");
+        strlcat(bufkey, key, CF_BUFSIZE);
+        if (HasKeyDB(db, bufkey, strlen(bufkey) + 1) == false)
+        {
+            goto clean;
+        }
+        else
+        {
+            DeleteDB(db, bufkey);
+            DeleteDB(db, bufhost);
+        }
+    }
+    else
+    {
+        goto clean;
+    }
+
+    //strcpy(bufkey, "qiSHA=");
+    strcpy(bufkey, "qi");
+    strlcat(bufkey, key, CF_BUFSIZE);
+    DeleteDB(db, bufkey);
+
+    //strcpy(bufkey, "qoSHA=");
+    strcpy(bufkey, "qo");
+    strlcat(bufkey, key, CF_BUFSIZE);
+    DeleteDB(db, bufkey);
+
+clean:
+    CloseDB(db);
+    return 0;
+}
+/*****************************************************************************/
+int DeleteDigestFromLastSeen(const char *key)
+{
+    DBHandle *db;
+    DBCursor *cursor;
+
+    if (!OpenDB(&db, dbid_lastseen))
+    {
+        CfOut(OUTPUT_LEVEL_ERROR, "", "!! Unable to open lastseen database");
+        return false;
+    }
+    /*
+get its host get host = "kSHA=$key"
+del a$host
+del kSHA=$key
+del if any qiSHA=$key and qoSHA=$key
+
+        DeleteDB(db, address_key);
+*/
+    char bufkey[CF_BUFSIZE + 1];
+    char bufhost[CF_BUFSIZE + 1];
+
+    //strcpy(bufkey, "kSHA=");
+    strcpy(bufkey, "k");
+    strlcat(bufkey, key, CF_BUFSIZE);
+
+    char host[CF_BUFSIZE];
+    if (ReadDB(db, bufkey, &host, sizeof(host)) == true)
+    {
+        strcpy(bufhost, "a");
+        strlcat(bufhost, host, CF_BUFSIZE);
+        if (HasKeyDB(db, bufhost, strlen(bufhost) + 1) == false)
+        {
+        printf("Grr: No a$host entry in DB\n");
+            goto clean;
+        }
+        else
+        {
+            DeleteDB(db, bufhost);
+            DeleteDB(db, bufkey);
+        }
+    }
+    else
+    {
+        printf("Grr: No k$key entry in DB\n");
+        goto clean;
+    }
+
+    //strcpy(bufkey, "qiSHA=");
+    strcpy(bufkey, "qi");
+    strlcat(bufkey, key, CF_BUFSIZE);
+    DeleteDB(db, bufkey);
+
+    //strcpy(bufkey, "qoSHA=");
+    strcpy(bufkey, "qo");
+    strlcat(bufkey, key, CF_BUFSIZE);
+    DeleteDB(db, bufkey);
+
+clean:
+    CloseDB(db);
+    return 0;
+}
+
+/*****************************************************************************/
 bool ScanLastSeenQuality(LastSeenQualityCallback callback, void *ctx)
 {
     DBHandle *db;
@@ -356,3 +626,4 @@ int LastSeenHostKeyCount(void)
 
     return count;
 }
+

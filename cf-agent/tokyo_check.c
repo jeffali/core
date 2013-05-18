@@ -65,30 +65,30 @@ static DBMeta *DBMetaNewDirect(const char *dbfilename)
     dbmeta = (DBMeta *) xcalloc(1, sizeof(DBMeta));
     if (!dbmeta)
     {
-        Log(LOG_LEVEL_ERR, "Error allocating memory : %s\n", strerror(errno));
+        printf("Error:Error allocating memory : %s\n", strerror(errno));
         return NULL;
     }
 
     realpath(dbfilename, dbmeta->dbpath);
     if (-1 == (dbmeta->fd = open(dbmeta->dbpath, O_RDONLY)))
     {
-        Log(LOG_LEVEL_ERR, "Failure opening file [%s] : %s\n", dbmeta->dbpath,
+        printf("Error:Failure opening file [%s] : %s\n", dbmeta->dbpath,
                 strerror(errno));
         if (dbmeta)
         {
-            free(dbmeta);
+            if(dbmeta) free(dbmeta);
         }
         return NULL;
     }
 
     if (256 != read(dbmeta->fd, hbuf, 256))
     {
-        Log(LOG_LEVEL_ERR, "Failure reading from database [%s] : %s\n",
+        printf("Error:Failure reading from database [%s] : %s\n",
                 dbmeta->dbpath, strerror(errno));
         close(dbmeta->fd);
         if (dbmeta)
         {
-            free(dbmeta);
+            if(dbmeta) free(dbmeta);
         }
         return NULL;
     }
@@ -106,18 +106,18 @@ static DBMeta *DBMetaNewDirect(const char *dbfilename)
     dbmeta->offset_map = StringMapNew();
     dbmeta->record_map = StringMapNew();
 
-    Log(LOG_LEVEL_VERBOSE, "Database            : %s\n", dbmeta->dbpath);
-    Log(LOG_LEVEL_VERBOSE, "  number of buckets : %llu\n",
+    printf("Vrb:Database            : %s\n", dbmeta->dbpath);
+    printf("Vrb:  number of buckets : %llu\n",
             (long long unsigned) dbmeta->bucket_count);
-    Log(LOG_LEVEL_VERBOSE, "  offset of buckets : %llu\n",
+    printf("Vrb:  offset of buckets : %llu\n",
             (long long unsigned) dbmeta->bucket_offset);
-    Log(LOG_LEVEL_VERBOSE, "  bytes per pointer : %llu\n",
+    printf("Vrb:  bytes per pointer : %llu\n",
             (long long unsigned) dbmeta->bytes_per);
-    Log(LOG_LEVEL_VERBOSE, "  alignment power   : %llu\n",
+    printf("Vrb:  alignment power   : %llu\n",
             (long long unsigned) dbmeta->alignment_pow);
-    Log(LOG_LEVEL_VERBOSE, "  number of records : %llu\n",
+    printf("Vrb:  number of records : %llu\n",
             (long long unsigned) dbmeta->record_count);
-    Log(LOG_LEVEL_VERBOSE, "  offset of records : %llu\n",
+    printf("Vrb:  offset of records : %llu\n",
             (long long unsigned) dbmeta->record_offset);
 
     return dbmeta;
@@ -125,14 +125,16 @@ static DBMeta *DBMetaNewDirect(const char *dbfilename)
 
 static void DBMetaFree(DBMeta * dbmeta)
 {
-    StringMapDestroy(dbmeta->offset_map);
+    if (dbmeta)
+    {
+if(dbmeta->offset_map)
+    StringMapDestroy(dbmeta->offset_map); /*TODO: invalid free*/
+if(dbmeta->record_map)
     StringMapDestroy(dbmeta->record_map);
 
     close(dbmeta->fd);
 
-    if (dbmeta)
-    {
-        free(dbmeta);
+        if(dbmeta) free(dbmeta);
     }
 }
 
@@ -142,20 +144,22 @@ static int AddOffsetToMapUnlessExists(StringMap ** tree, uint64_t offset,
     char *tmp;
     xasprintf(&tmp, "%llu", offset);
     char *val;
-    if (StringMapHasKey(*tree, tmp) == false)
+if(!tmp) {printf("BIG error\n"); /*exit(0);*/}
+if(!*tree) {printf("BIG error2\n"); /*exit(0);*/}
+    if (StringMapHasKey(*tree, tmp) == false) /*TODO: valgrind read 1*/
     {
         xasprintf(&val, "%llu", bucket_index);
-        StringMapInsert(*tree, tmp, val);
-        free(tmp);
-        free(val);
+printf("GLEEEEEEEEEEEEEEEN = %d %d\n", strlen(tmp), strlen(val));
+        if(tmp && val) StringMapInsert(*tree, tmp, val); /*TODO: valgrind read 1*/
+        //if(tmp) free(tmp); /*TODO: valgrind read 1*/ /*JVEX: big change*/
+        //if(val) free(val);
     }
     else
     {
-        Log(LOG_LEVEL_ERR,
-            "Duplicate offset for value %llu at index %lld, other value %llu, other index %s\n",
+        printf("ErrZ: Duplicate offset for value %llu at index %lld, other value %llu, other index %s\n",
              (long long unsigned) offset, (long long) bucket_index,
              (long long unsigned) offset, (char *) StringMapGet(*tree, tmp));
-        free(tmp);
+        if(tmp) free(tmp);
     }
     return 0;
 }
@@ -166,8 +170,7 @@ static int DBMetaPopulateOffsetMap(DBMeta * dbmeta)
 
     if (lseek(dbmeta->fd, dbmeta->bucket_offset, SEEK_SET) == -1)
     {
-        Log(LOG_LEVEL_ERR,
-            "Error traversing bucket section to find record offsets : %s\n",
+        printf("ErrZ: Error traversing bucket section to find record offsets : %s\n",
              strerror(errno));
         return 1;
     }
@@ -179,7 +182,7 @@ static int DBMetaPopulateOffsetMap(DBMeta * dbmeta)
 
         if (b != dbmeta->bytes_per)
         {
-            Log(LOG_LEVEL_ERR, "Read the wrong number of bytes (%d)\n", b);
+            printf("Error:Read the wrong number of bytes (%d)\n", b);
             return 2;
         }
 
@@ -194,7 +197,7 @@ static int DBMetaPopulateOffsetMap(DBMeta * dbmeta)
         }
     }
 
-    Log(LOG_LEVEL_VERBOSE, "Found %llu buckets with offsets\n",
+    printf("Vrb:Found %llu buckets with offsets\n",
             (long long unsigned) StringMapSize(dbmeta->offset_map));
     return 0;
 }
@@ -236,7 +239,7 @@ static bool DBMetaReadOneRecord(DBMeta * dbmeta, TokyoCabinetRecord * rec)
 {
     if (lseek(dbmeta->fd, rec->offset, SEEK_SET) == -1)
     {
-        Log(LOG_LEVEL_ERR, "Error traversing record section to find records : \n");
+        printf("Error:Error traversing record section to find records : \n");
     }
 
     while (true)
@@ -245,20 +248,19 @@ static bool DBMetaReadOneRecord(DBMeta * dbmeta, TokyoCabinetRecord * rec)
         rec->offset = lseek(dbmeta->fd, 0, SEEK_CUR);
         if (rec->offset == (off_t) - 1)
         {
-            Log(LOG_LEVEL_ERR,
-                "Error traversing record section to find records : \n");
+            printf("ErrZ: Error traversing record section to find records : \n");
         }
 
         if (1 != read(dbmeta->fd, &(rec->magic), 1))
         {
-            Log(LOG_LEVEL_ERR, "ERROR: Failure reading 1 byte, %s\n",
+            printf("Error:ERROR: Failure reading 1 byte, %s\n",
                     strerror(errno));
             return false;
         }
 
         if (MAGIC_DATA_BLOCK == rec->magic)
         {
-            Log(LOG_LEVEL_VERBOSE, "off=%llu[c8]\n", rec->offset);
+            printf("Vrb:off=%llu[c8]\n", rec->offset);
             int length = 1;
 
             length += read(dbmeta->fd, &(rec->hash), 1);
@@ -280,7 +282,7 @@ static bool DBMetaReadOneRecord(DBMeta * dbmeta, TokyoCabinetRecord * rec)
         }
         else if (MAGIC_FREE_BLOCK == rec->magic)
         {
-            Log(LOG_LEVEL_VERBOSE, "off=%llu[b0]\n", rec->offset);
+            printf("Vrb:off=%llu[b0]\n", rec->offset);
             uint32_t length;
             rec->length = 1;
             rec->length += read(dbmeta->fd, &length, sizeof(length));
@@ -290,10 +292,10 @@ static bool DBMetaReadOneRecord(DBMeta * dbmeta, TokyoCabinetRecord * rec)
         }
         else
         {
-            Log(LOG_LEVEL_VERBOSE, "\nread a non-magic byt (skip it)\n");
+            printf("Vrb:\nread a non-magic byt (skip it)\n");
         }
     }
-    Log(LOG_LEVEL_ERR, "\nERROR : read loop reached here.\n");
+    printf("Error:\nERROR : read loop reached here.\n");
     return false;
 }
 
@@ -307,7 +309,7 @@ static int DBMetaPopulateRecordMap(DBMeta * dbmeta)
     offset = dbmeta->record_offset;
     if (fstat(dbmeta->fd, &st) == -1)
     {
-        Log(LOG_LEVEL_ERR, "Error getting file stats :%s\n", strerror(errno));
+        printf("Error:Error getting file stats :%s\n", strerror(errno));
         return 1;
     }
 
@@ -321,7 +323,7 @@ static int DBMetaPopulateRecordMap(DBMeta * dbmeta)
         // read a variable-length record
         if (!DBMetaReadOneRecord(dbmeta, &new_rec))
         {
-            Log(LOG_LEVEL_ERR, "Unable to fetch a new record from DB file\n");
+            printf("Error:Unable to fetch a new record from DB file\n");
             return 2;
         }
         else
@@ -343,7 +345,7 @@ static int DBMetaPopulateRecordMap(DBMeta * dbmeta)
 
                 char *key;
                 xasprintf(&key, "%llu", new_rec.offset);
-                if (StringMapHasKey(dbmeta->offset_map, key) == true)
+                if (StringMapHasKey(dbmeta->offset_map, key) == true) /*TODO: valgrind read 1*/
                 {
                     if (key)
                     {
@@ -361,13 +363,12 @@ static int DBMetaPopulateRecordMap(DBMeta * dbmeta)
             }
             else
             {
-                Log(LOG_LEVEL_ERR,
-                    "new_rec.offset cannot be <= 0 ???\n");
+                printf("ErrZ: new_rec.offset cannot be <= 0 ???\n");
             }
 
             if (new_rec.left > 0)
             {
-                Log(LOG_LEVEL_VERBOSE, ">>> handle left %llu\n", new_rec.left);
+                printf("Vrb:>>> handle left %llu\n", new_rec.left);
                 if (AddOffsetToMapUnlessExists
                     (&(dbmeta->offset_map), new_rec.left, -1))
                 {
@@ -377,7 +378,7 @@ static int DBMetaPopulateRecordMap(DBMeta * dbmeta)
 
             if (new_rec.right > 0)
             {
-                Log(LOG_LEVEL_VERBOSE, ">>> handle right %llu\n", new_rec.right);
+                printf("Vrb:>>> handle right %llu\n", new_rec.right);
                 if (AddOffsetToMapUnlessExists
                     (&(dbmeta->offset_map), new_rec.right, -1))
                 {
@@ -394,14 +395,14 @@ static int DBMetaPopulateRecordMap(DBMeta * dbmeta)
         }
         else
         {
-            Log(LOG_LEVEL_ERR, "NO record found at offset %llu\n",
+            printf("Error:NO record found at offset %llu\n",
                     (long long unsigned) new_rec.offset);
         }
     }
 
     // if we are not at the end of the file, output the current file offset
     // with an appropriate message and return
-    Log(LOG_LEVEL_VERBOSE, "Found %llu data records and %llu free block records\n",
+    printf("Vrb:Found %llu data records and %llu free block records\n",
             data_blocks, free_blocks);
 
     return 0;
@@ -413,11 +414,9 @@ static int DBMetaGetResults(DBMeta * dbmeta)
     uint64_t records_no_bucket = StringMapSize(dbmeta->record_map);
     int ret = 0;
 
-    Log(LOG_LEVEL_VERBOSE,
-        "Found %llu offsets listed in buckets that do not have records\n",
+    printf("VrbZ: Found %llu offsets listed in buckets that do not have records\n",
          buckets_no_record);
-    Log(LOG_LEVEL_VERBOSE,
-        "Found %llu records in data that do not have an offset pointing to them\n",
+    printf("VrbZ:Found %llu records in data that do not have an offset pointing to them\n",
          records_no_bucket);
 
     if (buckets_no_record > 0)
@@ -443,14 +442,15 @@ int CheckTokyoDBCoherence(const char *path)
         return 1;
     }
 
-    Log(LOG_LEVEL_VERBOSE, "Populating with bucket section offsets\n");
+    printf("Vrb:Populating with bucket section offsets\n");
     ret = DBMetaPopulateOffsetMap(dbmeta);
+    //exit(0);
     if (ret)
     {
         goto clean;
     }
 
-    Log(LOG_LEVEL_VERBOSE, "Populating with record section offsets\n");
+    printf("Vrb:Populating with record section offsets\n");
     ret = DBMetaPopulateRecordMap(dbmeta);
     if (ret)
     {

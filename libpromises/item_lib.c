@@ -30,6 +30,19 @@
 #include "misc_lib.h"
 
 /*******************************************************************/
+#ifndef DBG0
+void DumpItemList(const Item *list)
+{
+    printf("[ITEM]{");
+
+    for (const Item *ip = list; ip != NULL; ip = ip->next)
+    {
+        printf("[%s],",ip->name);
+    }
+
+    printf("}\n");
+}
+#endif
 
 void PrintItemList(const Item *list, Writer *w)
 {
@@ -151,6 +164,28 @@ bool IsItemIn(const Item *list, const char *item)
 
     return false;
 }
+
+/*********************************************************************/
+/*    TODO: Implement test */
+
+bool ListsCompare(const Item *list1, const Item *list2)
+{
+    if (ListLen(list1) != ListLen(list2))
+    {
+        return false;
+    }
+
+    for (const Item *ptr = list1; ptr != NULL; ptr = ptr->next)
+    {
+        if(IsItemIn(list2, ptr->name) == false)
+        {
+          return false;
+        }
+    }
+
+    return true;
+}
+
 
 /*********************************************************************/
 

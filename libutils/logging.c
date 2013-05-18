@@ -206,6 +206,7 @@ void VLog(LogLevel level, const char *fmt, va_list ap)
     {
         LogToSystemLog(msg, level);
     }
+    if(msg != NULL) free(msg);  /*JVEX: fix*/
 }
 
 void Log(LogLevel level, const char *fmt, ...)

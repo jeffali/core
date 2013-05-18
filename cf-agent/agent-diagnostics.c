@@ -32,6 +32,7 @@
 #include "dbm_api.h"
 #include "dbm_priv.h"
 #include "tokyo_check.h"
+#include "lastseen.h"
 
 #include <assert.h>
 
@@ -145,14 +146,27 @@ static AgentDiagnosticsResult AgentDiagnosticsCheckDB(const char *workdir, dbid 
     else
     {
         int ret = CheckTokyoDBCoherence(dbpath);
-        free(dbpath);
-        if(ret)
+        if (!ret)
         {
+            free(dbpath);
             return AgentDiagnosticsResultNew(false, xstrdup("Internal DB coherence problem"));
-        } 
+        }
         else
         {
+            if (id == dbid_lastseen)
+            {
+              //strcpy(CFWORKDIR, workdir);
+              printf("LOOL [%s]\n", dbpath);
+              //exit(0);
+              if (IsLastSeenCoherent() == false)
+              {
+                  free(dbpath);
+                  return AgentDiagnosticsResultNew(false, xstrdup("Lastseen DB data coherence problem"));
+              }
+            }
+            free(dbpath);
             return AgentDiagnosticsResultNew(true, xstrdup("OK"));
+            
         }
     }
 }
@@ -201,6 +215,7 @@ const AgentDiagnosticCheck *AgentDiagnosticsAllChecks(void)
 {
     static const AgentDiagnosticCheck checks[] =
     {
+#if 0
         { "Check that agent is bootstrapped", &AgentDiagnosticsCheckIsBootstrapped },
         { "Check if agent is acting as a policy server", &AgentDiagnosticsCheckAmPolicyServer },
         { "Check private key", &AgentDiagnosticsCheckPrivateKey },
@@ -213,9 +228,11 @@ const AgentDiagnosticCheck *AgentDiagnosticsAllChecks(void)
         { "Check file stats DB", &AgentDiagnosticsCheckDBFileStats },
         { "Check locks DB", &AgentDiagnosticsCheckDBLocks },
         { "Check performance DB", &AgentDiagnosticsCheckDBPerformance },
-
+#endif
+        { "Check lastseen DB", &AgentDiagnosticsCheckDBLastSeen },
         { NULL, NULL }
     };
+
 
     return checks;
 }

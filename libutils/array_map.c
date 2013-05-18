@@ -38,6 +38,8 @@ ArrayMap *ArrayMapNew(MapKeyEqualFn equal_fn,
     map->destroy_key_fn = destroy_key_fn;
     map->destroy_value_fn = destroy_value_fn;
     map->values = xcalloc(1, sizeof(MapKeyValue) * TINY_LIMIT);
+    //map->size = 0; //JVEX: fix???TINY_LIMIT;
+    printf("SZZZZZZZOOFFFFFFFFF %ld\n", sizeof(map->values));
     return map;
 }
 
@@ -50,6 +52,8 @@ bool ArrayMapInsert(ArrayMap *map, void *key, void *value)
 
     for (int i = 0; i < map->size; ++i)
     {
+        printf("WA333333333333333 MAPSIZE=%d\n", map->size);
+        //exit(0);
         if (map->equal_fn(map->values[i].key, key))
         {
             map->destroy_key_fn(key);
@@ -59,6 +63,7 @@ bool ArrayMapInsert(ArrayMap *map, void *key, void *value)
         }
     }
 
+    printf("MSZZZZZZZZZZZ=%d\n", map->size);
     map->values[map->size++] = (MapKeyValue) { key, value };
     return true;
 }
@@ -84,13 +89,19 @@ bool ArrayMapRemove(ArrayMap *map, const void *key)
 
 MapKeyValue *ArrayMapGet(const ArrayMap *map, const void *key)
 {
+    printf("Mookkkkkkkkkkkkkkkkk mapsize=%d\n", map->size); //exit(0);
     for (int i = 0; i < map->size; ++i)
     {
+       printf("Zookkkkkkkkkkkkkkkkk=%d\n", i); /*exit(0);*/
+       if(map && map->values && map->values[i].key) {
+       printf("Lookkkkkkkkkkkkkkkkk %s p=%p\n", (char *)map->values[i].key, map->equal_fn);
         if (map->equal_fn(map->values[i].key, key))
         {
             return map->values + i;
         }
+       }
     }
+    printf("NGOOOOOOOOOOOOOOOR\n");
     return NULL;
 }
 
