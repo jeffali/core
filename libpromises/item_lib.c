@@ -30,6 +30,19 @@
 #include "misc_lib.h"
 
 /*******************************************************************/
+#ifndef DBG0
+void DumpItemList(const Item *list)
+{
+    printf("[ITEM]{");
+
+    for (const Item *ip = list; ip != NULL; ip = ip->next)
+    {
+        printf("[%s],",ip->name);
+    }
+
+    printf("}\n");
+}
+#endif
 
 void PrintItemList(const Item *list, Writer *w)
 {

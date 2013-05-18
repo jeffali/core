@@ -325,6 +325,12 @@ bool ScanLastSeenQuality(LastSeenQualityCallback callback, void *ctx)
 
     printf("%d %d %d\n", ListLen(qkeys), ListLen(akeys), ListLen(kkeys));
     printf("%d %d\n", ListLen(khosts), ListLen(ahosts));
+    DumpItemList(qkeys);
+    DumpItemList(akeys);
+    DumpItemList(kkeys);
+    DumpItemList(ahosts);
+    DumpItemList(khosts);
+
     DeleteItemList(qkeys);
     DeleteItemList(akeys);
     DeleteItemList(kkeys);
