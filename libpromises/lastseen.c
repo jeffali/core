@@ -293,7 +293,10 @@ bool ScanLastSeenQuality(LastSeenQualityCallback callback, void *ctx)
         {
           if(strncmp(key,"qiSHA=",6)==0 ||strncmp(key,"qoSHA=",6)==0)
           {
-            PrependItem(&qkeys, key+6, NULL);
+            if(IsItemIn(qkeys, key+6)==false)
+            {
+               PrependItem(&qkeys, key+6, NULL);
+            }
           }
         }
 
@@ -325,11 +328,21 @@ bool ScanLastSeenQuality(LastSeenQualityCallback callback, void *ctx)
 
     printf("%d %d %d\n", ListLen(qkeys), ListLen(akeys), ListLen(kkeys));
     printf("%d %d\n", ListLen(khosts), ListLen(ahosts));
+
     DumpItemList(qkeys);
     DumpItemList(akeys);
     DumpItemList(kkeys);
     DumpItemList(ahosts);
     DumpItemList(khosts);
+
+    if (ListsCompare(ahosts, khosts))
+    {
+        printf("Problem1: Hosts differ\n");
+    }
+    if (ListsCompare(akeys, kkeys))
+    {
+        printf("Problem2: Keys differ\n");
+    }
 
     DeleteItemList(qkeys);
     DeleteItemList(akeys);
