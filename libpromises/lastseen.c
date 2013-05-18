@@ -29,6 +29,7 @@
 #include "logging_old.h"
 #include "files_hashes.h"
 #include "locks.h"
+#include "item_lib.h"
 
 void UpdateLastSawHost(const char *hostkey, const char *address,
                        bool incoming, time_t timestamp);
@@ -252,8 +253,90 @@ bool Address2Hostkey(const char *address, char *result)
 }
 
 /*****************************************************************************/
-
 bool ScanLastSeenQuality(LastSeenQualityCallback callback, void *ctx)
+{
+    DBHandle *db;
+    DBCursor *cursor;
+
+    if (!OpenDB(&db, dbid_lastseen))
+    {
+        CfOut(OUTPUT_LEVEL_ERROR, "", "!! Unable to open lastseen database");
+        return false;
+    }
+
+    if (!NewDBCursor(db, &cursor))
+    {
+        CfOut(OUTPUT_LEVEL_ERROR, "", " !! Unable to create lastseen database cursor");
+        CloseDB(db);
+        return false;
+    }
+
+    char *key;
+    void *value;
+    int ksize, vsize;
+
+    Item *qkeys=NULL;
+    Item *akeys=NULL;
+    Item *kkeys=NULL;
+    Item *ahosts=NULL;
+    Item *khosts=NULL;
+
+    char val[CF_BUFSIZE];
+    while (NextDB(cursor, &key, &ksize, &value, &vsize))
+    {
+        if (key[0] != 'k' && key[0] != 'q' && key[0] != 'a' )
+        {
+            continue;
+        }
+
+        if (key[0] == 'q' )
+        {
+          if(strncmp(key,"qiSHA=",6)==0 ||strncmp(key,"qoSHA=",6)==0)
+          {
+            PrependItem(&qkeys, key+6, NULL);
+          }
+        }
+
+        if (key[0] == 'k' )
+        {
+          if(strncmp(key, "kSHA=", 5)==0)
+          {
+            PrependItem(&kkeys, key+5, NULL);
+            if (ReadDB(db, key, &val, vsize))
+            {
+              PrependItem(&khosts, val, NULL);
+            }
+          }
+        }
+
+        if (key[0] == 'a' )
+        {
+            PrependItem(&ahosts, key+1, NULL);
+            if (ReadDB(db, key, &val, vsize))
+            {
+              PrependItem(&akeys, val, NULL);
+            }
+        }
+
+    }
+
+    DeleteDBCursor(cursor);
+    CloseDB(db);
+
+    printf("%d %d %d\n", ListLen(qkeys), ListLen(akeys), ListLen(kkeys));
+    printf("%d %d\n", ListLen(khosts), ListLen(ahosts));
+    DeleteItemList(qkeys);
+    DeleteItemList(akeys);
+    DeleteItemList(kkeys);
+    DeleteItemList(ahosts);
+    DeleteItemList(khosts);
+
+    return true;
+}
+/*****************************************************************************/
+
+
+bool ScanLastSeenQualityOLD(LastSeenQualityCallback callback, void *ctx)
 {
     DBHandle *db;
     DBCursor *cursor;
@@ -356,3 +439,4 @@ int LastSeenHostKeyCount(void)
 
     return count;
 }
+
