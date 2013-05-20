@@ -1200,7 +1200,8 @@ static FnCallResult FnCallGetIndices(EvalContext *ctx, FnCall *fp, Rlist *finala
             char *sp;
 
             index[0] = '\0';
-            sscanf(assoc->lval + strlen(match), "%127[^\n]", index);
+            printf("MATCH [%s] ASSOC[%s]\n", match, assoc->lval + strlen(match));
+            sscanf(assoc->lval + strlen(match), "%1024[^\n]", index);
             if ((sp = strchr(index, ']')))
             {
                 *sp = '\0';
