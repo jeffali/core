@@ -1200,8 +1200,11 @@ static FnCallResult FnCallGetIndices(EvalContext *ctx, FnCall *fp, Rlist *finala
             char *sp;
 
             index[0] = '\0';
-            printf("MATCH [%s] ASSOC[%s]\n", match, assoc->lval + strlen(match));
-            sscanf(assoc->lval + strlen(match), "%1024[^\n]", index);
+            //printf("MATCH [%s] ASSOC[%s]\n", match, assoc->lval + strlen(match));
+            //sscanf(assoc->lval + strlen(match), "%1024[^\n]", index);
+            strlcpy(index, ExtractFirstReference("([^\\]\\[\n]+)", assoc->lval + strlen(match)), CF_MAXVARSIZE);
+
+#if 0
             if ((sp = strchr(index, ']')))
             {
                 *sp = '\0';
@@ -1210,6 +1213,7 @@ static FnCallResult FnCallGetIndices(EvalContext *ctx, FnCall *fp, Rlist *finala
             {
                 index[strlen(index) - 1] = '\0';
             }
+#endif
 
             if (strlen(index) > 0)
             {

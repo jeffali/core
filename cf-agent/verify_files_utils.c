@@ -3341,6 +3341,7 @@ int CfCreateFile(EvalContext *ctx, char *file, Promise *pp, Attributes attr)
 {
     int fd;
 
+    printf("Grrrrrrrr [%s]\n", file);
     /* If name ends in /. then this is a directory */
 
 // attr.move_obstructions for MakeParentDirectory
