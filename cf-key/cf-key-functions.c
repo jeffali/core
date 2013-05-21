@@ -167,8 +167,45 @@ void ShowLastSeenHosts()
     printf("Total Entries: %d\n", count);
 }
 
+static bool isDigestOrHost(const char *input)
+{
+    if (strncmp(input, "SHA=", 4) == 0)
+    {
+        return true;
+    }
+    else if (strncmp(input, "MD5=", 4) == 0)
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
 
-int RemoveKeys(const char *host)
+int RemoveKeys(const char *input)
+{
+    if (IsLastSeenCoherent() == true)
+    {
+        if (isDigestOrHost(input))
+        {
+            printf("Removing digest [%s]\n", input);
+            DeleteDigestFromLastSeen(input);
+        }
+        else
+        {
+            printf("Removing host [%s]\n", input);
+            DeleteHostFromLastSeen(input);
+        }
+    }
+    else
+    {
+        CfOut(OUTPUT_LEVEL_ERROR, "", "Unable to remove keys from lastseen database");
+    }
+    return 0;
+}
+#if 0
+int RemoveKeysOLD(const char *host)
 {
     char digest[CF_BUFSIZE];
     char ipaddr[CF_MAX_IP_LEN];
@@ -203,7 +240,7 @@ int RemoveKeys(const char *host)
         return 0;
     }
 }
-
+#endif
 
 void KeepKeyPromises(const char *public_key_file, const char *private_key_file)
 {
