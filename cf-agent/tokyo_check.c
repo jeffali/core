@@ -125,7 +125,7 @@ static DBMeta *DBMetaNewDirect(const char *dbfilename)
 
 static void DBMetaFree(DBMeta * dbmeta)
 {
-    StringMapDestroy(dbmeta->offset_map);
+    StringMapDestroy(dbmeta->offset_map); /*TODO: invalid free*/
     StringMapDestroy(dbmeta->record_map);
 
     close(dbmeta->fd);
@@ -142,11 +142,11 @@ static int AddOffsetToMapUnlessExists(StringMap ** tree, uint64_t offset,
     char *tmp;
     xasprintf(&tmp, "%llu", offset);
     char *val;
-    if (StringMapHasKey(*tree, tmp) == false)
+    if (StringMapHasKey(*tree, tmp) == false) /*TODO: valgrind read 1*/
     {
         xasprintf(&val, "%llu", bucket_index);
-        StringMapInsert(*tree, tmp, val);
-        free(tmp);
+        StringMapInsert(*tree, tmp, val); /*TODO: valgrind read 1*/
+        free(tmp); /*TODO: valgrind read 1*/
         free(val);
     }
     else
@@ -343,7 +343,7 @@ static int DBMetaPopulateRecordMap(DBMeta * dbmeta)
 
                 char *key;
                 xasprintf(&key, "%llu", new_rec.offset);
-                if (StringMapHasKey(dbmeta->offset_map, key) == true)
+                if (StringMapHasKey(dbmeta->offset_map, key) == true) /*TODO: valgrind read 1*/
                 {
                     if (key)
                     {
