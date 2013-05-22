@@ -146,7 +146,7 @@ static AgentDiagnosticsResult AgentDiagnosticsCheckDB(const char *workdir, dbid 
     else
     {
         int ret = CheckTokyoDBCoherence(dbpath);
-        if (ret)
+        if (!ret)
         {
             free(dbpath);
             return AgentDiagnosticsResultNew(false, xstrdup("Internal DB coherence problem"));
@@ -155,6 +155,7 @@ static AgentDiagnosticsResult AgentDiagnosticsCheckDB(const char *workdir, dbid 
         {
             if (id == dbid_lastseen)
             {
+              strcpy(CFWORKDIR, dbpath);
               if (IsLastSeenCoherent() == false)
               {
                   free(dbpath);
