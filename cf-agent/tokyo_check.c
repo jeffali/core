@@ -144,12 +144,15 @@ static int AddOffsetToMapUnlessExists(StringMap ** tree, uint64_t offset,
     char *tmp;
     xasprintf(&tmp, "%llu", offset);
     char *val;
+if(!tmp) {printf("BIG error\n"); /*exit(0);*/}
+if(!*tree) {printf("BIG error2\n"); /*exit(0);*/}
     if (StringMapHasKey(*tree, tmp) == false) /*TODO: valgrind read 1*/
     {
         xasprintf(&val, "%llu", bucket_index);
-        StringMapInsert(*tree, tmp, val); /*TODO: valgrind read 1*/
-        if(tmp) free(tmp); /*TODO: valgrind read 1*/
-        if(val) free(val);
+printf("GLEEEEEEEEEEEEEEEN = %d %d\n", strlen(tmp), strlen(val));
+        if(tmp && val) StringMapInsert(*tree, tmp, val); /*TODO: valgrind read 1*/
+        //if(tmp) free(tmp); /*TODO: valgrind read 1*/ /*JVEX: big change*/
+        //if(val) free(val);
     }
     else
     {
@@ -441,6 +444,7 @@ int CheckTokyoDBCoherence(const char *path)
 
     printf("Vrb:Populating with bucket section offsets\n");
     ret = DBMetaPopulateOffsetMap(dbmeta);
+    //exit(0);
     if (ret)
     {
         goto clean;

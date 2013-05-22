@@ -124,14 +124,14 @@ int StringSafeCompare(const char *a, const char *b)
 
 bool StringSafeEqual(const char *a, const char *b)
 {
-    if (a == b)
-    {
-        return true;
-    }
 
     if ((a == NULL) || (b == NULL))
     {
         return false;
+    }
+    if (a == b)
+    {
+        return true;
     }
 
     printf("[%s] versus [%s]\n", a,b);
