@@ -155,7 +155,9 @@ static AgentDiagnosticsResult AgentDiagnosticsCheckDB(const char *workdir, dbid 
         {
             if (id == dbid_lastseen)
             {
-              strcpy(CFWORKDIR, dbpath);
+              //strcpy(CFWORKDIR, workdir);
+              printf("LOOL [%s]\n", dbpath);
+              //exit(0);
               if (IsLastSeenCoherent() == false)
               {
                   free(dbpath);
