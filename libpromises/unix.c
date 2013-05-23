@@ -220,10 +220,16 @@ int IsExecutable(const char *file)
     return false;
 }
 
-bool ShellCommandReturnsZero(const char *command, bool useshell)
+bool ShellCommandReturnsZero(const char *command, ShellType shell)
 {
     int status;
     pid_t pid;
+
+    if (shell == SHELL_TYPE_POWERSHELL)
+    {
+        Log(LOG_LEVEL_ERR, "Powershell is only supported on Windows");
+        return false;
+    }
 
     if ((pid = fork()) < 0)
     {
@@ -234,7 +240,7 @@ bool ShellCommandReturnsZero(const char *command, bool useshell)
     {
         ALARM_PID = -1;
 
-        if (useshell)
+        if (shell == SHELL_TYPE_USE)
         {
             if (execl(SHELL_PATH, "sh", "-c", command, NULL) == -1)
             {
@@ -352,7 +358,7 @@ static void GetMacAddress(EvalContext *ctx, AgentType ag, int fd, struct ifreq *
              (unsigned char) ifr->ifr_hwaddr.sa_data[4], 
              (unsigned char) ifr->ifr_hwaddr.sa_data[5]);
 
-    ScopeNewSpecialScalar(ctx, "sys", name, hw_mac, DATA_TYPE_STRING);
+    ScopeNewSpecial(ctx, "sys", name, hw_mac, DATA_TYPE_STRING);
     RlistAppend(hardware, hw_mac, RVAL_TYPE_SCALAR);
     RlistAppend(interfaces, ifp->ifr_name, RVAL_TYPE_SCALAR);
 
@@ -370,7 +376,7 @@ static void GetMacAddress(EvalContext *ctx, AgentType ag, int fd, struct ifreq *
         Log(LOG_LEVEL_ERR, "getifaddrs", "!! Could not get interface %s addresses",
           ifp->ifr_name);
 
-        ScopeNewSpecialScalar(ctx, "sys", name, "mac_unknown", DATA_TYPE_STRING);
+        ScopeNewSpecial(ctx, "sys", name, "mac_unknown", DATA_TYPE_STRING);
         EvalContextHeapAddHard(ctx, "mac_unknown");
         return;
     }
@@ -391,7 +397,7 @@ static void GetMacAddress(EvalContext *ctx, AgentType ag, int fd, struct ifreq *
                     (unsigned char) m[4],
                     (unsigned char) m[5]);
 
-                ScopeNewSpecialScalar(ctx, "sys", name, hw_mac, DATA_TYPE_STRING);
+                ScopeNewSpecial(ctx, "sys", name, hw_mac, DATA_TYPE_STRING);
                 RlistAppend(hardware, hw_mac, RVAL_TYPE_SCALAR);
                 RlistAppend(interfaces, ifa->ifa_name, RVAL_TYPE_SCALAR);
 
@@ -404,7 +410,7 @@ static void GetMacAddress(EvalContext *ctx, AgentType ag, int fd, struct ifreq *
     freeifaddrs(ifaddr);
 
 # else
-    ScopeNewSpecialScalar(ctx, "sys", name, "mac_unknown", DATA_TYPE_STRING);
+    ScopeNewSpecial(ctx, "sys", name, "mac_unknown", DATA_TYPE_STRING);
     EvalContextHeapAddHard(ctx, "mac_unknown");
 # endif
 }
@@ -447,7 +453,7 @@ void GetInterfaceFlags(EvalContext *ctx, AgentType ag, struct ifreq *ifr, Rlist 
     {
       // Skip leading space
       fp = buffer + 1;
-      ScopeNewSpecialScalar(ctx, "sys", name, fp, DATA_TYPE_STRING);
+      ScopeNewSpecial(ctx, "sys", name, fp, DATA_TYPE_STRING);
       RlistAppend(flags, fp, RVAL_TYPE_SCALAR);
     }
 }
@@ -542,7 +548,7 @@ void GetInterfacesInfo(EvalContext *ctx, AgentType ag)
 
             if (!first_address)
             {
-                ScopeNewSpecialScalar(ctx, "sys", "interface", last_name, DATA_TYPE_STRING);
+                ScopeNewSpecial(ctx, "sys", "interface", last_name, DATA_TYPE_STRING);
                 first_address = true;
             }
         }
@@ -628,7 +634,7 @@ void GetInterfacesInfo(EvalContext *ctx, AgentType ag)
                         {
                             *sp = '\0';
                             snprintf(name, sizeof(name), "ipv4_%d[%s]", i--, CanonifyName(VIPADDRESS));
-                            ScopeNewSpecialScalar(ctx, "sys", name, ip, DATA_TYPE_STRING);
+                            ScopeNewSpecial(ctx, "sys", name, ip, DATA_TYPE_STRING);
                         }
                     }
                     continue;
@@ -641,7 +647,7 @@ void GetInterfacesInfo(EvalContext *ctx, AgentType ag)
                 if (!ipdefault)
                 {
                     ipdefault = true;
-                    ScopeNewSpecialScalar(ctx, "sys", "ipv4", inet_ntoa(sin->sin_addr), DATA_TYPE_STRING);
+                    ScopeNewSpecial(ctx, "sys", "ipv4", inet_ntoa(sin->sin_addr), DATA_TYPE_STRING);
 
                     strcpy(VIPADDRESS, inet_ntoa(sin->sin_addr));
                 }
@@ -671,7 +677,7 @@ void GetInterfacesInfo(EvalContext *ctx, AgentType ag)
                     snprintf(name, sizeof(name), "ipv4[interface_name]");
                 }
 
-                ScopeNewSpecialScalar(ctx, "sys", name, ip, DATA_TYPE_STRING);
+                ScopeNewSpecial(ctx, "sys", name, ip, DATA_TYPE_STRING);
 
                 i = 3;
 
@@ -690,7 +696,7 @@ void GetInterfacesInfo(EvalContext *ctx, AgentType ag)
                             snprintf(name, sizeof(name), "ipv4_%d[interface_name]", i--);
                         }
 
-                        ScopeNewSpecialScalar(ctx, "sys", name, ip, DATA_TYPE_STRING);
+                        ScopeNewSpecial(ctx, "sys", name, ip, DATA_TYPE_STRING);
                     }
                 }
             }
@@ -702,10 +708,10 @@ void GetInterfacesInfo(EvalContext *ctx, AgentType ag)
 
     close(fd);
 
-    ScopeNewSpecialList(ctx, "sys", "interfaces", interfaces, DATA_TYPE_STRING_LIST);
-    ScopeNewSpecialList(ctx, "sys", "hardware_addresses", hardware, DATA_TYPE_STRING_LIST);
-    ScopeNewSpecialList(ctx, "sys", "hardware_flags", flags, DATA_TYPE_STRING_LIST);
-    ScopeNewSpecialList(ctx, "sys", "ip_addresses", ips, DATA_TYPE_STRING_LIST);
+    ScopeNewSpecial(ctx, "sys", "interfaces", interfaces, DATA_TYPE_STRING_LIST);
+    ScopeNewSpecial(ctx, "sys", "hardware_addresses", hardware, DATA_TYPE_STRING_LIST);
+    ScopeNewSpecial(ctx, "sys", "hardware_flags", flags, DATA_TYPE_STRING_LIST);
+    ScopeNewSpecial(ctx, "sys", "ip_addresses", ips, DATA_TYPE_STRING_LIST);
 
     RlistDestroy(interfaces);
     RlistDestroy(hardware);

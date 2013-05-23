@@ -64,19 +64,19 @@ void VerifyExecPromise(EvalContext *ctx, Promise *pp)
 
     a = GetExecAttributes(ctx, pp);
 
-    ScopeNewSpecialScalar(ctx, "this", "promiser", pp->promiser, DATA_TYPE_STRING);
+    ScopeNewSpecial(ctx, "this", "promiser", pp->promiser, DATA_TYPE_STRING);
 
     if (!SyntaxCheckExec(a, pp))
     {
         // cfPS(ctx, LOG_LEVEL_ERR, PROMISE_RESULT_FAIL, pp, a, "");
-        ScopeDeleteSpecialScalar("this", "promiser");
+        ScopeDeleteSpecial("this", "promiser");
         return;
     }
 
     if (PromiseKeptExec(a, pp))
     {
         // cfPS(ctx, LOG_LEVEL_INFO, PROMISE_RESULT_NOOP, pp, a, "");
-        ScopeDeleteSpecialScalar("this", "promiser");
+        ScopeDeleteSpecial("this", "promiser");
         return;
     }
 
@@ -87,7 +87,7 @@ void VerifyExecPromise(EvalContext *ctx, Promise *pp)
     if (thislock.lock == NULL)
     {
         // cfPS(ctx, LOG_LEVEL_INFO, PROMISE_RESULT_FAIL, pp, a, "");
-        ScopeDeleteSpecialScalar("this", "promiser");
+        ScopeDeleteSpecial("this", "promiser");
         return;
     }
 
@@ -112,7 +112,7 @@ void VerifyExecPromise(EvalContext *ctx, Promise *pp)
     }
 
     YieldCurrentLock(thislock);
-    ScopeDeleteSpecialScalar("this", "promiser");
+    ScopeDeleteSpecial("this", "promiser");
 }
 
 /*****************************************************************************/
@@ -195,20 +195,23 @@ static ActionResult RepairExec(EvalContext *ctx, Attributes a, Promise *pp)
     int cmdOutBufPos = 0;
     int lineOutLen;
 
-    if (!IsExecutable(CommandArg0(pp->promiser)))
+    if (a.contain.shelltype == SHELL_TYPE_NONE)
     {
-        Log(LOG_LEVEL_ERR, "%s promises to be executable but isn't", pp->promiser);
-
-        if (strchr(pp->promiser, ' '))
+        if (!IsExecutable(CommandArg0(pp->promiser)))
         {
-            Log(LOG_LEVEL_VERBOSE, "Paths with spaces must be inside escaped quoutes (e.g. \\\"%s\\\")", pp->promiser);
-        }
+            Log(LOG_LEVEL_ERR, "'%s' promises to be executable but isn't", pp->promiser);
 
-        return ACTION_RESULT_FAILED;
-    }
-    else
-    {
-        Log(LOG_LEVEL_VERBOSE, "Promiser string contains a valid executable (%s) - ok", CommandArg0(pp->promiser));
+            if (strchr(pp->promiser, ' '))
+            {
+                Log(LOG_LEVEL_VERBOSE, "Paths with spaces must be inside escaped quoutes (e.g. \\\"%s\\\")", pp->promiser);
+            }
+
+            return ACTION_RESULT_FAILED;
+        }
+        else
+        {
+            Log(LOG_LEVEL_VERBOSE, "Promiser string contains a valid executable '%s' - ok", CommandArg0(pp->promiser));
+        }
     }
 
     char timeout_str[CF_BUFSIZE];
@@ -235,19 +238,19 @@ static ActionResult RepairExec(EvalContext *ctx, Attributes a, Promise *pp)
 
     snprintf(cmdline, CF_BUFSIZE, "%s%s%s", pp->promiser, a.args ? " " : "", a.args ? a.args : "");
 
-    Log(LOG_LEVEL_INFO, "Executing \'%s%s%s\' ... (%s)", timeout_str, owner_str, group_str, cmdline);
+    Log(LOG_LEVEL_INFO, "Executing '%s%s%s' ... '%s'", timeout_str, owner_str, group_str, cmdline);
 
     BeginMeasure();
 
     if (DONTDO && (!a.contain.preview))
     {
-        Log(LOG_LEVEL_ERR, "Would execute script %s", cmdline);
+        Log(LOG_LEVEL_ERR, "Would execute script '%s'", cmdline);
         return ACTION_RESULT_OK;
     }
 
     if (a.transaction.action != cfa_fix)
     {
-        Log(LOG_LEVEL_ERR, "Command \"%s\" needs to be executed, but only warning was promised", cmdline);
+        Log(LOG_LEVEL_ERR, "Command '%s' needs to be executed, but only warning was promised", cmdline);
         return ACTION_RESULT_OK;
     }
 
@@ -258,7 +261,7 @@ static ActionResult RepairExec(EvalContext *ctx, Attributes a, Promise *pp)
 #ifdef __MINGW32__
         outsourced = true;
 #else
-        Log(LOG_LEVEL_VERBOSE, "Backgrounding job %s", cmdline);
+        Log(LOG_LEVEL_VERBOSE, "Backgrounding job '%s'", cmdline);
         outsourced = fork();
 #endif
     }
@@ -280,11 +283,22 @@ static ActionResult RepairExec(EvalContext *ctx, Attributes a, Promise *pp)
 
         if (a.contain.umask == 0)
         {
-            Log(LOG_LEVEL_VERBOSE, "Programming %s running with umask 0! Use umask= to set", cmdline);
+            Log(LOG_LEVEL_VERBOSE, "Programming '%s' running with umask 0! Use umask= to set", cmdline);
         }
 #endif /* !__MINGW32__ */
 
-        if (a.contain.useshell)
+        if (a.contain.shelltype == SHELL_TYPE_POWERSHELL)
+        {
+#ifdef __MINGW32__
+            pfp =
+                cf_popen_powershell_setuid(cmdline, "r", a.contain.owner, a.contain.group, a.contain.chdir, a.contain.chroot,
+                                  a.transaction.background);
+#else // !__MINGW32__
+            Log(LOG_LEVEL_ERR, "Powershell is only supported on Windows");
+            return ACTION_RESULT_FAILED;
+#endif // !__MINGW32__
+        }
+        else if (a.contain.shelltype == SHELL_TYPE_USE)
         {
             pfp =
                 cf_popen_shsetuid(cmdline, "r", a.contain.owner, a.contain.group, a.contain.chdir, a.contain.chroot,
@@ -340,7 +354,7 @@ static ActionResult RepairExec(EvalContext *ctx, Attributes a, Promise *pp)
                 // if buffer is to small for this line, output it directly
                 if (lineOutLen > sizeof(cmdOutBuf))
                 {
-                    Log(LOG_LEVEL_NOTICE, "Q: \"...%s\": %s\n", comm, line);
+                    Log(LOG_LEVEL_NOTICE, "Q: '%s': %s", comm, line);
                 }
                 else
                 {
@@ -367,7 +381,7 @@ static ActionResult RepairExec(EvalContext *ctx, Attributes a, Promise *pp)
 
             if (ret == -1)
             {
-                cfPS(ctx, LOG_LEVEL_INFO, PROMISE_RESULT_FAIL, pp, a, "Finished script \"%s\" - failed (abnormal termination)", pp->promiser);
+                cfPS(ctx, LOG_LEVEL_INFO, PROMISE_RESULT_FAIL, pp, a, "Finished script '%s' - failed (abnormal termination)", pp->promiser);
             }
             else
             {
@@ -383,7 +397,7 @@ static ActionResult RepairExec(EvalContext *ctx, Attributes a, Promise *pp)
             Log(LOG_LEVEL_NOTICE, "%s", cmdOutBuf);
         }
 
-        Log(LOG_LEVEL_INFO, "I: Last %d quoted lines were generated by promiser \"%s\"", count, cmdline);
+        Log(LOG_LEVEL_INFO, "Last %d quoted lines were generated by promiser '%s'", count, cmdline);
     }
 
     if (a.contain.timeout != CF_NOINT)
@@ -392,7 +406,7 @@ static ActionResult RepairExec(EvalContext *ctx, Attributes a, Promise *pp)
         signal(SIGALRM, SIG_DFL);
     }
 
-    Log(LOG_LEVEL_INFO, "Completed execution of %s", cmdline);
+    Log(LOG_LEVEL_INFO, "Completed execution of '%s'", cmdline);
 #ifndef __MINGW32__
     umask(maskval);
 #endif
@@ -402,7 +416,7 @@ static ActionResult RepairExec(EvalContext *ctx, Attributes a, Promise *pp)
 #ifndef __MINGW32__
     if ((a.transaction.background) && outsourced)
     {
-        Log(LOG_LEVEL_VERBOSE, "Backgrounded command (%s) is done - exiting", cmdline);
+        Log(LOG_LEVEL_VERBOSE, "Backgrounded command '%s' is done - exiting", cmdline);
         exit(0);
     }
 #endif /* !__MINGW32__ */
@@ -460,5 +474,5 @@ void PreviewProtocolLine(char *line, char *comm)
         }
     }
 
-    Log(LOG_LEVEL_VERBOSE, "%s (preview of %s)", message, comm);
+    Log(LOG_LEVEL_VERBOSE, "'%s', preview of '%s'", message, comm);
 }

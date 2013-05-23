@@ -1,6 +1,6 @@
 #######################################################
 #
-# Test execresult() without shell
+# Test execresult() with powershell
 #
 #######################################################
 
@@ -21,7 +21,8 @@ vars:
 
 bundle agent init
 {
-vars:
+  vars:
+    "origtestdir" string => dirname("$(this.promise_filename)");
 }
 
 #######################################################
@@ -37,22 +38,18 @@ vars:
 bundle agent check
 {
 vars:
-       "list"    slist => { "one", "two", "three"  };
-
-       "other"    slist => { @(list)  };
-
- #   "cwd" string => execresult("/bin/echo teststring", "useshell");
-   "cwd" string => execresult("/bin/echo teststring", "noshell");
+  windows::
+    "cwd" string => execresult("Get-Content $(init.origtestdir)\text.txt", "powershell");
 
 classes:
 
-  "ok" expression => strcmp("teststring", "$(cwd)");
+  "ok" expression => strcmp("Succeeded", "$(cwd)");
 
 reports:
-    ok::
+    !windows|ok::
 	"$(this.promise_filename) Pass";
 
-    !ok::
+    windows.!ok::
 	"$(this.promise_filename) FAIL";
 }
 

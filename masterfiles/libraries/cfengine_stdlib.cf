@@ -393,7 +393,8 @@ bundle edit_line set_variable_values_ini(tab, sectionName)
 
 }
 
-bundle edit_line set_quoted_values(v) {
+bundle edit_line set_quoted_values(v) 
+{
 # Sets the RHS of variables in shell-like files
 #   that is:
 #      LHS="RHS"
@@ -1002,7 +1003,7 @@ chdir => "$(s)";
 body contain in_dir_shell(s)
 {
 chdir => "$(s)";
-useshell => "true";
+useshell => "useshell";
 }
 
 ##
@@ -1017,21 +1018,21 @@ no_output => "true";
 
 body contain in_shell
 {
-useshell => "true";
+useshell => "useshell";
 }
 
 ##
 
 body contain in_shell_bg
 {
-useshell => "true";
+useshell => "useshell";
 }
 
 ##
 
 body contain in_shell_and_silent
 {
-useshell => "true";
+useshell => "useshell";
 no_output => "true";
 }
 
@@ -1039,7 +1040,7 @@ no_output => "true";
 
 body contain in_dir_shell_and_silent(dir)
 {
-useshell => "true";
+useshell => "useshell";
 no_output => "true";
 chdir => "$(dir)";
 }
@@ -1049,7 +1050,7 @@ chdir => "$(dir)";
 body contain setuid(x)
 {
 exec_owner => "$(x)";
-useshell => "false";
+useshell => "noshell";
 }
 
 ##
@@ -1057,7 +1058,7 @@ useshell => "false";
 body contain setuid_sh(x)
 {
 exec_owner => "$(x)";
-useshell => "true";
+useshell => "useshell";
 }
 
 ##
@@ -1066,7 +1067,7 @@ body contain setuidgid_sh(owner,group)
 {
 exec_owner => "$(owner)";
 exec_group => "$(group)";
-useshell => "true";
+useshell => "useshell";
 }
 
 ##
@@ -1074,7 +1075,7 @@ useshell => "true";
 body contain jail(owner,root,dir)
 {
 exec_owner => "$(owner)";
-useshell => "true";
+useshell => "useshell";
 chdir => "$(dir)";
 chroot => "$(root)";
 }
@@ -1492,7 +1493,8 @@ body depth_search include_base
 include_basedir => "true";
 }
 
-body depth_search recurse_with_base(d) {
+body depth_search recurse_with_base(d) 
+{
 	depth => "$(d)";
 	xdev  => "true";
 	include_basedir => "true";

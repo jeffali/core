@@ -21,7 +21,8 @@ vars:
 
 bundle agent init
 {
-vars:
+  vars:
+    "origtestdir" string => dirname("$(this.promise_filename)");
 }
 
 #######################################################
@@ -41,12 +42,14 @@ vars:
 
        "other"    slist => { @(list)  };
 
-    "cwd" string => execresult("/bin/echo teststring", "useshell");
- #  "cwd" string => execresult("/bin/echo teststring", "noshell");
+  !windows::
+    "cwd" string => execresult("/bin/cat $(init.origtestdir)/text.txt", "noshell");
+  windows::
+    "cwd" string => execresult("C:\windows\system32\cmd.exe /C type $(init.origtestdir)\text.txt", "noshell");
 
 classes:
 
-  "ok" expression => strcmp("teststring", "$(cwd)");
+  "ok" expression => strcmp("Succeeded", "$(cwd)");
 
 reports:
     ok::

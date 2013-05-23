@@ -658,6 +658,16 @@ typedef enum
     SYNTAX_STATUS_REMOVED
 } SyntaxStatus;
 
+typedef enum
+{
+    FNCALL_CATEGORY_SYSTEM,
+    FNCALL_CATEGORY_FILES,
+    FNCALL_CATEGORY_IO,
+    FNCALL_CATEGORY_COMM,
+    FNCALL_CATEGORY_DATA,
+    FNCALL_CATEGORY_UTILS
+} FnCallCategory;
+
 struct ConstraintSyntax_
 {
     const char *lval;
@@ -715,6 +725,7 @@ typedef struct
     FnCallResult (*impl)(EvalContext *ctx, FnCall *, Rlist *);
     const char *description;
     bool varargs;
+    FnCallCategory category;
     SyntaxStatus status;
 } FnCallType;
 
@@ -1241,9 +1252,16 @@ typedef struct
 
 /*************************************************************************/
 
+typedef enum
+{
+    SHELL_TYPE_NONE,
+    SHELL_TYPE_USE,
+    SHELL_TYPE_POWERSHELL
+} ShellType;
+
 typedef struct
 {
-    int useshell;
+    ShellType shelltype;
     mode_t umask;
     uid_t owner;
     gid_t group;

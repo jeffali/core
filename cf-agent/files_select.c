@@ -343,7 +343,7 @@ static int SelectModeMatch(struct stat *lstatptr, Rlist *list)
 
         if (!ParseModeString(rp->item, &plus, &minus))
         {
-            Log(LOG_LEVEL_ERR, "Problem validating a mode string \"%s\" in search filter", RlistScalarValue(rp));
+            Log(LOG_LEVEL_ERR, "Problem validating a mode string '%s' in search filter", RlistScalarValue(rp));
             continue;
         }
 
@@ -501,7 +501,7 @@ static int SelectExecProgram(char *filename, char *command)
     ReplaceStr(command, buf, sizeof(buf), "$(this.promiser)", filename);
     ReplaceStr(command, buf, sizeof(buf), "${this.promiser}", filename);
 
-    if (ShellCommandReturnsZero(buf, false))
+    if (ShellCommandReturnsZero(buf, SHELL_TYPE_NONE))
     {
         Log(LOG_LEVEL_DEBUG, "Select ExecProgram match for '%s'", buf);
         return true;
