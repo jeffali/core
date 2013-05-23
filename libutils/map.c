@@ -72,7 +72,7 @@ static void NopDestroyFn(ARG_UNUSED void *p1)
  */
 static bool IsArrayMap(const Map *map)
 {
-    return (map && map->hash_fn != NULL);
+    return map->hash_fn != NULL;
 }
 
 Map *MapNew(MapHashFn hash_fn,
@@ -128,9 +128,6 @@ size_t MapSize(const Map *map)
 
 static void ConvertToHashMap(Map *map)
 {
-    if(!map) {printf("problem 050\n"); /*exit(0);*/}
-    if(!map->arraymap) {printf("problem 051\n");/*exit(0);*/}
-    if(!map->arraymap->values) {printf("problem 052\n");/*exit(0);*/}
     HashMap *hashmap = HashMapNew(map->hash_fn,
                                   map->arraymap->equal_fn,
                                   map->arraymap->destroy_key_fn,
@@ -138,15 +135,12 @@ static void ConvertToHashMap(Map *map)
 
     /* We have to use internals of ArrayMap here, as we don't want to
        destroy the values in ArrayMapDestroy */
-    if(!hashmap) {printf("problem 055\n");/*exit(0);*/}
 
     for (int i = 0; i < map->arraymap->size; ++i)
     {
-printf("ROLLLLLLLLLLLLLLLING %d MAPSIZE=%d\n", i, map->arraymap->size);
         HashMapInsert(hashmap,
                       map->arraymap->values[i].key,
                       map->arraymap->values[i].value);
-printf("UNrOLLLLLLLLLLLLLLLING %d MAPSIZE=%d\n", i, map->arraymap->size);
     }
 
     free(map->arraymap->values);
@@ -158,7 +152,6 @@ printf("UNrOLLLLLLLLLLLLLLLING %d MAPSIZE=%d\n", i, map->arraymap->size);
 
 void MapInsert(Map *map, void *key, void *value)
 {
-    printf("KEEVEEEEE%s=%s\n",(char *)key,(char *)value);
     if (IsArrayMap(map))
     {
         if (ArrayMapInsert(map->arraymap, key, value))
@@ -167,13 +160,11 @@ void MapInsert(Map *map, void *key, void *value)
         }
         else
         {
- printf("WILL CONVERT\n"); //exit(0);
             ConvertToHashMap(map);
- printf("CONVERTED\n"); //exit(0);
         }
     }
 
-    if(map && map->hashmap) HashMapInsert(map->hashmap, key, value);
+    HashMapInsert(map->hashmap, key, value);
 }
 
 /*
@@ -184,19 +175,16 @@ static MapKeyValue *MapGetRaw(const Map *map, const void *key)
 {
     if (IsArrayMap(map))
     {
-        if(!map->arraymap) return NULL;
         return ArrayMapGet((ArrayMap *)map->arraymap, key);
     }
     else
     {
-        if(!map->hashmap) return NULL;
         return HashMapGet((HashMap *)map->hashmap, key);
     }
 }
 
 bool MapHasKey(const Map *map, const void *key)
 {
-    if(!map) return NULL;
     return MapGetRaw(map, key) != NULL;
 }
 
@@ -240,9 +228,9 @@ void MapDestroy(Map *map)
         }
         else
         {
-            if (map->hashmap) HashMapDestroy(map->hashmap);
+            HashMapDestroy(map->hashmap);
         }
-        if(map) free(map);
+        free(map);
     }
 }
 

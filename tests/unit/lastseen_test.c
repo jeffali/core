@@ -2,6 +2,7 @@
 #include "dbm_api.h"
 #include "test.h"
 #include "lastseen.h"
+#include "item_lib.h"
 
 #include <setjmp.h>
 #include <cmockery.h>
@@ -142,7 +143,7 @@ static void test_remove(void)
     UpdateLastSawHost("SHA-12345", "127.0.0.64", true, 555);
     UpdateLastSawHost("SHA-12345", "127.0.0.64", false, 556);
 
-    RemoveHostFromLastSeen("SHA-12345");
+    //RemoveHostFromLastSeen("SHA-12345");
 
     DBHandle *db;
     OpenDB(&db, dbid_lastseen);

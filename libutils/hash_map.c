@@ -38,8 +38,7 @@ HashMap *HashMapNew(MapHashFn hash_fn, MapKeyEqualFn equal_fn,
     map->equal_fn = equal_fn;
     map->destroy_key_fn = destroy_key_fn;
     map->destroy_value_fn = destroy_value_fn;
-printf("GATSBY %u\n",sizeof(BucketListItem));
-    map->buckets = xcalloc(1, sizeof(BucketListItem) * HASHMAP_BUCKETS);
+    map->buckets = xcalloc(1, sizeof(BucketListItem *) * HASHMAP_BUCKETS);
     return map;
 }
 
@@ -50,13 +49,10 @@ static unsigned HashMapGetBucket(const HashMap *map, const void *key)
 
 bool HashMapInsert(HashMap *map, void *key, void *value)
 {
-    printf("Gigiiiiiiii 0 [%s]=[%s]\n", (char *)key, (char *)value);
     unsigned bucket = HashMapGetBucket(map, key);
 
-    printf("Gigiiiiiiii\n");
     for (BucketListItem *i = map->buckets[bucket]; i != NULL; i = i->next)
     {
-        if(i) {
         if (map->equal_fn(i->value.key, key))
         {
             map->destroy_key_fn(key);
@@ -64,17 +60,14 @@ bool HashMapInsert(HashMap *map, void *key, void *value)
             i->value.value = value;
             return true;
         }
-        }
     }
-    printf("Gigiiiiiiii2\n");
 
     BucketListItem *i = xcalloc(1, sizeof(BucketListItem));
-    if(i) {
     i->value.key = key;
     i->value.value = value;
     i->next = map->buckets[bucket];
     map->buckets[bucket] = i;
-    }
+
     return false;
 }
 
@@ -107,10 +100,7 @@ bool HashMapRemove(HashMap *map, const void *key)
 
 MapKeyValue *HashMapGet(const HashMap *map, const void *key)
 {
-    printf("GRMGRM\n");
-    printf("ZOOOMOOOOOLI [%s]\n", (char *)key);
     unsigned bucket = HashMapGetBucket(map, key);
-    printf("ZNOOOBIIIIIIIIII %u\n", bucket);
 
     for (BucketListItem *cur = map->buckets[bucket];
          cur != NULL;
@@ -132,22 +122,20 @@ static void FreeBucketListItem(HashMap *map, BucketListItem *item)
         FreeBucketListItem(map, item->next);
     }
 
-    if(item) {
-    if (item->value.key) map->destroy_key_fn(item->value.key);
-    if (item->value.value) map->destroy_value_fn(item->value.value);
-      if(item) free(item);
-    }
+    map->destroy_key_fn(item->value.key);
+    map->destroy_value_fn(item->value.value);
+    free(item);
 }
 
 void HashMapClear(HashMap *map)
 {
     for (int i = 0; i < HASHMAP_BUCKETS; ++i)
     {
-        if (map && map->buckets[i])
+        if (map->buckets[i])
         {
             FreeBucketListItem(map, map->buckets[i]);
         }
-        if (map) map->buckets[i] = NULL;
+        map->buckets[i] = NULL;
     }
 }
 
@@ -156,8 +144,8 @@ void HashMapDestroy(HashMap *map)
     if (map)
     {
         HashMapClear(map);
-        if (map && map->buckets) free(map->buckets);
-        if(map) free(map);
+        free(map->buckets);
+        free(map);
     }
 }
 

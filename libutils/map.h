@@ -119,14 +119,14 @@ void MapDestroy(Map *map);
     Prefix##Map *Prefix##MapNew(void)                                   \
     {                                                                   \
         Prefix##Map *map = xcalloc(1, sizeof(Prefix##Map));             \
-        if(map) map->impl = MapNew(hash_fn, equal_fn,                           \
+        map->impl = MapNew(hash_fn, equal_fn,                           \
                            destroy_key_fn, destroy_value_fn);           \
         return map;                                                     \
     }                                                                   \
                                                                         \
     void Prefix##MapInsert(const Prefix##Map *map, KeyType key, ValueType value) \
     {                                                                   \
-        if(map) MapInsert(map->impl, key, value);                               \
+        MapInsert(map->impl, key, value);                               \
     }                                                                   \
                                                                         \
     bool Prefix##MapHasKey(const Prefix##Map *map, const KeyType key)   \

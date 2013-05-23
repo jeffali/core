@@ -166,7 +166,6 @@ bool IsItemIn(const Item *list, const char *item)
 }
 
 /*********************************************************************/
-/*    TODO: Implement test */
 
 bool ListsCompare(const Item *list1, const Item *list2)
 {

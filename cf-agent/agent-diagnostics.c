@@ -155,9 +155,6 @@ static AgentDiagnosticsResult AgentDiagnosticsCheckDB(const char *workdir, dbid 
         {
             if (id == dbid_lastseen)
             {
-              //strcpy(CFWORKDIR, workdir);
-              printf("LOOL [%s]\n", dbpath);
-              //exit(0);
               if (IsLastSeenCoherent() == false)
               {
                   free(dbpath);
@@ -215,7 +212,6 @@ const AgentDiagnosticCheck *AgentDiagnosticsAllChecks(void)
 {
     static const AgentDiagnosticCheck checks[] =
     {
-#if 0
         { "Check that agent is bootstrapped", &AgentDiagnosticsCheckIsBootstrapped },
         { "Check if agent is acting as a policy server", &AgentDiagnosticsCheckAmPolicyServer },
         { "Check private key", &AgentDiagnosticsCheckPrivateKey },
@@ -228,11 +224,9 @@ const AgentDiagnosticCheck *AgentDiagnosticsAllChecks(void)
         { "Check file stats DB", &AgentDiagnosticsCheckDBFileStats },
         { "Check locks DB", &AgentDiagnosticsCheckDBLocks },
         { "Check performance DB", &AgentDiagnosticsCheckDBPerformance },
-#endif
         { "Check lastseen DB", &AgentDiagnosticsCheckDBLastSeen },
         { NULL, NULL }
     };
-
 
     return checks;
 }

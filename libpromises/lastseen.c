@@ -303,6 +303,7 @@ bool IsLastSeenCoherent(void)
 {
     DBHandle *db;
     DBCursor *cursor;
+    bool res = true;
 
     if (!OpenDB(&db, dbid_lastseen))
     {
@@ -337,20 +338,21 @@ bool IsLastSeenCoherent(void)
 
         if (key[0] == 'q' )
         {
-          if(strncmp(key,"qiSHA=",6)==0 ||strncmp(key,"qoSHA=",6)==0)
+          if(strncmp(key,"qiSHA=",6)==0 || strncmp(key,"qoSHA=",6)==0 ||
+             strncmp(key,"qiMD5=",6)==0 || strncmp(key,"qoMD5=",6)==0)
           {
-            if(IsItemIn(qkeys, key+6)==false)
+            if(IsItemIn(qkeys, key+2)==false)
             {
-               PrependItem(&qkeys, key+6, NULL);
+               PrependItem(&qkeys, key+2, NULL);
             }
           }
         }
 
         if (key[0] == 'k' )
         {
-          if(strncmp(key, "kSHA=", 5)==0)
+          if(strncmp(key, "kSHA=", 5)==0 || strncmp(key, "kMD5=", 5)==0)
           {
-            PrependItem(&kkeys, key+5, NULL);
+            PrependItem(&kkeys, key+1, NULL);
             if (ReadDB(db, key, &val, vsize))
             {
               PrependItem(&khosts, val, NULL);
@@ -381,23 +383,28 @@ bool IsLastSeenCoherent(void)
     DumpItemList(ahosts);
     DumpItemList(khosts);
 
-    if (ListsCompare(ahosts, khosts))
+    if (ListsCompare(ahosts, khosts) == false)
     {
         printf("Problem1: Hosts differ\n");
+        res = false;
+        goto clean;
     }
-    if (ListsCompare(akeys, kkeys))
+    if (ListsCompare(akeys, kkeys) == false)
     {
         printf("Problem2: Keys differ\n");
+        res = false;
+        goto clean;
     }
 
+  clean:
     DeleteItemList(qkeys);
     DeleteItemList(akeys);
     DeleteItemList(kkeys);
     DeleteItemList(ahosts);
     DeleteItemList(khosts);
 
-    printf("Yeah it's gooooooooood\n");
-    return true;
+    if(res == true) printf("Yeah it's gooooooooood\n");
+    return res;
 }
 /*****************************************************************************/
 int DeleteHostFromLastSeen(const char *host)
