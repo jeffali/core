@@ -77,7 +77,7 @@ static void test_list_select_last_matching_not_found(void)
 
 static void test_list_compare(void)
 {
-    Item *list1 = NULL, *list2 = NULL, *list3 = NULL;
+    Item *list1 = NULL, *list2 = NULL;
     bool result;
 
     result = ListsCompare(list1, list2);

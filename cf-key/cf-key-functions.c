@@ -169,11 +169,11 @@ void ShowLastSeenHosts()
 
 static bool isDigestOrHost(const char *input)
 {
-    if (strncmp(input, "SHA=", 4) == 0)
+    if (strncmp(input, "SHA=", 3) == 0)
     {
         return true;
     }
-    else if (strncmp(input, "MD5=", 4) == 0)
+    else if (strncmp(input, "MD5=", 3) == 0)
     {
         return true;
     }
@@ -189,12 +189,12 @@ int RemoveKeys(const char *input)
     {
         if (isDigestOrHost(input))
         {
-            printf("Removing digest [%s]\n", input);
+            CfOut(OUTPUT_LEVEL_VERBOSE, "", "Removing digest '%s' from lastseen database\n", input);
             DeleteDigestFromLastSeen(input);
         }
         else
         {
-            printf("Removing host [%s]\n", input);
+             CfOut(OUTPUT_LEVEL_VERBOSE, "", "Removing host '%s' from lastseen database\n", input);
             DeleteHostFromLastSeen(input);
         }
     }
