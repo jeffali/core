@@ -41,8 +41,8 @@ bool Address2Hostkey(const char *address, char *hostkey);
 
 void LastSaw(char *ipaddress, unsigned char digest[EVP_MAX_MD_SIZE + 1], LastSeenRole role);
 
-int DeleteHostFromLastSeen(const char *host);
-int DeleteDigestFromLastSeen(const char *digest);
+bool DeleteIpFromLastSeen(const char *ip, char *digest);
+bool DeleteDigestFromLastSeen(const char *key, char *ip);
 
 /*
  * Return false in order to stop iteration

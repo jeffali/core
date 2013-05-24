@@ -185,62 +185,61 @@ static bool isDigestOrHost(const char *input)
 
 int RemoveKeys(const char *input)
 {
-    if (IsLastSeenCoherent() == true)
+    char equivalent[CF_BUFSIZE];
+    bool isDigest;
+
+    if (IsLastSeenCoherent() == false/*true*/)
     {
-        if (isDigestOrHost(input))
+        isDigest = isDigestOrHost(input);
+        if (isDigest == true)
         {
             CfOut(OUTPUT_LEVEL_VERBOSE, "", "Removing digest '%s' from lastseen database\n", input);
-            DeleteDigestFromLastSeen(input);
+            if (DeleteDigestFromLastSeen(input, equivalent) == false)
+            {
+                CfOut(OUTPUT_LEVEL_ERROR, "", "Unable to remove digest from lastseen database.");
+                return 252;
+            }
         }
         else
         {
-             CfOut(OUTPUT_LEVEL_VERBOSE, "", "Removing host '%s' from lastseen database\n", input);
-            DeleteHostFromLastSeen(input);
+            CfOut(OUTPUT_LEVEL_VERBOSE, "", "Removing host '%s' from lastseen database\n", input);
+            if (DeleteIpFromLastSeen(input, equivalent) == false)
+            {
+                CfOut(OUTPUT_LEVEL_ERROR, "", "Unable to remove host from lastseen database.");
+                return 253;
+            }
         }
+
+        CfOut(OUTPUT_LEVEL_INFORM, "", "Removed corresponding entries from lastseen database.");
+
+        int removed_input      = RemovePublicKey(input);
+        int removed_equivalent = RemovePublicKey(equivalent);
+
+        if ((removed_input == -1) || (removed_equivalent == -1))
+        {
+            CfOut(OUTPUT_LEVEL_ERROR, "", "Unable to remove keys for the entry %s", input);
+            return 255;
+        }
+        else if (removed_input + removed_equivalent == 0)
+        {
+            CfOut(OUTPUT_LEVEL_ERROR, "", "No key file(s) for entry %s were found on the filesytem", input);
+            return 1;
+        }
+        else
+        {
+            CfOut(OUTPUT_LEVEL_INFORM, "", "Removed %d corresponding key file(s) from filesystem.",
+                  removed_input + removed_equivalent);
+            return 0;
+        }
+
     }
     else
     {
-        CfOut(OUTPUT_LEVEL_ERROR, "", "Unable to remove keys from lastseen database");
+        CfOut(OUTPUT_LEVEL_ERROR, "", "Lastseen database is incoherent. Will not proceed to remove entries from it.");
+        return 254;
     }
-    return 0;
+    return -1;
 }
-#if 0
-int RemoveKeysOLD(const char *host)
-{
-    char digest[CF_BUFSIZE];
-    char ipaddr[CF_MAX_IP_LEN];
-
-    if (Hostname2IPString(ipaddr, host, sizeof(ipaddr)) == -1)
-    {
-        CfOut(OUTPUT_LEVEL_ERROR, "", 
-            "ERROR, could not resolve %s, not removing", host);
-        return 255;
-    }
-
-    Address2Hostkey(ipaddr, digest);
-    RemoveHostFromLastSeen(digest);
-
-    int removed_by_ip = RemovePublicKey(ipaddr);
-    int removed_by_digest = RemovePublicKey(digest);
-
-    if ((removed_by_ip == -1) || (removed_by_digest == -1))
-    {
-        CfOut(OUTPUT_LEVEL_ERROR, "", "Unable to remove keys for the host %s", host);
-        return 255;
-    }
-    else if (removed_by_ip + removed_by_digest == 0)
-    {
-        CfOut(OUTPUT_LEVEL_ERROR, "", "No keys for host %s were found", host);
-        return 1;
-    }
-    else
-    {
-        CfOut(OUTPUT_LEVEL_INFORM, "", "Removed %d key(s) for host %s",
-              removed_by_ip + removed_by_digest, host);
-        return 0;
-    }
-}
-#endif
 
 void KeepKeyPromises(const char *public_key_file, const char *private_key_file)
 {
