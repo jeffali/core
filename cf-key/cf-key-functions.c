@@ -188,9 +188,10 @@ int RemoveKeys(const char *input)
     char equivalent[CF_BUFSIZE];
     bool isDigest;
 
-    if (IsLastSeenCoherent() == false/*true*/)
+    if (IsLastSeenCoherent() == true)
     {
         isDigest = isDigestOrHost(input);
+        equivalent[0] = '\0';
         if (isDigest == true)
         {
             CfOut(OUTPUT_LEVEL_VERBOSE, "", "Removing digest '%s' from lastseen database\n", input);

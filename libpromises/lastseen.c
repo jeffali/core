@@ -246,79 +246,77 @@ bool IsLastSeenCoherent(void)
 
         if (key[0] == 'q' )
         {
-          if(strncmp(key,"qiSHA=",6)==0 || strncmp(key,"qoSHA=",6)==0 ||
-             strncmp(key,"qiMD5=",6)==0 || strncmp(key,"qoMD5=",6)==0)
-          {
-            if(IsItemIn(qkeys, key+2)==false)
+            if (strncmp(key,"qiSHA=",5)==0 || strncmp(key,"qoSHA=",5)==0 ||
+                strncmp(key,"qiMD5=",5)==0 || strncmp(key,"qoMD5=",5)==0)
             {
-               PrependItem(&qkeys, key+2, NULL);
+                if (IsItemIn(qkeys, key+2)==false)
+                {
+                    PrependItem(&qkeys, key+2, NULL);
+                }
             }
-          }
         }
 
         if (key[0] == 'k' )
         {
-          if(strncmp(key, "kSHA=", 5)==0 || strncmp(key, "kMD5=", 5)==0)
-          {
-            PrependItem(&kkeys, key+1, NULL);
-            if (ReadDB(db, key, &val, vsize))
+            if (strncmp(key, "kSHA=", 5)==0 || strncmp(key, "kMD5=", 5)==0)
             {
-              PrependItem(&khosts, val, NULL);
+                if (IsItemIn(kkeys, key+1)==false)
+                {
+                    PrependItem(&kkeys, key+1, NULL);
+                }
+                if (ReadDB(db, key, &val, vsize))
+                {
+                    if(IsItemIn(khosts, val)==false)
+                    {
+                        PrependItem(&khosts, val, NULL);
+                    }
+                }
             }
-          }
         }
 
         if (key[0] == 'a' )
         {
-            PrependItem(&ahosts, key+1, NULL);
+            if(IsItemIn(ahosts, key+1)==false)
+            {
+                PrependItem(&ahosts, key+1, NULL);
+            }
             if (ReadDB(db, key, &val, vsize))
             {
-              PrependItem(&akeys, val, NULL);
+                if(IsItemIn(akeys, val)==false)
+                {
+                    PrependItem(&akeys, val, NULL);
+                }
             }
         }
-
     }
 
     DeleteDBCursor(cursor);
     CloseDB(db);
 
-    printf("%d %d %d\n", ListLen(qkeys), ListLen(akeys), ListLen(kkeys));
-    printf("%d %d\n", ListLen(khosts), ListLen(ahosts));
-
-    DumpItemList(qkeys);
-    DumpItemList(akeys);
-    DumpItemList(kkeys);
-    DumpItemList(ahosts);
-    DumpItemList(khosts);
-
     if (ListsCompare(ahosts, khosts) == false)
     {
-        printf("Problem1: Hosts differ\n");
         res = false;
         goto clean;
     }
     if (ListsCompare(akeys, kkeys) == false)
     {
-        printf("Problem2: Keys differ\n");
         res = false;
         goto clean;
     }
 
-  clean:
+clean:
     DeleteItemList(qkeys);
     DeleteItemList(akeys);
     DeleteItemList(kkeys);
     DeleteItemList(ahosts);
     DeleteItemList(khosts);
 
-    if(res == true) printf("Yeah it's gooooooooood\n");
     return res;
 }
 /*****************************************************************************/
 bool DeleteIpFromLastSeen(const char *ip, char *digest)
 {
     DBHandle *db;
-    DBCursor *cursor;
     bool res = false;
 
     if (!OpenDB(&db, dbid_lastseen))
@@ -376,7 +374,6 @@ clean:
 bool DeleteDigestFromLastSeen(const char *key, char *ip)
 {
     DBHandle *db;
-    DBCursor *cursor;
     bool res = false;
 
     if (!OpenDB(&db, dbid_lastseen))
