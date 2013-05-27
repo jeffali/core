@@ -160,6 +160,25 @@ bool RlistIsStringIn(const Rlist *list, const char *s)
 }
 
 #ifndef DBG0
+void PrintRval(Rval *rp)
+{
+        if (rp->type == RVAL_TYPE_FNCALL)
+        {
+            printf("_fncall_,", rp->item);
+        }
+        if (rp->type == RVAL_TYPE_LIST)
+        {
+            printf("_list_,", rp->item);
+        }
+        if (rp->type == RVAL_TYPE_ASSOC)
+        {
+            printf("_assoc_,", rp->item);
+        }
+        if (rp->type == RVAL_TYPE_SCALAR)
+        {
+            printf("[%s],", rp->item);
+        }
+}
 void DumpRlist(const Rlist *list)
 {
     if (list == NULL)
@@ -171,24 +190,7 @@ void DumpRlist(const Rlist *list)
     printf("{{{\n");
     for (const Rlist *rp = list; rp != NULL; rp = rp->next)
     {
-
-        if (rp->type == RVAL_TYPE_FNCALL)
-        {
-            printf("_fncall_,", rp->item);
-        }
-        if (rp->type == RVAL_TYPE_LIST)
-        {
-            printf("_assoc_,", rp->item);
-        }
-        if (rp->type == RVAL_TYPE_ASSOC)
-        {
-            printf("_list_,", rp->item);
-        }
-        if (rp->type == RVAL_TYPE_SCALAR)
-        {
-            printf("[%s],", rp->item);
-        }
-
+        PrintRval(rp);
     }
     printf("}}}\n");
 }

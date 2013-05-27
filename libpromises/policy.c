@@ -2812,11 +2812,15 @@ void DumpPolicyBundles2(Policy *policy) {
             for (size_t ppi = 0; ppi < SeqLength(subtype->promises); ppi++)
             {
                 Promise *promise = SeqAt(subtype->promises, ppi);
-		printf("\tst=%s pp(classes)=%s pp(type)=%c\n",subtype->name,promise->classes,promise->promisee.type);
+		//printf("\tSubtype=%s pp(classes)=%s pp(type)=%c\n",subtype->name,promise->classes,promise->promisee.type);
+                PrintSeqPromise(promise);
 
                 for (size_t cpi = 0; cpi < SeqLength(promise->conlist); cpi++)
                 {
                     Constraint *constraint = SeqAt(promise->conlist, cpi);
+                    printf("\t\tConstraint=");
+                    DumpSeq(constraint, &PrintSeqConstraint);
+                    printf("\n");
                         //char *ns = RvalNamespaceComponent(&constraint->rval);
                         //char *symbol = RvalSymbolComponent(&constraint->rval);
 
@@ -2884,6 +2888,8 @@ void PrintSeqBody(Body *b)
     char *source_path;
 */
    printf("%s:%s:%s:etc..",b->type,b->name,b->ns);
+   DumpRlist(b->args);
+   //PrintSeqConstraint(b->conlist);
 }
 void PrintSeqPromise(Promise *p)
 {
@@ -2909,7 +2915,12 @@ void PrintSeqPromise(Promise *p)
     char *this_server;
     int has_subbundles;
 */
-   printf("%s:%s:%s:etc..",p->promiser,p->bundle,p->ns);
+   printf("Promise=[promiser=%s,bundle=%s,ns=%s,",p->promiser,p->bundle,p->ns);
+   printf("promisee=");
+   PrintRval(&p->promisee);
+   printf(",conlist=");
+   PrintSeqConstraint(p->conlist);
+   printf("]\n");
 }
 void PrintSeqSubType(SubType *s)
 {
@@ -2934,6 +2945,7 @@ void PrintSeqConstraint(Constraint *c)
     bool references_body;
 */
    printf("%s:%s:etc..",c->lval,c->classes);
+   PrintRval(&c->rval);
 }
 
 #endif

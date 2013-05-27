@@ -157,7 +157,7 @@ AM_CONDITIONAL([NDEBUG], [test x"$debug" = x"no"])
 
 if test x"$debug" = x"yes"; then
    CFLAGS="$CFLAGS -g3 -O0"
-   AC_DEFINE(DBG0, 1, [Define DBG0])
+   #AC_DEFINE(DBG0, 0, [Define DBG0])
 else
    CFLAGS="$CFLAGS -O2 -DNDEBUG"
 fi

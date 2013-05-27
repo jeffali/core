@@ -82,6 +82,8 @@ void SeqDestroy(Seq *seq);
 typedef int (*SeqItemComparator) (const void *, const void *, void *user_data);
 #ifndef DBG0
 typedef void (*SeqItemPrinter)(const void *);
+void DumpSeqString(Seq *seq);
+void DumpSeq(Seq *seq, SeqItemPrinter pf);
 #endif
 /**
   @brief Append a new item to the Sequence
