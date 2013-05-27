@@ -384,6 +384,7 @@ int ConstraintsGetAsBoolean(EvalContext *ctx, const char *lval, const Seq *const
 #ifndef DBG0
 void DumpPolicyBundles(Policy *policy);
 void DumpPolicyBodies(Policy *policy);
+void DumpPolicy(Policy *policy);
 #endif
 
 #ifndef DBG0

@@ -974,6 +974,16 @@ void JoinScopeName(const char *ns, const char *bundle, char scope_out[CF_MAXVARS
 }
 
 #ifndef DBG0
+void PrintCfAssoc(CfAssoc *assoc) {
+/*
+    char *lval;
+    Rval rval;
+    DataType dtype;
+*/
+  printf("lval='%s',dtype='%d',rval=[",assoc->lval, assoc->dtype);
+  PrintRval(&assoc->rval);
+  printf("]");
+}
 void DumpCFSTCK() {
   if(CF_STCK==NULL) return;
   Rlist *rp;
@@ -989,7 +999,9 @@ void DumpCFSTCK() {
 	    i = HashIteratorInit(scp->hashtable);
 	    while ((assoc = HashIteratorNext(&i)))
             {
-               printf("\tglurp\n");
+               printf("\t");
+               PrintCfAssoc(assoc);
+               printf("\n");
             }
 
     //}

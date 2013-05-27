@@ -164,35 +164,35 @@ void PrintRval(Rval *rp)
 {
         if (rp->type == RVAL_TYPE_FNCALL)
         {
-            printf("_fncall_,", rp->item);
+            printf("_fncall_", rp->item);
         }
         if (rp->type == RVAL_TYPE_LIST)
         {
-            printf("_list_,", rp->item);
+            printf("_list_", rp->item);
         }
         if (rp->type == RVAL_TYPE_ASSOC)
         {
-            printf("_assoc_,", rp->item);
+            printf("_assoc_", rp->item);
         }
         if (rp->type == RVAL_TYPE_SCALAR)
         {
-            printf("[%s],", rp->item);
+            printf("%s", rp->item);
         }
 }
 void DumpRlist(const Rlist *list)
 {
     if (list == NULL)
     {
-        printf("[NULL]\n");
+        printf("NULL");
         return;
     }
 
-    printf("{{{\n");
+    printf("{");
     for (const Rlist *rp = list; rp != NULL; rp = rp->next)
     {
         PrintRval(rp);
     }
-    printf("}}}\n");
+    printf("}");
 }
 #endif
 

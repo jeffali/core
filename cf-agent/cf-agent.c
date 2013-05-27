@@ -249,12 +249,15 @@ int main(int argc, char *argv[])
         policy = GenericAgentLoadPolicy(ctx, config->agent_type, config, report_context);
     }
 
+    DumpPolicy(policy);
     CheckLicenses(ctx);
 
     ThisAgentInit();
     BeginAudit();
     KeepPromises(ctx, policy, config, report_context);
     CloseReports("agent", report_context);
+ printf("=======================================\n");
+    DumpCFSTCK(policy);
 
     // only note class usage when default policy is run
     if (!config->input_file)
