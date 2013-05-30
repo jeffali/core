@@ -1,0 +1,13 @@
+body common control {
+   bundlesequence => {"testmeg"};
+}
+bundle common g {
+   vars:
+     "x" string => "doudou";
+     "y" string => "sousou";
+     "z" string => "loulou";
+}
+
+bundle agent testmeg {
+  vars:
+}

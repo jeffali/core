@@ -1,0 +1,9 @@
+body common control {
+   bundlesequence => {"testmeg"};
+}
+
+bundle agent testmeg {
+  reports:
+   cfengine_3::
+    "je suis seul :-)";
+}

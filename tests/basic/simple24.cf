@@ -1,0 +1,22 @@
+body common control {
+   bundlesequence => {"testmeg"};
+}
+bundle common g1 {
+   vars:
+     "x1" string => "doudou";
+     "y1" string => "sou $(g2.x2) sou";
+     "z1" string => "loulou";
+}
+
+bundle common g2 {
+   vars:
+     "x2" string => "joujou";
+     "y2" string => "mou $(g1.x1) mou";
+     "z2" string => "foufou";
+}
+
+bundle agent testmeg {
+  reports:
+   cfengine_3::
+    "ah $(g1.y1) et $(g2.y2) sont pas $(sys.fqhost) :-)";
+}

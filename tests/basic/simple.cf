@@ -1,0 +1,7 @@
+body common control {
+   bundlesequence => {"testmeg"};
+}
+
+bundle agent testmeg {
+  vars:
+}

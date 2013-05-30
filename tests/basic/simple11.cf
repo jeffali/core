@@ -1,0 +1,12 @@
+body common control {
+   bundlesequence => {"testmeg"};
+}
+
+bundle agent testmeg {
+  vars:
+   cfengine_3::
+    "a" string => "wa $(sys.fqhost) lo";
+  reports:
+   cfengine_3::
+    "This is $(a)";
+}
