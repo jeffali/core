@@ -169,6 +169,7 @@ void PrintRval(Rval *rp)
         if (rp->type == RVAL_TYPE_LIST)
         {
             printf("_list_", rp->item);
+            DumpRlist(rp->item);
         }
         if (rp->type == RVAL_TYPE_ASSOC)
         {

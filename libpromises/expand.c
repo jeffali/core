@@ -160,11 +160,11 @@ void ExpandPromise(EvalContext *ctx, AgentType agent, const char *scopeid, Promi
     CopyLocalizedIteratorsToThisScope(scopeid, listvars);
 
     ScopePushThis();
- printf("=======================================\n");
+ printf("\n=======THIS_BUNDLE=[%s]================================\n", THIS_BUNDLE);
     DumpCFSTCK();
     ExpandPromiseAndDo(ctx, agent, scopeid, pcopy, scalarvars, listvars, fnptr, report_context);
     ScopePopThis();
-
+    PrintSeqPromise(pp);
     PromiseDestroy(pcopy);
     RlistDestroy(scalarvars);
     RlistDestroy(listvars);
