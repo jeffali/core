@@ -846,6 +846,254 @@ Rlist *RlistParseString(char *string, int *n)
     newlist = RlistParseStringBounded(l, r, n);
     return newlist;
 }
+/**
+ @brief
+ 
+ @param[in] string: is the string to parse
+ @param[in, out] n: number of elements found ??
+ @param[out] n: rlist of elements found
+
+ @retval 0: successful >0: failed
+ */
+
+typedef enum
+{
+    ST_OPENED,
+    ST_PRECLOSED,
+    ST_CLOSED,
+    ST_IO,
+    ST_ELM1,
+    ST_ELM2,
+    ST_END1,
+    ST_END2,
+    ST_SEP,
+    ST_ERROR
+} state;
+
+#define CLASS_BLANK(x)  (((x)==' ')||((x)=='\t'))
+#define CLASS_START1(x) (((x)=='\'')) 
+#define CLASS_START2(x) (((x)=='"'))
+#define CLASS_END1(x)   ((CLASS_START1(x)))
+#define CLASS_END2(x)   ((CLASS_START2(x)))
+#define CLASS_BRA1(x)   (((x)=='{'))
+#define CLASS_BRA2(x)   (((x)=='}'))
+#define CLASS_SEP(x)    (((x)==','))
+#define CLASS_EOL(x)    (((x)=='\0'))
+
+#define CLASS_ANY0(x) ((!CLASS_BLANK(x))&&(!CLASS_BRA1(x)))
+#define CLASS_ANY1(x) ((!CLASS_BLANK(x))&&(!CLASS_START1(x))&&(!CLASS_START2(x)))
+#define CLASS_ANY2(x) ((!CLASS_END1(x)))
+#define CLASS_ANY3(x) ((!CLASS_END2(x)))
+#define CLASS_ANY4(x) ((!CLASS_BLANK(x))&&(!CLASS_SEP(x))&&(!CLASS_BRA2(x)))
+#define CLASS_ANY5(x) ((!CLASS_BLANK(x))&&(!CLASS_SEP(x))&&(!CLASS_BRA2(x)))
+#define CLASS_ANY6(x) ((!CLASS_BLANK(x))&&(!CLASS_START2(x))&&(!CLASS_START2(x)))
+#define CLASS_ANY7(x) ((!CLASS_BLANK(x))&&(!CLASS_EOL(x)))
+
+static int LaunchParsingMachine(char *str, Rlist **newlist)
+{
+    char *s = str;
+    state current_state = ST_OPENED;
+    int ret;
+
+    char snatched[CF_MAXVARSIZE];
+    snatched[0]='\0';
+    char *sn = NULL;
+
+    while (current_state != ST_CLOSED)
+    {
+        switch(current_state) {
+            case ST_ERROR:
+                Log(LOG_LEVEL_ERR, "Parsing error : Malformed string");
+                ret = 1;
+                goto clean;
+            case ST_OPENED:
+                if (CLASS_BLANK(*s))
+                {
+                    current_state = ST_OPENED;
+                }
+                else if (CLASS_BRA1(*s)) 
+                {
+                    current_state = ST_IO;
+                }
+                else if (CLASS_ANY0(*s))
+                {
+                    current_state = ST_ERROR;
+                }
+                s++;
+                break;
+            case ST_IO:
+                if (CLASS_BLANK(*s))
+                {
+                    current_state = ST_IO;
+                }
+                else if (CLASS_START1(*s))
+                {
+                    sn=snatched;
+                    current_state = ST_ELM1;
+                }
+                else if (CLASS_START2(*s))
+                {
+                      sn=snatched; 
+                      current_state = ST_ELM2;
+                }
+                else if (CLASS_ANY1(*s))
+                {
+                    current_state = ST_ERROR;
+                }
+                s++;
+                break;
+            case ST_ELM1:
+                if (CLASS_END1(*s))
+                {
+                    *sn='\0'; 
+                    printf("\n\to1(%lu)=[%s]\n",strlen(snatched),snatched); 
+                    RlistAppendScalar(newlist, snatched);
+                    sn=NULL;
+                    current_state = ST_END1;
+                }
+                else if (CLASS_ANY2(*s))
+                {
+                    if (sn==NULL)
+                    {
+                        sn=snatched;
+                    }
+                    *sn=*s;
+                    sn++; 
+                    current_state = ST_ELM1;
+                }
+                s++;
+                break;
+            case ST_ELM2:
+                if (CLASS_END2(*s))
+                {
+                    *sn='\0'; 
+                    printf("\n\to2(%lu)=[%s]\n",strlen(snatched),snatched); 
+                    RlistAppendScalar(newlist, snatched);
+                    sn=NULL; 
+                    current_state = ST_END2;
+                }
+                else if (CLASS_ANY3(*s))
+                {
+                    if (sn==NULL) 
+                    {
+                        sn=snatched;
+                    }
+                    *sn=*s;
+                    sn++;
+                    current_state = ST_ELM2;
+                }
+                s++;
+                break;
+            case ST_END1:
+                if (CLASS_SEP(*s))
+                {
+                    current_state = ST_SEP;
+                }
+                else if (CLASS_BRA2(*s))
+                {
+                    current_state = ST_PRECLOSED;
+                }
+                else if (CLASS_BLANK(*s))
+                {
+                    current_state = ST_END1;
+                }
+                else if (CLASS_ANY4(*s))
+                {
+                    current_state = ST_ERROR;
+                }
+                s++;
+                break;
+            case ST_END2:
+                if (CLASS_SEP(*s))
+                {
+                    current_state = ST_SEP;
+                }
+                else if (CLASS_BRA2(*s))
+                {
+                    current_state = ST_PRECLOSED;
+                }
+                else if (CLASS_BLANK(*s))
+                {
+                    current_state = ST_END2;
+                }
+                else if (CLASS_ANY5(*s))
+                {
+                    current_state = ST_ERROR;
+                }
+                s++;
+                break;
+            case ST_SEP:
+                if (CLASS_BLANK(*s))
+                {
+                    current_state = ST_SEP;
+                }
+                else if (CLASS_START1(*s))
+                {
+                    current_state = ST_ELM1;
+                }
+                else if (CLASS_START2(*s))
+                {
+                    current_state = ST_ELM2;
+                }
+                else if (CLASS_ANY6(*s))
+                {
+                    current_state = ST_ERROR;
+                }
+                s++;
+                break;
+            case ST_PRECLOSED:
+                if (CLASS_BLANK(*s))
+                {
+                    current_state = ST_PRECLOSED;
+                }
+                else if (CLASS_EOL(*s))
+                {
+                    current_state = ST_CLOSED;
+                }
+                else if (CLASS_ANY7(*s))
+                {
+                    current_state = ST_PRECLOSED;
+                }
+                s++;
+                break;
+            default:
+                Log(LOG_LEVEL_ERR, "Parsing logic error: unknown state");
+                ret = 2;
+                goto clean;
+                break;
+      }
+      //printf("\n(%d)S=[%s]\n",(int)current_state,s);
+      //printf("%d",(int)current_state);
+    }
+
+    Log(LOG_LEVEL_INFO, "Reached ST_CLOSED");
+    return 0;
+
+clean:
+    if (newlist)
+    {
+        RlistDestroy(*newlist);
+    }
+    return ret;
+}
+
+Rlist *RlistParseString2(char *string, int *n)
+{
+    Rlist *newlist = NULL;
+    int ret;
+
+    ret = LaunchParsingMachine(string, &newlist);
+
+    if (!ret)
+    {
+        printf("Grr: great %x=%d\n",newlist,RlistLen(newlist));
+        return newlist;
+    }
+    else
+    {
+        return NULL;
+    }
+}
 
 /*******************************************************************/
 

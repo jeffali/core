@@ -201,43 +201,83 @@ static struct ParseRoulette
     {
     3, "{\"a\",\"b\",\"c\"}"},
         /*Simple empty */
+#if 0
     {
     1, "{\"\"}"},
     {
     2, "{\"\",\"\"}"},
     {
     3, "{\"\",\"\",\"\"}"},
-        /*Single escaped */
+#endif
+        /*Simple mixed kind of quotations */
     {
-    1, "{\"\\\"\"}"},
+    1, "{\"'\"}"},
+    {
+    1, "{'\"'}"},
     {
     1, "{\",\"}"},
     {
+    1, "{','}"},
+    {
     1, "{\"\\\\\"}"},
+    {
+    1, "{'\\\\'}"},
     {
     1, "{\"}\"}"},
     {
+    1, "{'}'}"},
+    {
     1, "{\"{\"}"},
     {
+    1, "{'{'}"},
+    {
     1, "{\"'\"}"},
+    {
+    1, "{'\"'}"},
         /*Couple double-escaped */
     {
-    1, "{\"\\\",\"}"},          /*   [",]    */
+    1, "{'\\\",'}"},          /*   [",]    */
     {
-    1, "{\",\\\"\"}"},          /*   [,"]    */
+    1, "{\"\\',\"}"},          /*   [",]    */
+
+    {
+    1, "{',\\\"'}"},          /*   [,"]    */
+    {
+    1, "{\",\\'\"}"},          /*   [,"]    */
+
     {
     1, "{\",,\"}"},             /*   [\\]    */
     {
+    1, "{',,'}"},             /*   [\\]    */
+
+    {
     1, "{\"\\\\\\\\\"}"},       /*   [\\]    */
     {
-    1, "{\"\\\\\\\"\"}"},       /*   [\"]    */
+    1, "{'\\\\\\\\'}"},       /*   [\\]    */
+
     {
-    1, "{\"\\\"\\\\\"}"},       /*   ["\]    */
+    1, "{'\\\\\\\"'}"},       /*   [\"]    */
+    {
+    1, "{\"\\\\\\'\"}"},       /*   [\"]    */
+
+    {
+    1, "{'\\\"\\\\'}"},       /*   ["\]    */
+    {
+    1, "{\"\\'\\\\\"}"},       /*   ["\]    */
+
         /*Very long */
     {
     1, "{\"AaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaA\"}"},
     {
-    2, "{\"Aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaA\"  ,  \"Bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\\\\bbbbbbbbbbbbbbbbbbbbbbbb\\\\bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\\\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbB\" }"},
+    1, "{'AaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaA'}"},
+
+    {
+    2, "{\"Aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa''aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaA\"  ,  \"Bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\\\\bbbbbbbbbbbbbbbbbbbbbbbb\\\\bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb''bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbB\" }"},
+    {
+    2, "{'Aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaA'  ,  'Bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\\\\bbbbbbbbbbbbbbbbbbbbbbbb\\\\bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\\\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbB' }"},
+    {
+    2, "{\"Aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa''aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaA\"  ,  'Bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\\\\bbbbbbbbbbbbbbbbbbbbbbbb\\\\bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\\\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbB' }"},
+  
         /*Inner space (inside elements) */
     {
     1, "{\" \"}"},
@@ -266,12 +306,24 @@ static struct ParseRoulette
     2, "{    \"a\",    \"b\"}       "},
         /*Normal */
     {
-    4, "   { \" ab,c,d\\\\ \" ,  \" e,f\\\"g \" ,\"hi\\\\jk\", \"l''m \" }   "},
+    4, "   { \" ab,c,d\\\\ \" ,  ' e,f\\\"g ' ,\"hi\\\\jk\", \"l''m \" }   "},
+#if 0
     {
-    21, "   { \"A\\\"\\\\    \", \"    \\\\\",   \"}B\",   \"\\\\\\\\\"  ,   \"   \\\\C\\\"\"  ,   \"\\\",\"  ,   \",\\\"D\"  ,   \"   ,,    \", \"E\\\\\\\\F\", \"\", \"{\",   \"   G    '\"  ,   \"\\\\\\\"\", \" \\\"  H \\\\    \", \",   ,\"  ,   \"I\", \"  \",   \"\\\"    J  \",   \"\\\",\", \",\\\"\", \",\"  }   "},
+    21, "   { 'A\\\"\\\\    ', \"    \\\\\",   \"}B\",   \"\\\\\\\\\"  ,   \"   \\\\C\\'\"  ,   \"\\',\"  ,   ',\\\"D'  ,   \"   ,,    \", \"E\\\\\\\\F\", \"\", \"{\",   \"   G    '\"  ,   \"\\\\\\'\", ' \\\"  H \\\\    ', \",   ,\"  ,   \"I\", \"  \",   \"\\'    J  \",   '\\\",', \",\\'\", \",\"  }   "},
+#endif
     {
     -1, (char *)NULL}
 };
+
+//PASSING CONDITIONS
+  //ALL ELM2
+    //char str[]="  {   \"   aaa    \",    \"    bbbb       \"  ,   \"   cc    \"          }    ";
+    //char str[]="  {   \"   a'a    \",    \"    b''b       \"  ,   \"   c'c   \"          }    ";
+  //ALL ELM1
+    //char str[]="  {   '   a\"a    ',    '    b\"\"b       '  ,   '   c\"c   '          }    ";
+  //MIXED ELM1+ELM2
+    //char str[]="  {   '   a\"a    ',    \"    b''b       \"  ,   '   c\"c   '          }    ";
+    //char str[]="  {   '   a,\"a } { ',    \"  } b','b       \"  ,   ' {, c\"c } '          }    ";
 
 static char *PFR[] = {
     /* trim left failure */
@@ -343,7 +395,8 @@ static void test_new_parser_success()
     int i = 0;
     while (PR[i].nfields != -1)
     {
-        list = RlistParseString(PR[i].str, NULL);
+    printf("IPR=%d\n", i);
+        list = RlistParseString2(PR[i].str, NULL);
         assert_int_equal(PR[i].nfields, RlistLen(list));
         if (list != NULL)
         {
@@ -359,6 +412,7 @@ static void test_new_parser_failure()
     Rlist *list = NULL;
     while (PFR[i] != NULL)
     {
+    printf("xFR=%d\n", i);
         list = RlistParseString(PFR[i], NULL);
         assert_true(RlistLast(list) == NULL);
         if(list) RlistDestroy(list);
