@@ -674,7 +674,7 @@ static int LaunchParsingMachine(char *str, Rlist **newlist)
     snatched[0]='\0';
     char *sn = NULL;
 
-    while (current_state != ST_CLOSED)
+    while (current_state != ST_CLOSED && *s)
     {
         switch(current_state) {
             case ST_ERROR:
@@ -847,6 +847,13 @@ static int LaunchParsingMachine(char *str, Rlist **newlist)
       }
       //printf("\n(%d)S=[%s]\n",(int)current_state,s);
       //printf("%d",(int)current_state);
+    }
+
+    if (current_state != ST_CLOSED && current_state != ST_PRECLOSED )
+    {
+        Log(LOG_LEVEL_ERR, "Parsing error : Malformed string (unexpected end of input)");
+        ret = 3;
+        goto clean;
     }
 
     Log(LOG_LEVEL_INFO, "Reached ST_CLOSED");
