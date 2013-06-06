@@ -25,10 +25,6 @@
 #ifndef CFENGINE_DBM_PRIV_H
 #define CFENGINE_DBM_PRIV_H
 
-#ifdef TCDB
-#define TCDB_OPTIMIZE_THRESHOLD 1000
-static int DB_COUNTERS[dbid_max] = { {TCDB_OPTIMIZE_THRESHOLD / 2} };
-#endif
 
 /* DBM implementation is supposed to define the following structures and
  * implement the following functions */
@@ -51,7 +47,12 @@ const char *DBPrivGetFileExtension(void);
       away and attempt to open database again should be performed.
  * - valid pointer to DBPriv * in case database was opened succesfully.
  */
+#if TCDB
+DBPriv *DBPrivOpenDB2(const char *dbpath, bool optimize);
+#else
 DBPriv *DBPrivOpenDB(const char *dbpath);
+#endif
+
 void DBPrivCloseDB(DBPriv *hdbp);
 
 bool DBPrivHasKey(DBPriv *db, const void *key, int key_size);
@@ -64,7 +65,6 @@ bool DBPrivWrite(DBPriv *db, const void *key, int key_size,
              const void *value, int value_size);
 
 bool DBPrivDelete(DBPriv *db, const void *key, int key_size);
-
 
 DBCursorPriv *DBPrivOpenCursor(DBPriv *db);
 bool DBPrivAdvanceCursor(DBCursorPriv *cursor, void **key, int *key_size,

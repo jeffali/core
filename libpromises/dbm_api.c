@@ -95,6 +95,11 @@ static const char *DB_PATHS[] = {
     [dbid_bundles] = "bundles",
 };
 
+#ifdef TCDB
+#define TCDB_OPTIMIZE_THRESHOLD 1000
+static unsigned int DB_COUNTERS[dbid_max] = { {TCDB_OPTIMIZE_THRESHOLD / 2} };
+#endif
+
 /******************************************************************************/
 
 char *DBIdToPath(const char *workdir, dbid id)
@@ -230,12 +235,24 @@ bool OpenDB(DBHandle **dbp, dbid id)
 
         if(lock_fd != -1)
         {
+#if TCDB
+            bool optimize = false;
+            DB_COUNTERS[id] = (DB_COUNTERS[id] + 1) % TCDB_OPTIMIZE_THRESHOLD;
+            if ( DB_COUNTERS[id] == 0) {
+                optimize = true;
+            }
+            handle->priv = DBPrivOpenDB2(handle->filename, optimize);
+#else
             handle->priv = DBPrivOpenDB(handle->filename);
-
+#endif
             if (handle->priv == DB_PRIV_DATABASE_BROKEN)
             {
                 DBPathMoveBroken(handle->filename);
+#if TCDB
+                handle->priv = DBPrivOpenDB2(handle->filename, false);
+#else
                 handle->priv = DBPrivOpenDB(handle->filename);
+#endif
                 if (handle->priv == DB_PRIV_DATABASE_BROKEN)
                 {
                     handle->priv = NULL;
