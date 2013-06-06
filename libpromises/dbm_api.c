@@ -66,6 +66,7 @@ static pthread_mutex_t db_handles_lock = PTHREAD_ERRORCHECK_MUTEX_INITIALIZER_NP
 
 static DBHandle db_handles[dbid_max] = { { 0 } };
 
+
 static pthread_once_t db_shutdown_once = PTHREAD_ONCE_INIT;
 
 /******************************************************************************/

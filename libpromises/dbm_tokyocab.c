@@ -117,10 +117,13 @@ static bool OpenTokyoDatabase(const char *filename, TCHDB **hdb)
         return false;
     }
 
-    if (!tchdboptimize(*hdb, -1, -1, -1, false))
-    {
-        tchdbclose(*hdb);
-        return false;
+    DB_COUNTERS[0] = (DB_COUNTERS[0] + 1) % TCDB_OPTIMIZE_THRESHOLD;
+    if ( DB_COUNTERS[0] == 0) {
+        if (!tchdboptimize(*hdb, -1, -1, -1, false))
+        {
+            tchdbclose(*hdb);
+            return false;
+        }
     }
 
     return true;
