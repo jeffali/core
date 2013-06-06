@@ -86,4 +86,14 @@ bool DeleteDBCursor(CF_DBC *dbcp);
 
 char *DBIdToPath(const char *workdir, dbid id);
 
+#ifdef TCDB
+//#define TCDB_OPTIMIZE_THRESHOLD 1000
+//2HOURS
+#define TCDB_OPTIMIZE_THRESHOLD 60*60*2
+//static unsigned int DB_COUNTERS[dbid_max] = { {TCDB_OPTIMIZE_THRESHOLD / 2} };
+//time_t now222 = 0; //time(NULL);
+unsigned int DB_COUNTERS[dbid_max]; // = { {0/*now*/ + TCDB_OPTIMIZE_THRESHOLD / 2} };
+#endif
+
+
 #endif  /* NOT CFENGINE_DBM_API_H */

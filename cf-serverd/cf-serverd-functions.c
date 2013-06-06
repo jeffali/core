@@ -242,9 +242,19 @@ GenericAgentConfig *CheckOpts(int argc, char **argv)
 }
 
 /*******************************************************************/
+static void InitTCDBCOunters(void)
+{
+    time_t now = time(NULL);
+    for (int i = 0; i < dbid_max; ++i)
+    {
+        DB_COUNTERS[i] = now + TCDB_OPTIMIZE_THRESHOLD / 2;
+    }
+ 
+}
 
 void ThisAgentInit(void)
 {
+    InitTCDBCOunters();
     umask(077);
 }
 
