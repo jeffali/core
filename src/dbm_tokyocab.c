@@ -134,13 +134,20 @@ static bool OpenTokyoDatabase(const char *filename, TCHDB **hdb)
             long result = strtol(perc, &end, 10);
  
             /* Environment variable is a number and in 0..100 range */
-            if(*end && result>-1 && result<101) 
+            if (errno == ERANGE)
+            {
+                threshold = 99; 
+            }
+            else if(errno == 0 && end == perc)
+            {
+                threshold = 99; 
+            }
+            else if(errno == 0 && result>-1 && result<101) 
             {
                threshold = 100 - (int)result;
             }
             else
             {
-                /* This corresponds to 1% */
                 threshold = 99; 
             }
         }
