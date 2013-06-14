@@ -87,4 +87,8 @@ while ((assoc = HashIteratorNext(&i)))
 AssocHashTableIterator HashIteratorInit(AssocHashTable *hashtable);
 CfAssoc *HashIteratorNext(AssocHashTableIterator *iterator);
 
+#ifndef DBG0
+void PrintCfAssoc(CfAssoc *assoc);
+#endif
+
 #endif

@@ -476,3 +476,16 @@ CfAssoc *HashIteratorNext(AssocHashTableIterator *i)
         return TinyHashIteratorNext(i);
     }
 }
+#ifndef DBG0
+void PrintCfAssoc(CfAssoc *assoc) {
+/*
+    char *lval;
+    Rval rval;
+    DataType dtype;
+*/
+  printf("lval='%s',dtype='%d',rval=[",assoc->lval, assoc->dtype);
+  PrintRval(&assoc->rval);
+  printf("]");
+
+}
+#endif

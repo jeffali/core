@@ -174,6 +174,7 @@ void PrintRval(Rval *rp)
         if (rp->type == RVAL_TYPE_ASSOC)
         {
             printf("_assoc_", rp->item);
+            PrintCfAssoc(rp->item);
         }
         if (rp->type == RVAL_TYPE_SCALAR)
         {
