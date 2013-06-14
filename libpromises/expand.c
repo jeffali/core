@@ -163,6 +163,8 @@ void ExpandPromise(EvalContext *ctx, AgentType agent, const char *scopeid, Promi
  printf("\n=======THIS_BUNDLE=[%s]================================\n", THIS_BUNDLE);
     DumpCFSTCK();
     ExpandPromiseAndDo(ctx, agent, scopeid, pcopy, scalarvars, listvars, fnptr, report_context);
+    printf("  ** dump midway CTX **\n");
+    DumpCtx(ctx);
     ScopePopThis();
     PrintSeqPromise(pp);
     PromiseDestroy(pcopy);

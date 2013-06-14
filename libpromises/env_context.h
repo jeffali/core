@@ -126,4 +126,9 @@ void SaveClassEnvironment(EvalContext *ctx);
 void MarkPromiseHandleDone(EvalContext *ctx, const Promise *pp);
 int MissingDependencies(EvalContext *ctx, const Promise *pp);
 
+#ifndef DBG0
+void DumpCtx(const EvalContext *ctx);
+void PrintSeqStackFrame(StackFrame *f);
+#endif
+
 #endif

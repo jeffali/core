@@ -1703,3 +1703,43 @@ StringSetIterator EvalContextStackFrameIteratorSoft(const EvalContext *ctx)
     StackFrame *frame = EvalContextStackFrame(ctx);
     return StringSetIteratorInit(frame->contexts);
 }
+#ifndef DBG0
+void DumpCtx(const EvalContext *ctx)
+{
+    printf("ctx.soft=");
+    DumpStringSet(ctx->heap_soft);
+    printf("ctx.hard=");
+    DumpStringSet(ctx->heap_hard);
+    printf("ctx.neg=");
+    DumpStringSet(ctx->heap_negated);
+
+    printf("ctx.soft=");
+    for (size_t fi = 0; fi < SeqLength(ctx->stack); fi++)
+    {
+        StackFrame *f = SeqAt(ctx->stack, fi);
+        printf(" -- ");
+        PrintSeqStackFrame(f);
+    }
+    printf("\n");
+
+    printf("ctx.deps=");
+    DumpStringSet(ctx->dependency_handles);
+}
+
+void PrintSeqStackFrame(StackFrame *f)
+{
+
+/*
+    StringSet *contexts;
+    StringSet *contexts_negated;
+    bool inherits_previous;
+*/
+    printf("frame=[contexts=");
+    DumpStringSet(f->contexts);
+    printf(", negated=[");
+    DumpStringSet(f->contexts_negated);
+    printf("], inherit=%d",f->inherits_previous);
+    printf("]");
+}
+
+#endif

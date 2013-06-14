@@ -72,3 +72,17 @@ void *SetIteratorNext(SetIterator *i)
     MapKeyValue *kv = MapIteratorNext(i);
     return kv ? kv->key : NULL;
 }
+#ifndef DBG0
+void DumpStringSet(StringSet *set)
+{
+    StringSetIterator it = StringSetIteratorInit(set);
+    const char *context = NULL;
+    printf("{");
+    while ((context = StringSetIteratorNext(&it)))
+    {
+	printf("[%s],", context);
+    }
+
+    printf("}\n");
+}
+#endif

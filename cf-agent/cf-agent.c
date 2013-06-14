@@ -257,7 +257,10 @@ int main(int argc, char *argv[])
     KeepPromises(ctx, policy, config, report_context);
     CloseReports("agent", report_context);
  printf("=======================================\n");
+#ifndef DBG0
+    printf("   ** final CTX dump **\n");
     DumpCFSTCK(policy);
+#endif
 
     // only note class usage when default policy is run
     if (!config->input_file)
@@ -280,6 +283,9 @@ int main(int argc, char *argv[])
     }
 
     EndAudit(CFA_BACKGROUND);
+#ifndef DBG0
+    DumpCtx(ctx);
+#endif
     EvalContextDestroy(ctx);
     GenericAgentConfigDestroy(config);
 

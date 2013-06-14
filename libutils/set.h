@@ -110,4 +110,8 @@ void *SetIteratorNext(SetIterator *i);
 
 TYPED_SET_DECLARE(String, char *)
 
+#ifndef DBG0
+void DumpStringSet(StringSet *set);
+#endif
+
 #endif
