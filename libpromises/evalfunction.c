@@ -4206,6 +4206,7 @@ static FnCallResult ReadArray(EvalContext *ctx, FnCall *fp, Rlist *finalargs, Da
 
 // Read once to validate structure of file in itemlist
     file_buffer = CfReadFile(filename, maxsize);
+    printf("BUFFY=[%s]\n",file_buffer);
     if (!file_buffer)
     {
         entries = 0;
@@ -4221,6 +4222,7 @@ static FnCallResult ReadArray(EvalContext *ctx, FnCall *fp, Rlist *finalargs, Da
         else
         {
             entries = BuildLineArray(ctx, PromiseGetBundle(fp->caller), array_lval, file_buffer, split, maxent, type, intIndex);
+            printf("BUFFYentries = %d\n",entries);
         }
     }
 
@@ -4772,11 +4774,13 @@ static char *StripPatterns(char *file_buffer, char *pattern, char *filename)
                 Log(LOG_LEVEL_ERR,
                     "Comment regex '%s' was irreconcilable reading input '%s' probably because it legally matches nothing",
                       pattern, filename);
+                printf("Carlsbergggg\n");
                 return file_buffer;
             }
         }
     }
 
+    printf("Heinekken=>[*************%s**************]\n",file_buffer);
     return file_buffer;
 }
 
@@ -4812,14 +4816,26 @@ static int BuildLineArray(EvalContext *ctx, const Bundle *bundle, char *array_lv
 
     memset(linebuf, 0, CF_BUFSIZE);
     hcount = 0;
-
+    
+    printf("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n");
     for (sp = file_buffer; hcount < maxent && *sp != '\0'; sp++)
     {
         linebuf[0] = '\0';
+        char *sp2 = strstr(sp,"\n");
+        printf("BIG DIFF %u\n", sp2 - sp);
         sscanf(sp, "%1023[^\n]", linebuf);
 
         lineLen = strlen(linebuf);
+        printf("$$$$ lineLen=%d\n",lineLen);
 
+#if 1
+        if (sp2 - sp > 1023)
+        {
+            printf("Err : One long entry skipped\n");
+            sp = sp2 + 1;
+            continue;
+        }
+#endif
         if (lineLen == 0)
         {
             continue;
