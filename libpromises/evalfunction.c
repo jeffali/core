@@ -102,6 +102,23 @@ static int ExecModule(EvalContext *ctx, char *command, const char *ns);
 static int CheckID(char *id);
 static bool GetListReferenceArgument(const EvalContext *ctx, const FnCall *fp, const char *lval_str, Rval *rval_out, DataType *datatype_out);
 static void *CfReadFile(char *filename, int maxsize);
+static int AddFieldSeparatedLineToArray(EvalContext *ctx, const Bundle *bundle, 
+                       char *array_lval, char *line, 
+                       char *split, int maxent, DataType type,
+                       int intIndex, int hcount);
+static int AddFieldSeparatedLineToList(EvalContext *ctx, const Bundle *bundle, 
+                       char *array_lval, char *line, 
+                       char *split, int maxent, DataType type,
+                       int intIndex, int hcount, Rlist **retlist);
+
+static int BuildLineArrayFromFile(EvalContext *ctx, const Bundle *bundle, 
+                                  char *array_lval, char *filename, char *comment,
+                                  char *split, int maxent, int maxsize, DataType type,
+                                  int intIndex, bool isarray, Rlist **retlist);
+static int BuildLineArrayFromString(EvalContext *ctx, const Bundle *bundle, 
+                                  char *array_lval, char *buffer,
+                                  char *comment, char *split,
+                                  int maxent, int maxsize, DataType type, int intIndex);
 
 /*******************************************************************/
 
@@ -4054,7 +4071,11 @@ static FnCallResult ReadList(EvalContext *ctx, FnCall *fp, Rlist *finalargs, Dat
 
     // Read once to validate structure of file in itemlist
     snprintf(fnname, CF_MAXVARSIZE - 1, "read%slist", DataTypeToString(type));
+printf("a1\n");
+    int entries = BuildLineArrayFromFile(ctx, PromiseGetBundle(fp->caller), NULL /*IGNORE:array_lval*/, filename, comment, split, maxent, maxsize, type, -1/*IGNORE:intIndex*/, false, &newlist);
+printf("a2 %d LEN0=%d\n", entries, RlistLen(newlist));
 
+#if 0
     file_buffer = (char *) CfReadFile(filename, maxsize);
 
     if (file_buffer == NULL)
@@ -4110,6 +4131,7 @@ static FnCallResult ReadList(EvalContext *ctx, FnCall *fp, Rlist *finalargs, Dat
     }
 
     free(file_buffer);
+#endif
 
     if (newlist && noerrors)
     {
@@ -4119,7 +4141,6 @@ static FnCallResult ReadList(EvalContext *ctx, FnCall *fp, Rlist *finalargs, Dat
     {
         return (FnCallResult) { FNCALL_FAILURE };
     }
-
 }
 
 static FnCallResult FnCallReadStringList(EvalContext *ctx, FnCall *fp, Rlist *args)
@@ -4175,7 +4196,8 @@ static FnCallResult ReadArray(EvalContext *ctx, FnCall *fp, Rlist *finalargs, Da
     }
     else
     {
-        file_buffer = StripPatterns(ctx, file_buffer, comment, filename);
+        file_buffer = StripPatterns(file_buffer, comment, filename);
+//    printf("BUFFY=[%s]\n",file_buffer);
 
         if (file_buffer == NULL)
         {
@@ -4183,7 +4205,9 @@ static FnCallResult ReadArray(EvalContext *ctx, FnCall *fp, Rlist *finalargs, Da
         }
         else
         {
-            entries = BuildLineArray(ctx, PromiseGetBundle(fp->caller), array_lval, file_buffer, split, maxent, type, intIndex);
+            //entries = BuildLineArray(ctx, PromiseGetBundle(fp->caller), array_lval, file_buffer, split, maxent, type, intIndex);
+            entries = BuildLineArrayFromFile(ctx, PromiseGetBundle(fp->caller), array_lval, filename, comment, split, maxent, maxsize, type, intIndex, true, NULL/*IGNORE:newlist*/);
+            printf("BUFFYentries = %d\n",entries);
         }
     }
 
@@ -4282,7 +4306,10 @@ static FnCallResult ParseArray(EvalContext *ctx, FnCall *fp, Rlist *finalargs, D
         }
         else
         {
-            entries = BuildLineArray(ctx, PromiseGetBundle(fp->caller), array_lval, instring, split, maxent, type, intIndex);
+            //entries = BuildLineArray(ctx, PromiseGetBundle(fp->caller), array_lval, instring, split, maxent, type, intIndex);
+            entries = BuildLineArrayFromString(ctx, PromiseGetBundle(fp->caller), array_lval, instring, comment, split, maxent, maxsize, type, intIndex);
+            printf("SUFFYentries = %d\n",entries);
+ 
         }
     }
 
@@ -4739,11 +4766,13 @@ static char *StripPatterns(EvalContext *ctx, char *file_buffer, char *pattern, c
                 Log(LOG_LEVEL_ERR,
                     "Comment regex '%s' was irreconcilable reading input '%s' probably because it legally matches nothing",
                       pattern, filename);
+//                printf("Carlsbergggg\n");
                 return file_buffer;
             }
         }
     }
 
+//    printf("Heinekken=>[*************%s**************]\n",file_buffer);
     return file_buffer;
 }
 
@@ -4766,7 +4795,275 @@ static void CloseStringHole(char *s, int start, int end)
 
     *sp = '\0';
 }
+/*********************************************************************/
+/*********************************************************************/
+/*********************************************************************/
+/*********************************************************************/
+/*********************************************************************/
+static int AddFieldSeparatedLineToArray(EvalContext *ctx, const Bundle *bundle, 
+                       char *array_lval, char *line, 
+                       char *split, int maxent, DataType type,
+                       int intIndex, int hcount)
+{
+    Rlist *rp, *newlist = NULL;
+    int allowblanks = true, vcount = 0;
 
+    newlist = RlistFromSplitRegex(line, split, maxent, allowblanks);
+
+    char name[CF_MAXVARSIZE];
+    char first_one[CF_MAXVARSIZE];
+    first_one[0] = '\0';
+
+    for (rp = newlist; rp != NULL; rp = rp->next)
+    {
+        char this_rval[CF_MAXVARSIZE];
+        long ival;
+
+        switch (type)
+        {
+        case DATA_TYPE_STRING:
+            strncpy(this_rval, rp->item, CF_MAXVARSIZE - 1);
+            break;
+
+        case DATA_TYPE_INT:
+            ival = IntFromString(rp->item);
+            snprintf(this_rval, CF_MAXVARSIZE, "%d", (int) ival);
+            break;
+
+        case DATA_TYPE_REAL:
+            {
+                double real_value = 0;
+                if (!DoubleFromString(rp->item, &real_value))
+                {
+                    FatalError(ctx, "Could not convert rval to double");
+                }
+            }
+            sscanf(rp->item, "%255s", this_rval);
+            break;
+
+        default:
+            ProgrammingError("Unhandled type in switch: %d", type);
+        }
+
+        if (strlen(first_one) == 0)
+        {
+                strncpy(first_one, this_rval, CF_MAXVARSIZE - 1);
+        }
+
+        if (intIndex)
+        {
+                snprintf(name, CF_MAXVARSIZE, "%s[%d][%d]", array_lval, hcount, vcount);
+        }
+        else
+        {
+                snprintf(name, CF_MAXVARSIZE, "%s[%s][%d]", array_lval, first_one, vcount);
+        }
+
+        printf(">>>>>>>>>>This_rval=%s\n", this_rval);
+        EvalContextVariablePut(ctx, (VarRef) { NULL, bundle->name, name }, (Rval) { this_rval, RVAL_TYPE_SCALAR }, type);
+        vcount++;
+    }
+
+    RlistDestroy(newlist);
+}
+
+static int AddFieldSeparatedLineToList(EvalContext *ctx, const Bundle *bundle, 
+                       char *array_lval, char *line, 
+                       char *split, int maxent, DataType type,
+                       int intIndex, int hcount, Rlist **retlist)
+{
+    Rlist *rp, *newlist = NULL;
+    int allowblanks = true, vcount = 0;
+
+    newlist = RlistFromSplitRegex(line, split, maxent, allowblanks);
+int len=RlistLen(*retlist);
+
+    /*char name[CF_MAXVARSIZE];
+    char first_one[CF_MAXVARSIZE];
+    first_one[0] = '\0';*/
+
+    switch (type)
+    {
+    case DATA_TYPE_STRING:
+        for (rp = newlist; rp != NULL; rp = rp->next)
+        {
+           if(len+vcount<maxent) {
+                RlistAppendScalarIdemp(retlist, rp->item);
+                vcount++;
+           }
+        }
+        break;
+
+    case DATA_TYPE_INT:
+        for (rp = newlist; rp != NULL; rp = rp->next)
+        {
+            if (IntFromString(RlistScalarValue(rp)) == CF_NOINT)
+            {
+                Log(LOG_LEVEL_ERR, "Presumed int value '%s' read from list has no recognizable value",
+                      RlistScalarValue(rp));
+
+            } else {
+                if(len+vcount<maxent) {
+                   RlistAppendScalarIdemp(retlist, RlistScalarValue(rp));
+                   vcount++;
+                }
+            }
+        }
+        break;
+
+    case DATA_TYPE_REAL:
+        for (rp = newlist; rp != NULL; rp = rp->next)
+        {
+            double real_value = 0;
+            if (!DoubleFromString(RlistScalarValue(rp), &real_value))
+            {
+                Log(LOG_LEVEL_ERR, "Presumed real value '%s' read from list has no recognizable value",
+                      RlistScalarValue(rp));
+
+            } else {
+                if(len+vcount<maxent) {
+                      RlistAppendScalarIdemp(retlist, RlistScalarValue(rp));
+                      vcount++;
+                }
+            }
+        }
+        break;
+
+    default:
+        ProgrammingError("Unhandled type in switch: %d", type);
+    }
+
+    RlistDestroy(newlist);
+}
+
+/**
+shared :
+   ctx, bundle, filename, comment, split, maxent, maxsize, type
+array:
+   array_lval, intIndex, isarray=true
+list:
+   isarray=false, retlist
+ret :
+   hcount : horizontal count = (nb of lines)
+**/
+static int BuildLineArrayFromFile(EvalContext *ctx, const Bundle *bundle, 
+                                  char *array_lval, char *filename,
+                                  char *comment, char *split,
+                                  int maxent, int maxsize, DataType type, int intIndex, bool isarray, Rlist **retlist)
+{
+
+     char *s;
+     char buf[CF_BUFSIZE];
+     int ignorenext = 0;
+     FILE *fp;
+     if((fp = fopen(filename, "r")) == NULL)
+     {
+         printf("Cannot open file %s\n", filename);
+         return -1;
+     }
+     int hcount = 0;
+     int nbbytesread = 0;
+printf("b1\n");
+     while((s = fgets(buf, CF_BUFSIZE , fp))!=NULL)
+     {
+       nbbytesread += strlen(s);
+       if(strcspn(s, "\r\n") == strlen(s))
+       {
+         ignorenext = 1;
+       } else {
+         if(ignorenext==1) {
+           ignorenext=0;
+         } else {
+           if(nbbytesread>maxsize) {
+             int delta = nbbytesread - maxsize;
+             s[strlen(s)-delta]='\0';
+             printf("delta=%d %d %s\n",delta, strlen(s), s);
+           }
+
+           printf("S[at %ld]=[%s]\n", ftell(fp), buf);
+
+           if(strcspn(s, "\r\n")>0)
+           {
+               s[strcspn(s, "\r\n")]='\0';
+           }
+           //if (strcmp(comment,"")==0 || FullTextMatch(comment, s) == 0 )
+           if (strcmp(comment,"")==0 || (s = StripPatterns(s, comment, filename))!=NULL)
+           //if (/*LineNotExcluded(s)*/*s!='#')
+           {
+              if(hcount<maxent-1) {
+            int res;
+            if(isarray == true) 
+            {
+                res = AddFieldSeparatedLineToArray(ctx, bundle, array_lval, s, 
+                                 split, maxent, type, intIndex, hcount);
+            } else {
+                printf("b1 %s\n", s);
+                res = AddFieldSeparatedLineToList(ctx, bundle, NULL/*array_lval*/, s, 
+                                 split, maxent, type, -1/*intIndex*/, hcount, retlist);
+                printf("b2 %d LEN=%d\n", res, RlistLen(*retlist));
+            }
+
+              } else {
+                break;
+              }
+              ++hcount;
+           }
+         }
+       }
+       if(nbbytesread>maxsize) break;
+     }
+     fclose(fp);
+    return hcount;
+}
+
+static int BuildLineArrayFromString(EvalContext *ctx, const Bundle *bundle, 
+                                  char *array_lval, char *buffer,
+                                  char *comment, char *split,
+                                  int maxent, int maxsize, DataType type, int intIndex)
+{
+   char tempbuf[CF_BUFSIZE+1];
+   int hcount = 0;
+   int n = 0;
+   size_t l = strlen(buffer);
+   //printf("L=%d\n", l);
+
+   while(1) {
+      size_t len = strcspn(buffer + n, "\n\r");
+      strncpy(tempbuf, buffer+n, len); tempbuf[len]='\0';
+      n += len + 1;
+      //printf("N=%d[%d]\n",n,len);
+      if (len<CF_BUFSIZE)
+      {
+          if(n-1>maxsize) {
+             int delta = (n-1)- maxsize;
+             tempbuf[strlen(tempbuf)-delta]='\0';
+             printf("delta=%d %d %s\n",delta, strlen(tempbuf), tempbuf);
+          }
+
+          printf("S at[%d] [%s]\n",n+len,tempbuf);
+          char *tempbuf2 = NULL;
+          if (strcmp(comment,"")==0 || (tempbuf2 = StripPatterns(tempbuf, comment, "String argument 2"))!=NULL)
+          //if (tempbuf!='#')
+          {
+              if(tempbuf2!=NULL) strcpy(tempbuf, tempbuf2);
+              if(hcount<maxent) {
+                int res = AddFieldSeparatedLineToArray(ctx, bundle, array_lval, tempbuf, 
+                                 split, maxent, type, intIndex, hcount);
+              } else {
+                break;
+              }
+              ++hcount;
+          }
+
+      }
+      if(n>=l) break;
+   }
+   return hcount;
+}
+/*********************************************************************/
+/*********************************************************************/
+/*********************************************************************/
+/*********************************************************************/
 /*********************************************************************/
 
 static int BuildLineArray(EvalContext *ctx, const Bundle *bundle, char *array_lval, char *file_buffer, char *split, int maxent, DataType type,
@@ -4779,14 +5076,26 @@ static int BuildLineArray(EvalContext *ctx, const Bundle *bundle, char *array_lv
 
     memset(linebuf, 0, CF_BUFSIZE);
     hcount = 0;
-
+    
+    printf("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n");
     for (sp = file_buffer; hcount < maxent && *sp != '\0'; sp++)
     {
         linebuf[0] = '\0';
+        char *sp2 = strstr(sp,"\n");
+        printf("BIG DIFF %u\n", sp2 - sp);
         sscanf(sp, "%1023[^\n]", linebuf);
 
         lineLen = strlen(linebuf);
+        printf("$$$$ lineLen=%d\n",lineLen);
 
+#if 1
+        if (sp2 - sp > 1023)
+        {
+            printf("Err : One long entry skipped\n");
+            sp = sp2 + 1;
+            continue;
+        }
+#endif
         if (lineLen == 0)
         {
             continue;

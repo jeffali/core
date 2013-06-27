@@ -1,0 +1,72 @@
+body common control
+{
+  bundlesequence  => { "G", "init", "test", "check" };
+}
+
+bundle common G
+{
+  vars:
+     "testfile" string => "/tmp/621.txt";
+}
+
+bundle agent init
+{
+files:
+	"$(G.testfile)"
+	    delete => init_delete;
+	
+	"$(G.testfile)"
+	    create => "true",
+	    edit_line => init_fill_in;
+}
+
+bundle edit_line init_fill_in
+{
+insert_lines:
+
+"0:1:2
+12345
+1:2:3";
+
+}
+
+body delete init_delete
+{
+	dirlinks => "delete";
+	rmdirs   => "true";
+}
+
+#######################################################
+
+bundle agent test
+{
+vars:
+	"teststr" string => readfile("$(G.testfile)",1000);
+	"cnt" int => parserealarray("ary", "$(teststr)","NoComment",":",10,1000);
+	"num" int => "3";
+}
+
+#######################################################
+
+bundle agent check
+{
+vars:
+    	"idx" slist => getindices("test.ary");
+
+reports:
+    any::
+	"expected $(test.num) entries, saw $(test.cnt)";
+
+	"saw array indices '$(idx)'";
+
+	"expected test.ary[0][0] = '0', saw '$(test.ary[0][0])'";
+	"expected test.ary[0][1] = '1', saw '$(test.ary[0][1])'";
+	"expected test.ary[0][2] = '2', saw '$(test.ary[0][2])'";
+
+	"expected test.ary[12345][0] = '12345', saw '$(test.ary[12345][0])'";
+
+	"expected test.ary[1][0] = '1', saw '$(test.ary[1][0])'";
+	"expected test.ary[1][1] = '2', saw '$(test.ary[1][1])'";
+	"expected test.ary[1][2] = '3', saw '$(test.ary[1][2])'";
+
+}

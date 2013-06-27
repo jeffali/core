@@ -1,0 +1,6 @@
+a:bb:ccc
+ddddd:eeeeeeee:fffffffffffff
+#G:BB:CCC
+HHHHH:EEEEEEEE:FFFFFFFFFFFFF
+x:bb:ccc
+yyyyy:eeeeeeee:fffffffffffff
