@@ -31,10 +31,10 @@ bundle agent test
 bundle agent check
 {
 classes:
-    "ok" or => { 
-	    strcmp("$(sys.flavor)", "debian_$(test.myflavor)"),
-            "!debian" 
-    };
+    debian::
+      "ok" expression => strcmp("$(sys.flavor)", "debian_$(test.myflavor)");
+    !debian::
+      "ok" expression => "any";
 
 reports:
     DEBUG::
