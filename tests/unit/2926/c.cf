@@ -1,0 +1,28 @@
+body common control {
+
+   inputs => { "/var/cfengine/inputs/libraries/cfengine_stdlib.cf" };
+        bundlesequence  => { "test" };
+}
+
+bundle agent test {
+
+        vars:
+    "params_dimension" int => readstringarrayidx(
+         "params",
+         "/tmp/a.txt",
+         "\s*#[^\n]*",
+         ":",
+         9999,
+         48),
+       classes => if_repaired( "index" ),
+       comment => "read in params array of size params_dimension";
+
+    index::
+    "i"        slist   => getindices("params");
+
+        reports:
+
+    index::
+    "DEBUG: i: $(i)";
+    "DEBUG: params: $(params[$(i)]): $(params[$(i)][0]) $(params[$(i)][2])";
+}
