@@ -98,6 +98,14 @@ static int ExecModule(EvalContext *ctx, char *command, const char *ns);
 static int CheckID(char *id);
 static bool GetListReferenceArgument(const EvalContext *ctx, const FnCall *fp, const char *lval_str, Rval *rval_out, DataType *datatype_out);
 static void *CfReadFile(char *filename, int maxsize);
+static int ProcessFieldSeparatedLine(EvalContext *ctx, const Bundle *bundle, 
+                       char *array_lval, char *line, 
+                       char *split, int maxent, DataType type,
+                       int intIndex, int hcount);
+static int BuildLineArrayFromFile(EvalContext *ctx, const Bundle *bundle, 
+                                  char *array_lval, char *filename, 
+                                  char *split, int maxent, DataType type,
+                                  int intIndex);
 
 /*******************************************************************/
 
@@ -4206,7 +4214,6 @@ static FnCallResult ReadArray(EvalContext *ctx, FnCall *fp, Rlist *finalargs, Da
 
 // Read once to validate structure of file in itemlist
     file_buffer = CfReadFile(filename, maxsize);
-    printf("BUFFY=[%s]\n",file_buffer);
     if (!file_buffer)
     {
         entries = 0;
@@ -4214,6 +4221,7 @@ static FnCallResult ReadArray(EvalContext *ctx, FnCall *fp, Rlist *finalargs, Da
     else
     {
         file_buffer = StripPatterns(file_buffer, comment, filename);
+    printf("BUFFY=[%s]\n",file_buffer);
 
         if (file_buffer == NULL)
         {
@@ -4221,7 +4229,8 @@ static FnCallResult ReadArray(EvalContext *ctx, FnCall *fp, Rlist *finalargs, Da
         }
         else
         {
-            entries = BuildLineArray(ctx, PromiseGetBundle(fp->caller), array_lval, file_buffer, split, maxent, type, intIndex);
+            //entries = BuildLineArray(ctx, PromiseGetBundle(fp->caller), array_lval, file_buffer, split, maxent, type, intIndex);
+            entries = BuildLineArrayFromFile(ctx, PromiseGetBundle(fp->caller), array_lval, filename, split, maxent, type, intIndex);
             printf("BUFFYentries = %d\n",entries);
         }
     }
@@ -4803,7 +4812,117 @@ static void CloseStringHole(char *s, int start, int end)
 
     *sp = '\0';
 }
+/*********************************************************************/
+/*********************************************************************/
+/*********************************************************************/
+/*********************************************************************/
+/*********************************************************************/
+static int ProcessFieldSeparatedLine(EvalContext *ctx, const Bundle *bundle, 
+                       char *array_lval, char *line, 
+                       char *split, int maxent, DataType type,
+                       int intIndex, int hcount)
+{
+    Rlist *rp, *newlist = NULL;
+    int allowblanks = true, vcount = 0;
 
+    newlist = RlistFromSplitRegex(line, split, maxent, allowblanks);
+
+    char name[CF_MAXVARSIZE];
+    char first_one[CF_MAXVARSIZE];
+    first_one[0] = '\0';
+
+    for (rp = newlist; rp != NULL; rp = rp->next)
+    {
+        char this_rval[CF_MAXVARSIZE];
+        long ival;
+
+        switch (type)
+        {
+        case DATA_TYPE_STRING:
+            strncpy(this_rval, rp->item, CF_MAXVARSIZE - 1);
+            break;
+
+        case DATA_TYPE_INT:
+            ival = IntFromString(rp->item);
+            snprintf(this_rval, CF_MAXVARSIZE, "%d", (int) ival);
+            break;
+
+        case DATA_TYPE_REAL:
+            {
+                double real_value = 0;
+                if (!DoubleFromString(rp->item, &real_value))
+                {
+                    FatalError(ctx, "Could not convert rval to double");
+                }
+            }
+            sscanf(rp->item, "%255s", this_rval);
+            break;
+
+        default:
+            ProgrammingError("Unhandled type in switch: %d", type);
+        }
+
+        if (strlen(first_one) == 0)
+        {
+                strncpy(first_one, this_rval, CF_MAXVARSIZE - 1);
+        }
+
+        if (intIndex)
+        {
+                snprintf(name, CF_MAXVARSIZE, "%s[%d][%d]", array_lval, hcount, vcount);
+        }
+        else
+        {
+                snprintf(name, CF_MAXVARSIZE, "%s[%s][%d]", array_lval, first_one, vcount);
+        }
+
+        EvalContextVariablePut(ctx, (VarRef) { NULL, bundle->name, name }, (Rval) { this_rval, RVAL_TYPE_SCALAR }, type);
+        vcount++;
+    }
+
+    RlistDestroy(newlist);
+}
+
+static int BuildLineArrayFromFile(EvalContext *ctx, const Bundle *bundle, 
+                                  char *array_lval, char *filename, 
+                                  char *split, int maxent, DataType type,
+                                  int intIndex)
+{
+
+     char *s;
+     char buf[CF_BUFSIZE];
+     int ignorenext = 0;
+     FILE *fp;
+     fp = fopen(filename, "r");
+     int hcount = 0;
+     while((s = fgets(buf, CF_BUFSIZE , fp))!=NULL)
+     {
+       if(strcspn(s, "\r\n") == strlen(s))
+       {
+         ignorenext = 1;
+       } else {
+         if(ignorenext==1) {
+           ignorenext=0;
+         } else {
+           printf("S[at %ld]=[%s]\n", ftell(fp), buf);
+
+           if (/*LineNotExcluded(s)*/*s!='#')
+           {
+               ++hcount;
+               int res = ProcessFieldSeparatedLine(ctx, bundle, array_lval, s, 
+                                 split, maxent, type, intIndex, hcount);
+           }
+         }
+       }
+     }
+     fclose(fp);
+    return hcount;
+}
+
+/*********************************************************************/
+/*********************************************************************/
+/*********************************************************************/
+/*********************************************************************/
 /*********************************************************************/
 
 static int BuildLineArray(EvalContext *ctx, const Bundle *bundle, char *array_lval, char *file_buffer, char *split, int maxent, DataType type,
