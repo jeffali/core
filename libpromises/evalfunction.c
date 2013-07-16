@@ -103,8 +103,8 @@ static int ProcessFieldSeparatedLine(EvalContext *ctx, const Bundle *bundle,
                        char *split, int maxent, DataType type,
                        int intIndex, int hcount);
 static int BuildLineArrayFromFile(EvalContext *ctx, const Bundle *bundle, 
-                                  char *array_lval, char *filename, 
-                                  char *split, int maxent, DataType type,
+                                  char *array_lval, char *filename, char *comment,
+                                  char *split, int maxent, int maxsize, DataType type,
                                   int intIndex);
 
 /*******************************************************************/
@@ -4221,7 +4221,7 @@ static FnCallResult ReadArray(EvalContext *ctx, FnCall *fp, Rlist *finalargs, Da
     else
     {
         file_buffer = StripPatterns(file_buffer, comment, filename);
-    printf("BUFFY=[%s]\n",file_buffer);
+//    printf("BUFFY=[%s]\n",file_buffer);
 
         if (file_buffer == NULL)
         {
@@ -4230,7 +4230,7 @@ static FnCallResult ReadArray(EvalContext *ctx, FnCall *fp, Rlist *finalargs, Da
         else
         {
             //entries = BuildLineArray(ctx, PromiseGetBundle(fp->caller), array_lval, file_buffer, split, maxent, type, intIndex);
-            entries = BuildLineArrayFromFile(ctx, PromiseGetBundle(fp->caller), array_lval, filename, split, maxent, type, intIndex);
+            entries = BuildLineArrayFromFile(ctx, PromiseGetBundle(fp->caller), array_lval, filename, comment, split, maxent, maxsize, type, intIndex);
             printf("BUFFYentries = %d\n",entries);
         }
     }
@@ -4783,13 +4783,13 @@ static char *StripPatterns(char *file_buffer, char *pattern, char *filename)
                 Log(LOG_LEVEL_ERR,
                     "Comment regex '%s' was irreconcilable reading input '%s' probably because it legally matches nothing",
                       pattern, filename);
-                printf("Carlsbergggg\n");
+//                printf("Carlsbergggg\n");
                 return file_buffer;
             }
         }
     }
 
-    printf("Heinekken=>[*************%s**************]\n",file_buffer);
+//    printf("Heinekken=>[*************%s**************]\n",file_buffer);
     return file_buffer;
 }
 
@@ -4884,9 +4884,9 @@ static int ProcessFieldSeparatedLine(EvalContext *ctx, const Bundle *bundle,
 }
 
 static int BuildLineArrayFromFile(EvalContext *ctx, const Bundle *bundle, 
-                                  char *array_lval, char *filename, 
-                                  char *split, int maxent, DataType type,
-                                  int intIndex)
+                                  char *array_lval, char *filename,
+                                  char *comment, char *split,
+                                  int maxent, int maxsize, DataType type, int intIndex)
 {
 
      char *s;
@@ -4895,8 +4895,10 @@ static int BuildLineArrayFromFile(EvalContext *ctx, const Bundle *bundle,
      FILE *fp;
      fp = fopen(filename, "r");
      int hcount = 0;
+     int nbbytesread = 0;
      while((s = fgets(buf, CF_BUFSIZE , fp))!=NULL)
      {
+       nbbytesread += strlen(s);
        if(strcspn(s, "\r\n") == strlen(s))
        {
          ignorenext = 1;
@@ -4904,16 +4906,32 @@ static int BuildLineArrayFromFile(EvalContext *ctx, const Bundle *bundle,
          if(ignorenext==1) {
            ignorenext=0;
          } else {
-           printf("S[at %ld]=[%s]\n", ftell(fp), buf);
+           if(nbbytesread>maxsize) {
+             int delta = nbbytesread - maxsize;
+             s[strlen(s)-delta]='\0';
+             printf("delta=%d %d %s\n",delta, strlen(s));
+           }
 
-           if (/*LineNotExcluded(s)*/*s!='#')
+//           printf("S[at %ld]=[%s]\n", ftell(fp), buf);
+
+           if(strcspn(s, "\r\n")>0)
            {
-               ++hcount;
-               int res = ProcessFieldSeparatedLine(ctx, bundle, array_lval, s, 
+               s[strcspn(s, "\r\n")]='\0';
+           }
+           if (strcmp(comment,"")==0 || FullTextMatch(comment, s) == 0 )
+           //if (/*LineNotExcluded(s)*/*s!='#')
+           {
+              if(hcount<maxent-1) {
+                int res = ProcessFieldSeparatedLine(ctx, bundle, array_lval, s, 
                                  split, maxent, type, intIndex, hcount);
+              } else {
+                break;
+              }
+              ++hcount;
            }
          }
        }
+       if(nbbytesread>maxsize) break;
      }
      fclose(fp);
     return hcount;
