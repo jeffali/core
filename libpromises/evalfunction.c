@@ -4918,7 +4918,8 @@ static int BuildLineArrayFromFile(EvalContext *ctx, const Bundle *bundle,
            {
                s[strcspn(s, "\r\n")]='\0';
            }
-           if (strcmp(comment,"")==0 || FullTextMatch(comment, s) == 0 )
+           //if (strcmp(comment,"")==0 || FullTextMatch(comment, s) == 0 )
+           if (strcmp(comment,"")==0 || (s = StripPatterns(s, comment, filename))!=NULL)
            //if (/*LineNotExcluded(s)*/*s!='#')
            {
               if(hcount<maxent-1) {
