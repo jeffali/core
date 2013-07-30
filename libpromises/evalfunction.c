@@ -106,6 +106,10 @@ static int BuildLineArrayFromFile(EvalContext *ctx, const Bundle *bundle,
                                   char *array_lval, char *filename, char *comment,
                                   char *split, int maxent, int maxsize, DataType type,
                                   int intIndex);
+static int BuildLineArrayFromString(EvalContext *ctx, const Bundle *bundle, 
+                                  char *array_lval, char *buffer,
+                                  char *comment, char *split,
+                                  int maxent, int maxsize, DataType type, int intIndex);
 
 /*******************************************************************/
 
@@ -4330,7 +4334,10 @@ static FnCallResult ParseArray(EvalContext *ctx, FnCall *fp, Rlist *finalargs, D
         }
         else
         {
-            entries = BuildLineArray(ctx, PromiseGetBundle(fp->caller), array_lval, instring, split, maxent, type, intIndex);
+            //entries = BuildLineArray(ctx, PromiseGetBundle(fp->caller), array_lval, instring, split, maxent, type, intIndex);
+            entries = BuildLineArrayFromString(ctx, PromiseGetBundle(fp->caller), array_lval, instring, comment, split, maxent, maxsize, type, intIndex);
+            printf("SUFFYentries = %d\n",entries);
+ 
         }
     }
 
@@ -4938,6 +4945,48 @@ static int BuildLineArrayFromFile(EvalContext *ctx, const Bundle *bundle,
     return hcount;
 }
 
+static int BuildLineArrayFromString(EvalContext *ctx, const Bundle *bundle, 
+                                  char *array_lval, char *buffer,
+                                  char *comment, char *split,
+                                  int maxent, int maxsize, DataType type, int intIndex)
+{
+   char tempbuf[CF_BUFSIZE+1];
+   int hcount = 0;
+   int n = 0;
+   size_t l = strlen(buffer);
+   //printf("L=%d\n", l);
+
+   while(1) {
+      size_t len = strcspn(buffer + n, "\n\r");
+      strncpy(tempbuf, buffer+n, len); tempbuf[len]='\0';
+      n += len + 1;
+      //printf("N=%d[%d]\n",n,len);
+      if (len<CF_BUFSIZE)
+      {
+          if(n-1>maxsize) {
+             int delta = (n-1)- maxsize;
+             tempbuf[strlen(tempbuf)-delta]='\0';
+             printf("delta=%d %d %s\n",delta, strlen(tempbuf));
+          }
+
+          printf("S at[%d] [%s]\n",n+len,tempbuf);
+          //if (strcmp(comment,"")==0 || (tempbuf = StripPatterns(tempbuf, comment, filename))!=NULL)
+          if (/*LineNotExcluded(tempbuf)*/*tempbuf!='#')
+          {
+              if(hcount<maxent-1) {
+                int res = ProcessFieldSeparatedLine(ctx, bundle, array_lval, tempbuf, 
+                                 split, maxent, type, intIndex, hcount);
+              } else {
+                break;
+              }
+              ++hcount;
+          }
+
+      }
+      if(n>=l) break;
+   }
+   return hcount;
+}
 /*********************************************************************/
 /*********************************************************************/
 /*********************************************************************/
