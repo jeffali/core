@@ -1,0 +1,59 @@
+body common control
+{
+  bundlesequence  => { "G", "init", "test", "check" };
+}
+
+bundle common G
+{
+  vars:
+     "testfile" string => "/tmp/011.txt";
+}
+
+#######################################################
+
+bundle agent init
+{
+files:
+        "$(G.testfile)"
+            delete => init_delete;
+
+        "$(G.testfile)"
+            create => "true",
+            edit_line => init_fill_in;
+}
+
+bundle edit_line init_fill_in
+{
+insert_lines:
+        "123";
+}
+
+body delete init_delete
+{
+        dirlinks => "delete";
+        rmdirs   => "true";
+}
+
+#######################################################
+
+bundle agent test
+{
+vars:
+        "nums" slist => readstringlist("$(G.testfile)","NoComment","\s+",5,100);
+        "sum" real => sum("nums");
+}
+
+#######################################################
+
+bundle agent check
+{
+vars:
+        "nums" slist => { @{test.nums} };
+
+
+reports:
+    any::
+        "nums: $(nums)";
+        "sum: $(test.sum)";
+}
+

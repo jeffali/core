@@ -1,0 +1,66 @@
+body common control
+{
+  bundlesequence  => { "init", "test", "check" };
+}
+
+bundle agent init
+{
+files:
+	"/tmp/421.txt"
+	    delete => init_delete;
+	
+	"/tmp/421.txt"
+	    create => "true",
+	    edit_line => init_fill_in;
+}
+
+bundle edit_line init_fill_in
+{
+insert_lines:
+
+"0:1:2
+singleton
+1:2:3";
+
+}
+
+body delete init_delete
+{
+	dirlinks => "delete";
+	rmdirs   => "true";
+}
+
+#######################################################
+
+bundle agent test
+{
+vars:
+	"teststr" string => readfile("/tmp/421.txt",1000);
+	"cnt" int => parsestringarray("ary", "$(teststr)","NoComment",":",10,1000);
+	"num" int => "3";
+}
+
+#######################################################
+
+bundle agent check
+{
+vars:
+    	"idx" slist => getindices("test.ary");
+
+reports:
+   any::
+	"expected $(test.num) entries, saw $(test.cnt)";
+
+	"saw array indices '$(idx)'";
+
+	"expected test.ary[0][0] = '0', saw '$(test.ary[0][0])'";
+	"expected test.ary[0][1] = '1', saw '$(test.ary[0][1])'";
+	"expected test.ary[0][2] = '2', saw '$(test.ary[0][2])'";
+
+	"expected test.ary[singleton][0] = 'singleton', saw '$(test.ary[singleton][0])'";
+
+	"expected test.ary[1][0] = '1', saw '$(test.ary[1][0])'";
+	"expected test.ary[1][1] = '2', saw '$(test.ary[1][1])'";
+	"expected test.ary[1][2] = '3', saw '$(test.ary[1][2])'";
+
+}
