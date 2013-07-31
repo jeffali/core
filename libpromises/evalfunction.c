@@ -4916,7 +4916,7 @@ static int BuildLineArrayFromFile(EvalContext *ctx, const Bundle *bundle,
            if(nbbytesread>maxsize) {
              int delta = nbbytesread - maxsize;
              s[strlen(s)-delta]='\0';
-             printf("delta=%d %d %s\n",delta, strlen(s));
+             printf("delta=%d %d %s\n",delta, strlen(s), s);
            }
 
 //           printf("S[at %ld]=[%s]\n", ftell(fp), buf);
@@ -4966,7 +4966,7 @@ static int BuildLineArrayFromString(EvalContext *ctx, const Bundle *bundle,
           if(n-1>maxsize) {
              int delta = (n-1)- maxsize;
              tempbuf[strlen(tempbuf)-delta]='\0';
-             printf("delta=%d %d %s\n",delta, strlen(tempbuf));
+             printf("delta=%d %d %s\n",delta, strlen(tempbuf), tempbuf);
           }
 
           printf("S at[%d] [%s]\n",n+len,tempbuf);
