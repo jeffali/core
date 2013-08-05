@@ -150,6 +150,7 @@ void ExpandPromise(EvalContext *ctx, Promise *pp, PromiseActuator *ActOnPromise)
 
     MapIteratorsFromRval(ctx, PromiseGetBundle(pp)->name, &listvars, (Rval) { pcopy->promiser, RVAL_TYPE_SCALAR });
 
+ printf("PROMIZE={%s}\n",(char *)pcopy->promiser );
     if (pcopy->promisee.item != NULL)
     {
         MapIteratorsFromRval(ctx, PromiseGetBundle(pp)->name, &listvars, pp->promisee);
@@ -227,7 +228,9 @@ void MapIteratorsFromRval(EvalContext *ctx, const char *scopeid, Rlist **listvar
     switch (rval.type)
     {
     case RVAL_TYPE_SCALAR:
+        printf("rVALi=[%s]scope=[%s]\n", rval.item, scopeid);
         MapIteratorsFromScalar(ctx, scopeid, listvars, (char *) rval.item, 0);
+        printf("\nEND ================== %d\n", RlistLen(*listvars));
         break;
 
     case RVAL_TYPE_LIST:
@@ -235,6 +238,7 @@ void MapIteratorsFromRval(EvalContext *ctx, const char *scopeid, Rlist **listvar
         {
             MapIteratorsFromRval(ctx, scopeid, listvars, (Rval) {rp->item, rp->type});
         }
+        printf("\nENLLLL =============== %d\n", RlistLen(*listvars));
         break;
 
     case RVAL_TYPE_FNCALL:
@@ -270,6 +274,7 @@ static void MapIteratorsFromScalar(EvalContext *ctx, const char *scopeid, Rlist 
 
     for (sp = string; (*sp != '\0'); sp++)
     {
+	printf("\tsp=%s\n",sp);
         v[0] = '\0';
         var[0] = '\0';
         exp[0] = '\0';
@@ -285,6 +290,7 @@ static void MapIteratorsFromScalar(EvalContext *ctx, const char *scopeid, Rlist 
 
                 if (IsQualifiedVariable(v))
                 {
+                printf("\t\textracted v=[%s](qualified)\n", v);
                     strncpy(temp, v, CF_BUFSIZE - 1);
                     absscope[0] = '\0';
                     sscanf(temp, "%[^.].%s", absscope, v);
@@ -296,6 +302,7 @@ static void MapIteratorsFromScalar(EvalContext *ctx, const char *scopeid, Rlist 
                 {
                     strncpy(absscope, scopeid, CF_MAXVARSIZE - 1);
                     ExpandScalar(ctx, absscope, v, var);
+                printf("\t\textracted v=[%s](not qualified). exp into [%s]\n", v, var);
                     strncpy(finalname, var, CF_BUFSIZE - 1);
                     qualified = false;
                 }
@@ -305,6 +312,8 @@ static void MapIteratorsFromScalar(EvalContext *ctx, const char *scopeid, Rlist 
 
                 if (EvalContextVariableGet(ctx, (VarRef) { NULL, absscope, var }, &rval, NULL))
                 {
+ printf("\t\there with rval=");
+        RvalShow(stdout, rval);
                     if (rval.type == RVAL_TYPE_LIST)
                     {
                         ExpandScalar(ctx, scopeid, finalname, exp);

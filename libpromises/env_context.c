@@ -1825,7 +1825,7 @@ bool EvalContextVariableGet(const EvalContext *ctx, VarRef lval, Rval *rval_out,
     char expbuf[CF_EXPANDSIZE];
     CfAssoc *assoc;
 
-    CfDebug("GetVariable(%s,%s) type=(to be determined)\n", lval.scope, lval.lval);
+    printf("GetVariable(%s,%s) type=(to be determined)\n", lval.scope, lval.lval);
 
     if (lval.lval == NULL)
     {
@@ -1862,7 +1862,7 @@ bool EvalContextVariableGet(const EvalContext *ctx, VarRef lval, Rval *rval_out,
             {
                 *type_out = DATA_TYPE_NONE;
             }
-            CfDebug("Couldn't expand array-like variable (%s) due to undefined dependencies\n", lval.lval);
+            printf("Couldn't expand array-like variable (%s) due to undefined dependencies\n", lval.lval);
             return false;
         }
     }
@@ -1871,7 +1871,7 @@ bool EvalContextVariableGet(const EvalContext *ctx, VarRef lval, Rval *rval_out,
     {
         scopeid[0] = '\0';
         sscanf(sval, "%[^.].%s", scopeid, vlval);
-        CfDebug("Variable identifier \"%s\" is prefixed with scope id \"%s\"\n", vlval, scopeid);
+        printf("Variable identifier \"%s\" is prefixed with scope id \"%s\"\n", vlval, scopeid);
         ptr = ScopeGet(scopeid);
     }
     else
@@ -1889,7 +1889,7 @@ bool EvalContextVariableGet(const EvalContext *ctx, VarRef lval, Rval *rval_out,
 
     if (ptr == NULL)
     {
-        CfDebug("Scope \"%s\" for variable \"%s\" does not seem to exist\n", scopeid, vlval);
+        printf("Scope \"%s\" for variable \"%s\" does not seem to exist\n", scopeid, vlval);
         /* C type system does not allow us to express the fact that returned
            value may contain immutable string. */
         // TODO: returning the same lval as was past in?
@@ -1904,13 +1904,13 @@ bool EvalContextVariableGet(const EvalContext *ctx, VarRef lval, Rval *rval_out,
         return false;
     }
 
-    CfDebug("GetVariable(%s,%s): using scope '%s' for variable '%s'\n", scopeid, vlval, ptr->scope, vlval);
+    printf("GetVariable(%s,%s): using scope '%s' for variable '%s'\n", scopeid, vlval, ptr->scope, vlval);
 
     assoc = HashLookupElement(ptr->hashtable, vlval);
 
     if (assoc == NULL)
     {
-        CfDebug("No such variable found %s.%s\n\n", scopeid, lval.lval);
+        printf("No such variable found %s.%s\n\n", scopeid, lval.lval);
         /* C type system does not allow us to express the fact that returned
            value may contain immutable string. */
 
@@ -1925,20 +1925,23 @@ bool EvalContextVariableGet(const EvalContext *ctx, VarRef lval, Rval *rval_out,
         return false;
     }
 
-    CfDebug("return final variable type=%s, value={\n", CF_DATATYPES[assoc->dtype]);
+    printf("return final variable type=%s, value={\n", CF_DATATYPES[assoc->dtype]);
 
-    if (DEBUG)
+    if (!DEBUG)
     {
         RvalShow(stdout, assoc->rval);
     }
-    CfDebug("}\n");
+    printf("}\n");
 
     if (rval_out)
     {
         *rval_out = assoc->rval;
+        printf("XXXXXXXXXXXXXX\n");
+        RvalShow(stdout, (Rval)(*rval_out));
     }
     if (type_out)
     {
+        printf("yyyyyyyyyyyyyy\n");
         *type_out = assoc->dtype;
         assert(*type_out != DATA_TYPE_NONE);
     }

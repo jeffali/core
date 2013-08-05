@@ -32,7 +32,7 @@ void test_map_iterators_from_rval_literal(void **state)
 void test_map_iterators_from_rval_naked_list_var(void **state)
 {
     EvalContext *ctx = EvalContextNew();
-    ScopeDeleteAll();
+    //ScopeDeleteAll();
     ScopeSetCurrent("scope");
 
     Rlist *list = NULL;
@@ -44,13 +44,21 @@ void test_map_iterators_from_rval_naked_list_var(void **state)
 
     EvalContextVariablePut(ctx, lval, (Rval) { list, RVAL_TYPE_LIST }, DATA_TYPE_STRING_LIST);
 
+#if 2
+    Rval orval;
+    EvalContextVariableGet(ctx, (VarRef) { NULL, "scope", "jwow" }, &orval, NULL);
+printf("\n========== BEGIN ===============\n");
+    RvalShow(stdout, orval);
+printf("\n==========  END  ===============\n");
+
+#endif
     Rlist *lists = NULL;
-    MapIteratorsFromRval(ctx, "scope", &lists, (Rval) { "${jwow}", RVAL_TYPE_SCALAR });
+    MapIteratorsFromRval(ctx, "scope", &lists, (Rval) { "aa ${jwow} bb", RVAL_TYPE_SCALAR });
 
     assert_int_equal(1, RlistLen(lists));
     printf("LENYLAST=[%s]\n", RlistScalarValue(RlistLast(lists)));
     assert_string_equal("jwow", lists->item);
-#if 1
+#if 0
  Rval rval = (Rval) { "${jwow}", RVAL_TYPE_SCALAR };
  Rlist *rp;
         for (rp = (Rlist *) rval.item; rp != NULL; rp = rp->next)
