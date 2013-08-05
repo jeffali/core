@@ -8,6 +8,7 @@ static const unsigned int MAX_BLOCK_SIZE = 10000;
 
 static bool CheckTemplateSyntax(FILE *input_file)
 {
+#if 0
     fpos64_t start_pos = 0;
     if (fgetpos64(input_file, &start_pos) == -1)
     {
@@ -86,8 +87,18 @@ static bool CheckTemplateSyntax(FILE *input_file)
         // TODO: Unterminated block
         return false;
     }
+#else
+    return true;
+#endif
 }
 
+/**
+ input_file : the template file
+ output : ??
+ ns : the namespace
+ scope : the scope
+
+*/
 TemplateRenderResult TemplateRender(const EvalContext *ctx, FILE *input_file, Writer *output, const char *ns, const char *scope)
 {
     if (!CheckTemplateSyntax(input_file))
@@ -101,6 +112,11 @@ TemplateRenderResult TemplateRender(const EvalContext *ctx, FILE *input_file, Wr
 
     bool in_active_context = true;
 
+    /*
+       read line by line
+       end
+    */
+    bool in_block = false;
     for (ssize_t line_len = CfReadLine(line, CF_BUFSIZE, input_file);
          line_len != 0;
          line_len = CfReadLine(line, CF_BUFSIZE, input_file))
@@ -133,7 +149,7 @@ TemplateRenderResult TemplateRender(const EvalContext *ctx, FILE *input_file, Wr
             }
             else
             {
-                ProgrammerError("Syntax error in template");
+                printf("PROGRAMMER ERROR : Syntax error in template\n");
             }
         }
         else if (in_active_context)

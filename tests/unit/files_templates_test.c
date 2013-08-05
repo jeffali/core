@@ -23,7 +23,7 @@ void test_template(const EvalContext *ctx, const char *filename)
     FILE *expected = fopen(expected_path, "r");
     free(expected_path);
 
-    rewind(output);
+    //rewind(output);
     assert_file_equal(expected, output);
 
     WriterClose(w);
