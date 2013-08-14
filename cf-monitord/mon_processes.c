@@ -58,15 +58,16 @@ void MonProcessesGatherData(double *cf_this)
     cf_this[ob_rootprocs] += numRootProcs;
     cf_this[ob_otherprocs] += numOtherProcs;
 
+    printf( " [%d,%d,%d](Users,root,other) = (%d,%d,%d)\n", ob_users, ob_rootprocs, ob_otherprocs, (int) cf_this[ob_users], (int) cf_this[ob_rootprocs],
+          (int) cf_this[ob_otherprocs]);
+
     snprintf(vbuff, CF_MAXVARSIZE, "%s/state/cf_users", CFWORKDIR);
     MapName(vbuff);
     RawSaveItemList(userList, vbuff);
 
     DeleteItemList(userList);
-
-    Log(LOG_LEVEL_VERBOSE, "(Users,root,other) = (%d,%d,%d)", (int) cf_this[ob_users], (int) cf_this[ob_rootprocs],
-          (int) cf_this[ob_otherprocs]);
 }
+
 
 #ifndef __MINGW32__
 
@@ -78,6 +79,7 @@ static bool GatherProcessUsers(Item **userList, int *userListSz, int *numRootPro
     char vbuff[CF_BUFSIZE];
 
     snprintf(pscomm, CF_BUFSIZE, "%s %s", VPSCOMM[VSYSTEMHARDCLASS], VPSOPTS[VSYSTEMHARDCLASS]);
+ printf("pscomm : %s\n", pscomm);
 
     if ((pp = cf_popen(pscomm, "r", true)) == NULL)
     {

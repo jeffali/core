@@ -1,7 +1,7 @@
 # Just recursively include in dist tarball all data we need for unit tests
 EXTRA_DIST = data
 
-AM_CFLAGS = $(NOVA_CFLAGS) -I$(srcdir)/../../libcfnet -I$(srcdir)/../../libpromises -I$(srcdir)/../../libutils \
+AM_CFLAGS = $(NOVA_CFLAGS) -I$(srcdir)/../../libcfnet -I$(srcdir)/../../libpromises -I$(srcdir)/../../libutils  -I$(srcdir)/../../cf-monitord \
 	-DTESTDATADIR='"$(srcdir)/data"' -I$(srcdir)/../../cf-serverd -I$(srcdir)/../../cf-agent -I$(srcdir)/../../cf-execd -I$(srcdir)/../../cf-key
 
 LDADD = ../../libpromises/libpromises.la libtest.la
@@ -75,6 +75,12 @@ check_PROGRAMS = \
 	process_terminate_unix_test \
 	exec-config-test \
 	generic_agent_test \
+	monitor_test \
+	monload_test \
+	mondisk_test \
+	montemp_test \
+	monnetwork_test \
+	monprocesses_test \
 	syntax_test \
 	sysinfo_test \
 	ipaddress_test \
@@ -234,3 +240,21 @@ exec_config_test_SOURCES = exec-config-test.c \
 exec_config_test_LDADD = libtest.la ../../libpromises/libpromises.la
 
 sysinfo_test_LDADD = ../../libpromises/libpromises.la libtest.la
+
+monitor_test_SOURCES = monitor_test.c ../../cf-monitord/mon.h ../../cf-monitord/mon_cpu.c
+monitor_test_LDADD = ../../libpromises/libpromises.la libtest.la ../../nova/libcfmonitord/libcfmonitord.la 
+
+monload_test_SOURCES = monload_test.c ../../cf-monitord/mon.h ../../cf-monitord/mon_load.c
+monload_test_LDADD = ../../libpromises/libpromises.la libtest.la ../../nova/libcfmonitord/libcfmonitord.la 
+
+mondisk_test_SOURCES = mondisk_test.c ../../cf-monitord/mon.h ../../cf-monitord/mon_disk.c
+mondisk_test_LDADD = ../../libpromises/libpromises.la libtest.la ../../nova/libcfmonitord/libcfmonitord.la 
+
+montemp_test_SOURCES = montemp_test.c ../../cf-monitord/mon.h ../../cf-monitord/mon_temp.c
+montemp_test_LDADD = ../../libpromises/libpromises.la libtest.la ../../nova/libcfmonitord/libcfmonitord.la
+
+monprocesses_test_SOURCES = monprocesses_test.c ../../cf-monitord/mon.h ../../cf-monitord/mon_processes.c
+monprocesses_test_LDADD = ../../libpromises/libpromises.la libtest.la ../../nova/libcfmonitord/libcfmonitord.la 
+
+monnetwork_test_SOURCES = monnetwork_test.c ../../cf-monitord/mon.h ../../cf-monitord/mon_network.c ../../cf-monitord/mon_entropy.c
+monnetwork_test_LDADD = ../../libpromises/libpromises.la libtest.la ../../nova/libcfmonitord/libcfmonitord.la 
