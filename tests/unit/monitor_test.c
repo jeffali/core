@@ -1,9 +1,6 @@
 #include "test.h"
 
 #include "generic_agent.h"
-#include "env_context.h"
-#include "sysinfo.h"
-
 #include "mon.h"
 
 static double GetCpuStat()
@@ -63,17 +60,15 @@ void test_load_masterfiles(void)
 {
     double cf_this[100];
     int i;
-    for(i=0; i<10; i++) printf("iF[%d]=%f\n",i, cf_this[i]);
     double dq1 = GetCpuStat();
     MonCPUGatherData(cf_this);
-    for(i=0; i<10; i++) printf("oF[%d]=%f\n",i, cf_this[i]);
     printf("oF[%d]=%f\n",ob_cpuall, cf_this[ob_cpuall]);
     printf("oF[%d]=%f\n",ob_cpu0, cf_this[ob_cpu0]);
     double dq2 = GetCpuStat();
     printf("dq1=%f dq2=%f\n", dq1, dq2);
     //for(i=0; i<4; i++) printf("oLq[%d]=%f,oLt[%d]=%f\n",i, LAST_CPU_Q[i],i, LAST_CPU_T[i]);
 
-    assert_true(1);
+    assert_true(cf_this[ob_cpuall]>=dq1 && cf_this[ob_cpuall]<=dq2);
 }
 
 int main()

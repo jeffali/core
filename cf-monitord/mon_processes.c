@@ -78,8 +78,10 @@ static bool GatherProcessUsers(Item **userList, int *userListSz, int *numRootPro
     char user[CF_MAXVARSIZE];
     char vbuff[CF_BUFSIZE];
 
+    printf(">G: [%d|%s|%s]\n", VSYSTEMHARDCLASS, VPSCOMM[VSYSTEMHARDCLASS], VPSOPTS[VSYSTEMHARDCLASS]);
     snprintf(pscomm, CF_BUFSIZE, "%s %s", VPSCOMM[VSYSTEMHARDCLASS], VPSOPTS[VSYSTEMHARDCLASS]);
  printf("pscomm : %s\n", pscomm);
+    //"-eo user,pid,ppid,pgid,pcpu,pmem,vsz,ni,rss,nlwp,stime,time,args",        /* linux */
 
     if ((pp = cf_popen(pscomm, "r", true)) == NULL)
     {
@@ -99,6 +101,7 @@ static bool GatherProcessUsers(Item **userList, int *userListSz, int *numRootPro
     for (;;)
     {
         ssize_t res = CfReadLine(vbuff, CF_BUFSIZE, pp);
+printf(">G RES=%ld\n", res);
         if (res == 0)
         {
             break;
@@ -118,6 +121,7 @@ static bool GatherProcessUsers(Item **userList, int *userListSz, int *numRootPro
             continue;
         }
 
+printf("!USR=%s\n",user);
         if (!IsItemIn(*userList, user))
         {
             PrependItem(userList, user, NULL);

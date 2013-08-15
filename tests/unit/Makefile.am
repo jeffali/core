@@ -242,19 +242,19 @@ exec_config_test_LDADD = libtest.la ../../libpromises/libpromises.la
 sysinfo_test_LDADD = ../../libpromises/libpromises.la libtest.la
 
 monitor_test_SOURCES = monitor_test.c ../../cf-monitord/mon.h ../../cf-monitord/mon_cpu.c
-monitor_test_LDADD = ../../libpromises/libpromises.la libtest.la ../../nova/libcfmonitord/libcfmonitord.la 
+monitor_test_LDADD = ../../libpromises/libpromises.la libtest.la 
 
 monload_test_SOURCES = monload_test.c ../../cf-monitord/mon.h ../../cf-monitord/mon_load.c
-monload_test_LDADD = ../../libpromises/libpromises.la libtest.la ../../nova/libcfmonitord/libcfmonitord.la 
+monload_test_LDADD = ../../libpromises/libpromises.la libtest.la
 
 mondisk_test_SOURCES = mondisk_test.c ../../cf-monitord/mon.h ../../cf-monitord/mon_disk.c
-mondisk_test_LDADD = ../../libpromises/libpromises.la libtest.la ../../nova/libcfmonitord/libcfmonitord.la 
+mondisk_test_LDADD = ../../libpromises/libpromises.la libtest.la
 
 montemp_test_SOURCES = montemp_test.c ../../cf-monitord/mon.h ../../cf-monitord/mon_temp.c
-montemp_test_LDADD = ../../libpromises/libpromises.la libtest.la ../../nova/libcfmonitord/libcfmonitord.la
+montemp_test_LDADD = ../../libpromises/libpromises.la libtest.la
 
 monprocesses_test_SOURCES = monprocesses_test.c ../../cf-monitord/mon.h ../../cf-monitord/mon_processes.c
-monprocesses_test_LDADD = ../../libpromises/libpromises.la libtest.la ../../nova/libcfmonitord/libcfmonitord.la 
+monprocesses_test_LDADD = ../../libpromises/libpromises.la libtest.la
 
 monnetwork_test_SOURCES = monnetwork_test.c ../../cf-monitord/mon.h ../../cf-monitord/mon_network.c ../../cf-monitord/mon_entropy.c
-monnetwork_test_LDADD = ../../libpromises/libpromises.la libtest.la ../../nova/libcfmonitord/libcfmonitord.la 
+monnetwork_test_LDADD = ../../libpromises/libpromises.la libtest.la
