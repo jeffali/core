@@ -75,12 +75,12 @@ check_PROGRAMS = \
 	process_terminate_unix_test \
 	exec-config-test \
 	generic_agent_test \
-	monitor_test \
-	monload_test \
+	mon_cpu_test \
+	mon_load_test \
 	mondisk_test \
 	montemp_test \
 	monnetwork_test \
-	monprocesses_test \
+	mon_processes_test \
 	syntax_test \
 	sysinfo_test \
 	ipaddress_test \
@@ -241,11 +241,11 @@ exec_config_test_LDADD = libtest.la ../../libpromises/libpromises.la
 
 sysinfo_test_LDADD = ../../libpromises/libpromises.la libtest.la
 
-monitor_test_SOURCES = monitor_test.c ../../cf-monitord/mon.h ../../cf-monitord/mon_cpu.c
-monitor_test_LDADD = ../../libpromises/libpromises.la libtest.la 
+mon_cpu_test_SOURCES = mon_cpu_test.c ../../cf-monitord/mon.h ../../cf-monitord/mon_cpu.c
+mon_cpu_test_LDADD = ../../libpromises/libpromises.la libtest.la 
 
-monload_test_SOURCES = monload_test.c ../../cf-monitord/mon.h ../../cf-monitord/mon_load.c
-monload_test_LDADD = ../../libpromises/libpromises.la libtest.la
+mon_load_test_SOURCES = mon_load_test.c ../../cf-monitord/mon.h ../../cf-monitord/mon_load.c
+mon_load_test_LDADD = ../../libpromises/libpromises.la libtest.la
 
 mondisk_test_SOURCES = mondisk_test.c ../../cf-monitord/mon.h ../../cf-monitord/mon_disk.c
 mondisk_test_LDADD = ../../libpromises/libpromises.la libtest.la
@@ -253,8 +253,8 @@ mondisk_test_LDADD = ../../libpromises/libpromises.la libtest.la
 montemp_test_SOURCES = montemp_test.c ../../cf-monitord/mon.h ../../cf-monitord/mon_temp.c
 montemp_test_LDADD = ../../libpromises/libpromises.la libtest.la
 
-monprocesses_test_SOURCES = monprocesses_test.c ../../cf-monitord/mon.h ../../cf-monitord/mon_processes.c
-monprocesses_test_LDADD = ../../libpromises/libpromises.la libtest.la
+mon_processes_test_SOURCES = mon_processes_test.c ../../cf-monitord/mon.h ../../cf-monitord/mon_processes.c
+mon_processes_test_LDADD = ../../libpromises/libpromises.la libtest.la
 
 monnetwork_test_SOURCES = monnetwork_test.c ../../cf-monitord/mon.h ../../cf-monitord/mon_network.c ../../cf-monitord/mon_entropy.c
 monnetwork_test_LDADD = ../../libpromises/libpromises.la libtest.la

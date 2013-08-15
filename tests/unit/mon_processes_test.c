@@ -6,7 +6,7 @@
 
 static void tests_setup(void)
 {
-    snprintf(CFWORKDIR, CF_BUFSIZE, "/tmp/persistent_lock_test.XXXXXX");
+    snprintf(CFWORKDIR, CF_BUFSIZE, "/tmp/mon_processes_test.XXXXXX");
     mkdtemp(CFWORKDIR);
 
     char buf[CF_BUFSIZE];
@@ -18,7 +18,7 @@ static void tests_teardown(void)
 {
     char cmd[CF_BUFSIZE];
     snprintf(cmd, CF_BUFSIZE, "rm -rf '%s'", CFWORKDIR);
-    //system(cmd);
+    system(cmd);
 }
 
 static bool GetSysUsers( int *userListSz, int *numRootProcs, int *numOtherProcs)
@@ -35,6 +35,7 @@ static bool GetSysUsers( int *userListSz, int *numRootProcs, int *numOtherProcs)
 #elif defined(__linux__)
     snprintf(cmd, CF_BUFSIZE, "/bin/ps -eo user > %s/users.txt", CFWORKDIR);
 #else
+    assert_true(1);
     return false;
 #endif
 
@@ -45,7 +46,6 @@ static bool GetSysUsers( int *userListSz, int *numRootProcs, int *numOtherProcs)
     while (fgets(vbuff, CF_BUFSIZE, fp) != NULL)
     {
         sscanf(vbuff, "%s", user);
-        printf("xBUF=%s\n", user);
 
         if (strcmp(user, "USER") == 0)
         {
@@ -78,19 +78,26 @@ void test_processes_monitor(void)
     MonProcessesGatherData(cf_this);
     MonProcessesGatherData(cf_this);
     int usr, rusr, ousr;
+
     usr = rusr = ousr = 0;
     bool res = GetSysUsers(&usr, &rusr, &ousr);
-    printf( "(Users,root,other) = (%d,%d,%d)\n", (int) cf_this[0], (int) cf_this[1], (int) cf_this[2]);
+    if (res == false )
+    {
+        return;
+    }
+    printf( "(Users,root,other) = (%d,%d,%d)\n", (int) cf_this[ob_users], (int) cf_this[ob_rootprocs], (int) cf_this[ob_otherprocs]);
     printf( "(Us,rt,ot) = (%d,%d,%d)\n", (int) usr, (int) rusr, (int) ousr);
+
     usr  = 3*usr;
     rusr = 3*rusr;
     ousr = 3*ousr;
-    assert_true(cf_this[0]<=usr*1.10 && cf_this[0]>=usr*0.90);
+    assert_true(cf_this[ob_users]<=usr*1.10 && cf_this[ob_users]>=usr*0.90);
 }
 
 int main()
 {
     strcpy(CFWORKDIR, "data");
+
 #if defined(__sun)
     VSYSTEMHARDCLASS = 4;
 #elif defined(_AIX)
