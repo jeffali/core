@@ -41,6 +41,7 @@ void MonLoadGatherData(double *cf_this)
     double load[LOADAVG_5MIN], sum = 0.0;
     int i, n;
 
+printf("LOADAVG = %d\n", LOADAVG_5MIN);
     if ((n = getloadavg(load, LOADAVG_5MIN)) == -1)
     {
         cf_this[ob_loadavg] = 0.0;
