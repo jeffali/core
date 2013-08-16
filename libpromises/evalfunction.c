@@ -98,14 +98,19 @@ static int ExecModule(EvalContext *ctx, char *command, const char *ns);
 static int CheckID(char *id);
 static bool GetListReferenceArgument(const EvalContext *ctx, const FnCall *fp, const char *lval_str, Rval *rval_out, DataType *datatype_out);
 static void *CfReadFile(char *filename, int maxsize);
-static int ProcessFieldSeparatedLine(EvalContext *ctx, const Bundle *bundle, 
+static int AddFieldSeparatedLineToArray(EvalContext *ctx, const Bundle *bundle, 
                        char *array_lval, char *line, 
                        char *split, int maxent, DataType type,
                        int intIndex, int hcount);
+static int AddFieldSeparatedLineToList(EvalContext *ctx, const Bundle *bundle, 
+                       char *array_lval, char *line, 
+                       char *split, int maxent, DataType type,
+                       int intIndex, int hcount, Rlist **retlist);
+
 static int BuildLineArrayFromFile(EvalContext *ctx, const Bundle *bundle, 
                                   char *array_lval, char *filename, char *comment,
                                   char *split, int maxent, int maxsize, DataType type,
-                                  int intIndex);
+                                  int intIndex, bool isarray, Rlist *retlist);
 static int BuildLineArrayFromString(EvalContext *ctx, const Bundle *bundle, 
                                   char *array_lval, char *buffer,
                                   char *comment, char *split,
@@ -4088,8 +4093,7 @@ static FnCallResult FnCallReadFile(EvalContext *ctx, FnCall *fp, Rlist *finalarg
 }
 
 /*********************************************************************/
-
-static FnCallResult ReadList(EvalContext *ctx, FnCall *fp, Rlist *finalargs, DataType type)
+static FnCallResult ReadListOld(EvalContext *ctx, FnCall *fp, Rlist *finalargs, DataType type)
 {
     Rlist *rp, *newlist = NULL;
     char fnname[CF_MAXVARSIZE], *file_buffer = NULL;
@@ -4171,6 +4175,91 @@ static FnCallResult ReadList(EvalContext *ctx, FnCall *fp, Rlist *finalargs, Dat
 
 }
 
+static FnCallResult ReadList(EvalContext *ctx, FnCall *fp, Rlist *finalargs, DataType type)
+{
+    Rlist *rp, *newlist = NULL;
+    char fnname[CF_MAXVARSIZE], *file_buffer = NULL;
+    int noerrors = true, blanks = false;
+
+    char *filename = RlistScalarValue(finalargs);
+    char *comment = RlistScalarValue(finalargs->next);
+    char *split = RlistScalarValue(finalargs->next->next);
+    int maxent = IntFromString(RlistScalarValue(finalargs->next->next->next));
+    int maxsize = IntFromString(RlistScalarValue(finalargs->next->next->next->next));
+
+    // Read once to validate structure of file in itemlist
+    snprintf(fnname, CF_MAXVARSIZE - 1, "read%slist", DataTypeToString(type));
+
+    int entries = BuildLineArrayFromFile(ctx, PromiseGetBundle(fp->caller), NULL /*IGNORE:array_lval*/, filename, comment, split, maxent, maxsize, type, -1/*IGNORE:intIndex*/, false, newlist);
+
+#if 0
+    file_buffer = (char *) CfReadFile(filename, maxsize);
+
+    if (file_buffer == NULL)
+    {
+        return (FnCallResult) { FNCALL_FAILURE };
+    }
+    else
+    {
+        file_buffer = StripPatterns(file_buffer, comment, filename);
+
+        if (file_buffer == NULL)
+        {
+            return (FnCallResult) { FNCALL_SUCCESS, { NULL, RVAL_TYPE_LIST } };
+        }
+        else
+        {
+            newlist = RlistFromSplitRegex(file_buffer, split, maxent, blanks);
+        }
+    }
+
+    switch (type)
+    {
+    case DATA_TYPE_STRING:
+        break;
+
+    case DATA_TYPE_INT:
+        for (rp = newlist; rp != NULL; rp = rp->next)
+        {
+            if (IntFromString(RlistScalarValue(rp)) == CF_NOINT)
+            {
+                Log(LOG_LEVEL_ERR, "Presumed int value '%s' read from file '%s' has no recognizable value",
+                      RlistScalarValue(rp), filename);
+                noerrors = false;
+            }
+        }
+        break;
+
+    case DATA_TYPE_REAL:
+        for (rp = newlist; rp != NULL; rp = rp->next)
+        {
+            double real_value = 0;
+            if (!DoubleFromString(RlistScalarValue(rp), &real_value))
+            {
+                Log(LOG_LEVEL_ERR, "Presumed real value '%s' read from file '%s' has no recognizable value",
+                      RlistScalarValue(rp), filename);
+                noerrors = false;
+            }
+        }
+        break;
+
+    default:
+        ProgrammingError("Unhandled type in switch: %d", type);
+    }
+
+    free(file_buffer);
+#endif
+
+    if (newlist && noerrors)
+    {
+        return (FnCallResult) { FNCALL_SUCCESS, { newlist, RVAL_TYPE_LIST } };
+    }
+    else
+    {
+        return (FnCallResult) { FNCALL_FAILURE };
+    }
+}
+
 static FnCallResult FnCallReadStringList(EvalContext *ctx, FnCall *fp, Rlist *args)
 {
     return ReadList(ctx, fp, args, DATA_TYPE_STRING);
@@ -4234,7 +4323,7 @@ static FnCallResult ReadArray(EvalContext *ctx, FnCall *fp, Rlist *finalargs, Da
         else
         {
             //entries = BuildLineArray(ctx, PromiseGetBundle(fp->caller), array_lval, file_buffer, split, maxent, type, intIndex);
-            entries = BuildLineArrayFromFile(ctx, PromiseGetBundle(fp->caller), array_lval, filename, comment, split, maxent, maxsize, type, intIndex);
+            entries = BuildLineArrayFromFile(ctx, PromiseGetBundle(fp->caller), array_lval, filename, comment, split, maxent, maxsize, type, intIndex, true, NULL/*IGNORE:newlist*/);
             printf("BUFFYentries = %d\n",entries);
         }
     }
@@ -4824,7 +4913,7 @@ static void CloseStringHole(char *s, int start, int end)
 /*********************************************************************/
 /*********************************************************************/
 /*********************************************************************/
-static int ProcessFieldSeparatedLine(EvalContext *ctx, const Bundle *bundle, 
+static int AddFieldSeparatedLineToArray(EvalContext *ctx, const Bundle *bundle, 
                        char *array_lval, char *line, 
                        char *split, int maxent, DataType type,
                        int intIndex, int hcount)
@@ -4890,10 +4979,82 @@ static int ProcessFieldSeparatedLine(EvalContext *ctx, const Bundle *bundle,
     RlistDestroy(newlist);
 }
 
+static int AddFieldSeparatedLineToList(EvalContext *ctx, const Bundle *bundle, 
+                       char *array_lval, char *line, 
+                       char *split, int maxent, DataType type,
+                       int intIndex, int hcount, Rlist **retlist)
+{
+    Rlist *rp, *newlist = NULL;
+    int allowblanks = true, vcount = 0;
+
+    newlist = RlistFromSplitRegex(line, split, maxent, allowblanks);
+
+    /*char name[CF_MAXVARSIZE];
+    char first_one[CF_MAXVARSIZE];
+    first_one[0] = '\0';*/
+
+    switch (type)
+    {
+    case DATA_TYPE_STRING:
+        for (rp = newlist; rp != NULL; rp = rp->next)
+        {
+        RlistAppendScalarIdemp(retlist, rp->item);
+                vcount++;
+        }
+        break;
+
+    case DATA_TYPE_INT:
+        for (rp = newlist; rp != NULL; rp = rp->next)
+        {
+            if (IntFromString(RlistScalarValue(rp)) == CF_NOINT)
+            {
+                Log(LOG_LEVEL_ERR, "Presumed int value '%s' read from list has no recognizable value",
+                      RlistScalarValue(rp));
+
+        RlistAppendScalarIdemp(retlist, RlistScalarValue(rp));
+            } else {
+                vcount++;
+            }
+        }
+        break;
+
+    case DATA_TYPE_REAL:
+        for (rp = newlist; rp != NULL; rp = rp->next)
+        {
+            double real_value = 0;
+            if (!DoubleFromString(RlistScalarValue(rp), &real_value))
+            {
+                Log(LOG_LEVEL_ERR, "Presumed real value '%s' read from list has no recognizable value",
+                      RlistScalarValue(rp));
+
+        RlistAppendScalarIdemp(retlist, RlistScalarValue(rp));
+            } else {
+                 vcount++;
+            }
+        }
+        break;
+
+    default:
+        ProgrammingError("Unhandled type in switch: %d", type);
+    }
+
+    RlistDestroy(newlist);
+}
+
+/**
+shared :
+   ctx, bundle, filename, comment, split, maxent, maxsize, type
+array:
+   array_lval, intIndex, isarray=true
+list:
+   isarray=false, retlist
+ret :
+   hcount : horizontal count = (nb of lines)
+**/
 static int BuildLineArrayFromFile(EvalContext *ctx, const Bundle *bundle, 
                                   char *array_lval, char *filename,
                                   char *comment, char *split,
-                                  int maxent, int maxsize, DataType type, int intIndex)
+                                  int maxent, int maxsize, DataType type, int intIndex, bool isarray, Rlist *retlist)
 {
 
      char *s;
@@ -4930,8 +5091,14 @@ static int BuildLineArrayFromFile(EvalContext *ctx, const Bundle *bundle,
            //if (/*LineNotExcluded(s)*/*s!='#')
            {
               if(hcount<maxent-1) {
-                int res = ProcessFieldSeparatedLine(ctx, bundle, array_lval, s, 
+            int res;
+            if(isarray == true) 
+                res = AddFieldSeparatedLineToArray(ctx, bundle, array_lval, s, 
                                  split, maxent, type, intIndex, hcount);
+            else
+                res = AddFieldSeparatedLineToList(ctx, bundle, NULL/*array_lval*/, s, 
+                                 split, maxent, type, -1/*intIndex*/, hcount, &retlist);
+
               } else {
                 break;
               }
@@ -4974,7 +5141,7 @@ static int BuildLineArrayFromString(EvalContext *ctx, const Bundle *bundle,
           if (/*LineNotExcluded(tempbuf)*/*tempbuf!='#')
           {
               if(hcount<maxent-1) {
-                int res = ProcessFieldSeparatedLine(ctx, bundle, array_lval, tempbuf, 
+                int res = AddFieldSeparatedLineToArray(ctx, bundle, array_lval, tempbuf, 
                                  split, maxent, type, intIndex, hcount);
               } else {
                 break;
