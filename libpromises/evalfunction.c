@@ -4196,7 +4196,7 @@ static FnCallResult ReadArray(EvalContext *ctx, FnCall *fp, Rlist *finalargs, Da
     }
     else
     {
-        file_buffer = StripPatterns(file_buffer, comment, filename);
+        file_buffer = StripPatterns(ctx, file_buffer, comment, filename);
 //    printf("BUFFY=[%s]\n",file_buffer);
 
         if (file_buffer == NULL)
@@ -4808,7 +4808,7 @@ static int AddFieldSeparatedLineToArray(EvalContext *ctx, const Bundle *bundle,
     Rlist *rp, *newlist = NULL;
     int allowblanks = true, vcount = 0;
 
-    newlist = RlistFromSplitRegex(line, split, maxent, allowblanks);
+    newlist = RlistFromSplitRegex(ctx, line, split, maxent, allowblanks);
 
     char name[CF_MAXVARSIZE];
     char first_one[CF_MAXVARSIZE];
@@ -4860,7 +4860,10 @@ static int AddFieldSeparatedLineToArray(EvalContext *ctx, const Bundle *bundle,
         }
 
         printf(">>>>>>>>>>This_rval=%s\n", this_rval);
-        EvalContextVariablePut(ctx, (VarRef) { NULL, bundle->name, name }, (Rval) { this_rval, RVAL_TYPE_SCALAR }, type);
+        VarRef *ref = VarRefParseFromBundle(name, bundle);
+        EvalContextVariablePut(ctx, ref, (Rval) { this_rval, RVAL_TYPE_SCALAR }, type);
+        VarRefDestroy(ref);
+
         vcount++;
     }
 
@@ -4875,7 +4878,7 @@ static int AddFieldSeparatedLineToList(EvalContext *ctx, const Bundle *bundle,
     Rlist *rp, *newlist = NULL;
     int allowblanks = true, vcount = 0;
 
-    newlist = RlistFromSplitRegex(line, split, maxent, allowblanks);
+    newlist = RlistFromSplitRegex(ctx, line, split, maxent, allowblanks);
 int len=RlistLen(*retlist);
 
     /*char name[CF_MAXVARSIZE];
@@ -4987,7 +4990,7 @@ printf("b1\n");
                s[strcspn(s, "\r\n")]='\0';
            }
            //if (strcmp(comment,"")==0 || FullTextMatch(comment, s) == 0 )
-           if (strcmp(comment,"")==0 || (s = StripPatterns(s, comment, filename))!=NULL)
+           if (strcmp(comment,"")==0 || (s = StripPatterns(ctx, s, comment, filename))!=NULL)
            //if (/*LineNotExcluded(s)*/*s!='#')
            {
               if(hcount<maxent-1) {
@@ -5042,7 +5045,7 @@ static int BuildLineArrayFromString(EvalContext *ctx, const Bundle *bundle,
 
           printf("S at[%d] [%s]\n",n+len,tempbuf);
           char *tempbuf2 = NULL;
-          if (strcmp(comment,"")==0 || (tempbuf2 = StripPatterns(tempbuf, comment, "String argument 2"))!=NULL)
+          if (strcmp(comment,"")==0 || (tempbuf2 = StripPatterns(ctx, tempbuf, comment, "String argument 2"))!=NULL)
           //if (tempbuf!='#')
           {
               if(tempbuf2!=NULL) strcpy(tempbuf, tempbuf2);
