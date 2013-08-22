@@ -1,0 +1,41 @@
+body common control
+{
+   bundlesequence => { "message_file" };
+}
+
+bundle edit_line addmessage(message)
+{
+   insert_lines:
+       "$(message)";
+}
+
+bundle agent message_file
+{
+vars:
+   "files"
+       slist => { "file1", "file2", "file3" };
+
+files:
+   "/tmp/$(files)"
+      classes => if_repaired("file_created"),
+      create => "true";
+
+   "/tmp/$(files)"
+      classes => if_repaired("file_changed"),
+      perms => owner_only,
+      edit_line => addmessage("This system is managed");
+
+   "/tmp/file4"
+      create => "true";
+}
+
+body perms owner_only
+{
+   mode => "0600";
+}
+
+
+body classes if_repaired(x)
+{
+   promise_repaired => { "$(x)" };
+}

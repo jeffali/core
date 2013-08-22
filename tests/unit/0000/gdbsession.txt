@@ -1,0 +1,177 @@
+root@deb6:/home/hicham/dev/master/core# gdb --args cf-agent -Kf /tmp/cmpl.cf
+GNU gdb (GDB) 7.0.1-debian
+Copyright (C) 2009 Free Software Foundation, Inc.
+License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.  Type "show copying"
+and "show warranty" for details.
+This GDB was configured as "i486-linux-gnu".
+For bug reporting instructions, please see:
+<http://www.gnu.org/software/gdb/bugs/>...
+Reading symbols from /usr/local/sbin/cf-agent...done.
+(gdb) b cfPS
+Breakpoint 1 at 0x804e2b4
+(gdb) r
+Starting program: /usr/local/sbin/cf-agent -Kf /tmp/cmpl.cf
+[Thread debugging using libthread_db enabled]
+
+Breakpoint 1, cfPS (ctx=0x808b008, level=LOG_LEVEL_INFO, 
+    status=PROMISE_RESULT_CHANGE, pp=0x80bd168, attr=..., 
+    fmt=0x807cd8d "Created file '%s', mode %04jo") at env_context.c:1962
+1962	    if (pp)
+(gdb) c
+Continuing.
+
+Breakpoint 1, cfPS (ctx=0x808b008, level=LOG_LEVEL_INFO, 
+    status=PROMISE_RESULT_CHANGE, pp=0x80bd9c8, attr=..., 
+    fmt=0x807cd8d "Created file '%s', mode %04jo") at env_context.c:1962
+1962	    if (pp)
+(gdb) c
+Continuing.
+
+Breakpoint 1, cfPS (ctx=0x808b008, level=LOG_LEVEL_INFO, 
+    status=PROMISE_RESULT_CHANGE, pp=0x80be0a8, attr=..., 
+    fmt=0x807cd8d "Created file '%s', mode %04jo") at env_context.c:1962
+1962	    if (pp)
+(gdb) c
+Continuing.
+
+Breakpoint 1, cfPS (ctx=0x808b008, level=LOG_LEVEL_VERBOSE, 
+    status=PROMISE_RESULT_NOOP, pp=0x80bd780, attr=..., 
+    fmt=0x807b224 "File permissions on '%s' as promised") at env_context.c:1962
+1962	    if (pp)
+(gdb) c
+Continuing.
+
+Breakpoint 1, cfPS (ctx=0x808b008, level=LOG_LEVEL_VERBOSE, 
+    status=PROMISE_RESULT_NOOP, pp=0x80bd780, attr=..., 
+    fmt=0x807b224 "File permissions on '%s' as promised") at env_context.c:1962
+1962	    if (pp)
+(gdb) c
+Continuing.
+
+Breakpoint 1, cfPS (ctx=0x808b008, level=LOG_LEVEL_VERBOSE, 
+    status=PROMISE_RESULT_NOOP, pp=0x80bd780, attr=..., 
+    fmt=0x807ab10 "Basedir '%s' not promising anything") at env_context.c:1962
+1962	    if (pp)
+(gdb) c
+Continuing.
+
+Breakpoint 1, cfPS (ctx=0x808b008, level=LOG_LEVEL_VERBOSE, 
+    status=PROMISE_RESULT_CHANGE, pp=0x80bee20, attr=..., 
+    fmt=0x8080330 "Inserting the promised line '%s' into '%s' after locator")
+    at env_context.c:1962
+1962	    if (pp)
+(gdb) c
+Continuing.
+
+Breakpoint 1, cfPS (ctx=0x808b008, level=LOG_LEVEL_INFO, 
+    status=PROMISE_RESULT_CHANGE, pp=0x80bd780, attr=..., 
+    fmt=0x807f6c7 "Edit file '%s'") at env_context.c:1962
+1962	    if (pp)
+(gdb) c
+Continuing.
+
+Breakpoint 1, cfPS (ctx=0x808b008, level=LOG_LEVEL_VERBOSE, 
+    status=PROMISE_RESULT_NOOP, pp=0x80bd780, attr=..., 
+    fmt=0x807b224 "File permissions on '%s' as promised") at env_context.c:1962
+1962	    if (pp)
+(gdb) c
+Continuing.
+
+Breakpoint 1, cfPS (ctx=0x808b008, level=LOG_LEVEL_VERBOSE, 
+    status=PROMISE_RESULT_NOOP, pp=0x80bdbf0, attr=..., 
+    fmt=0x807b224 "File permissions on '%s' as promised") at env_context.c:1962
+1962	    if (pp)
+(gdb) c
+Continuing.
+
+Breakpoint 1, cfPS (ctx=0x808b008, level=LOG_LEVEL_VERBOSE, 
+    status=PROMISE_RESULT_NOOP, pp=0x80bdbf0, attr=..., 
+    fmt=0x807b224 "File permissions on '%s' as promised") at env_context.c:1962
+1962	    if (pp)
+(gdb) c
+Continuing.
+
+Breakpoint 1, cfPS (ctx=0x808b008, level=LOG_LEVEL_VERBOSE, 
+    status=PROMISE_RESULT_NOOP, pp=0x80bdbf0, attr=..., 
+    fmt=0x807ab10 "Basedir '%s' not promising anything") at env_context.c:1962
+1962	    if (pp)
+(gdb) c
+Continuing.
+
+Breakpoint 1, cfPS (ctx=0x808b008, level=LOG_LEVEL_VERBOSE, 
+    status=PROMISE_RESULT_CHANGE, pp=0x80bedb8, attr=..., 
+    fmt=0x8080330 "Inserting the promised line '%s' into '%s' after locator")
+    at env_context.c:1962
+1962	    if (pp)
+(gdb) c
+Continuing.
+
+Breakpoint 1, cfPS (ctx=0x808b008, level=LOG_LEVEL_INFO, 
+    status=PROMISE_RESULT_CHANGE, pp=0x80bdbf0, attr=..., 
+    fmt=0x807f6c7 "Edit file '%s'") at env_context.c:1962
+1962	    if (pp)
+(gdb) c
+Continuing.
+
+Breakpoint 1, cfPS (ctx=0x808b008, level=LOG_LEVEL_VERBOSE, 
+    status=PROMISE_RESULT_NOOP, pp=0x80bdbf0, attr=..., 
+    fmt=0x807b224 "File permissions on '%s' as promised") at env_context.c:1962
+1962	    if (pp)
+(gdb) c
+Continuing.
+
+Breakpoint 1, cfPS (ctx=0x808b008, level=LOG_LEVEL_VERBOSE, 
+    status=PROMISE_RESULT_NOOP, pp=0x80bee68, attr=..., 
+    fmt=0x807b224 "File permissions on '%s' as promised") at env_context.c:1962
+1962	    if (pp)
+(gdb) c
+Continuing.
+
+Breakpoint 1, cfPS (ctx=0x808b008, level=LOG_LEVEL_VERBOSE, 
+    status=PROMISE_RESULT_NOOP, pp=0x80bee68, attr=..., 
+    fmt=0x807b224 "File permissions on '%s' as promised") at env_context.c:1962
+1962	    if (pp)
+(gdb) c
+Continuing.
+
+Breakpoint 1, cfPS (ctx=0x808b008, level=LOG_LEVEL_VERBOSE, 
+    status=PROMISE_RESULT_NOOP, pp=0x80bee68, attr=..., 
+    fmt=0x807ab10 "Basedir '%s' not promising anything") at env_context.c:1962
+1962	    if (pp)
+(gdb) c
+Continuing.
+
+Breakpoint 1, cfPS (ctx=0x808b008, level=LOG_LEVEL_VERBOSE, 
+    status=PROMISE_RESULT_CHANGE, pp=0x80bf4a0, attr=..., 
+    fmt=0x8080330 "Inserting the promised line '%s' into '%s' after locator")
+    at env_context.c:1962
+1962	    if (pp)
+(gdb) c
+Continuing.
+
+Breakpoint 1, cfPS (ctx=0x808b008, level=LOG_LEVEL_INFO, 
+    status=PROMISE_RESULT_CHANGE, pp=0x80bee68, attr=..., 
+    fmt=0x807f6c7 "Edit file '%s'") at env_context.c:1962
+1962	    if (pp)
+(gdb) c
+Continuing.
+
+Breakpoint 1, cfPS (ctx=0x808b008, level=LOG_LEVEL_VERBOSE, 
+    status=PROMISE_RESULT_NOOP, pp=0x80bee68, attr=..., 
+    fmt=0x807b224 "File permissions on '%s' as promised") at env_context.c:1962
+1962	    if (pp)
+(gdb) c
+Continuing.
+
+Breakpoint 1, cfPS (ctx=0x808b008, level=LOG_LEVEL_INFO, 
+    status=PROMISE_RESULT_CHANGE, pp=0x80bee68, attr=..., 
+    fmt=0x807cd8d "Created file '%s', mode %04jo") at env_context.c:1962
+1962	    if (pp)
+(gdb) c
+Continuing.
+
+Program exited normally.
+(gdb) q
+root@deb6:/home/hicham/dev/master/core#
