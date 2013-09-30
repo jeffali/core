@@ -46,15 +46,28 @@ static void test_append(void)
 
 static int CompareNumbers(const void *a, const void *b, void *_user_data)
 {
+    printf("\t%p vs %p\n", a, b);
     return *(size_t *) a - *(size_t *) b;
+}
+static int CompareStrings(const void *a, const void *b, void *_user_data)
+{
+    printf("\t%p %s vs %p %s\n", a, (char *)a, b, (char *) b);
+    return strcmp((char *) a , (char *) b);
 }
 
 static void test_lookup(void)
 {
-    Seq *seq = SequenceCreateRange(10, 0, 9);
+    Seq *seq = SeqNew(2, free);
+    size_t *key = NULL;
+    for (size_t i = 0; i < 10; i++)
+    {
+        key = xmalloc(sizeof(size_t));
+        printf("k=%p\n", key);
+        *key = i;
+        SeqAppend(seq, key);
+    }
 
-    size_t *key = xmalloc(sizeof(size_t));
-
+    key = xmalloc(sizeof(size_t));
     *key = 5;
 
     size_t *result = SeqLookup(seq, key, CompareNumbers);
@@ -112,6 +125,28 @@ static void test_sort(void)
     assert_int_equal(seq->data[4], &five);
 
     SeqDestroy(seq);
+}
+
+static void test_append_ts(void)
+{
+    Seq *seq = SeqNew(2, free);
+
+    for (size_t i = 0; i < 10; i++)
+    {
+        char buf[20];
+        sprintf(buf, "%ld", ((i+11111)%5)*20+111);
+        SeqAppend(seq, xstrdup(buf));
+    }
+
+    assert_int_equal(seq->length, 10);
+    SeqSort(seq, CompareStrings, NULL);
+
+    for (size_t i = 0; i < 10; i++)
+    {
+        printf("%s\n", seq->data[i]);
+    }
+
+    //SeqDestroy(seq);
 }
 
 static void test_remove_range(void)
@@ -272,16 +307,17 @@ int main()
     PRINT_TEST_BANNER();
     const UnitTest tests[] =
     {
-        unit_test(test_create_destroy),
-        unit_test(test_append),
-        unit_test(test_lookup),
-        unit_test(test_index_of),
-        unit_test(test_sort),
-        unit_test(test_remove_range),
-        unit_test(test_remove),
-        unit_test(test_reverse),
-        unit_test(test_len),
-        unit_test(test_get_range)
+//        unit_test(test_create_destroy),
+//        unit_test(test_append),
+          unit_test(test_append_ts),
+//          unit_test(test_lookup),
+//        unit_test(test_index_of),
+//        unit_test(test_sort),
+//        unit_test(test_remove_range),
+//        unit_test(test_remove),
+//        unit_test(test_reverse),
+//        unit_test(test_len),
+//        unit_test(test_get_range)
     };
 
     return run_tests(tests);
