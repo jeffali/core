@@ -770,6 +770,12 @@ void GenericAgentInitialize(EvalContext *ctx, GenericAgentConfig *config)
         {
             CreateEmptyFile(ebuff);
         }
+
+        sprintf(ebuff, "%s%cstate%cprevious_state%c", CFWORKDIR, FILE_SEPARATOR, FILE_SEPARATOR, FILE_SEPARATOR);
+        MakeParentDirectory(ebuff, force);
+
+        sprintf(ebuff, "%s%cstate%cdiff%c", CFWORKDIR, FILE_SEPARATOR, FILE_SEPARATOR, FILE_SEPARATOR);
+        MakeParentDirectory(ebuff, force);
     }
 
     OpenNetwork();
