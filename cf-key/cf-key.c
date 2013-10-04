@@ -125,7 +125,21 @@ int main(int argc, char *argv[])
 
     if (trust_key_arg)
     {
-        return TrustKey(trust_key_arg);
+        char *tmp = NULL;
+        tmp = strchr(trust_key_arg, ':');
+
+        if (tmp != NULL)
+        {
+            /* TODO: Validate ip address first (ipv6 or ipv4) */
+            char ip[CF_MAXVARSIZE];
+            strncpy(ip, trust_key_arg, tmp - trust_key_arg);
+            ip[tmp - trust_key_arg] = '\0';
+            return TrustKeyWithIP(ip, trust_key_arg + 1 + (tmp - trust_key_arg));
+        }
+        else
+        {
+            return TrustKey(trust_key_arg);
+        }
     }
 
     char *public_key_file, *private_key_file;

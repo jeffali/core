@@ -35,6 +35,7 @@
 #include <communication.h>
 #include <env_context.h>
 #include <crypto.h>
+#include <lastseen.h>
 
 #include <cf-key-functions.h>
 
@@ -108,6 +109,28 @@ int PrintDigest(const char* pubkey)
     fprintf(stdout, "%s\n", digeststr);
     free(digeststr);
     return 0; /* OK exitcode */
+}
+
+int TrustKeyWithIP(const char *ip, const char* pubkey)
+{
+    char *digeststr = GetPubkeyDigest(pubkey);
+    char outfilename[CF_BUFSIZE];
+    bool ok;
+
+    if (NULL == digeststr)
+        return 1; /* ERROR exitcode */
+
+    snprintf(outfilename, CF_BUFSIZE, "%s/ppkeys/root-%s.pub", CFWORKDIR, digeststr);
+
+    ok = CopyRegularFileDisk(pubkey, outfilename);
+
+    if (ok == true)
+    {
+        UpdateLastSawHost(digeststr, ip, true, time(NULL));
+    }
+
+    free(digeststr);
+    return (ok? 0 : 1);
 }
 
 int TrustKey(const char* pubkey)

@@ -38,6 +38,8 @@ typedef enum
 } LastSeenRole;
 
 bool Address2Hostkey(const char *address, char *hostkey);
+void UpdateLastSawHost(const char *hostkey, const char *address,
+                       bool incoming, time_t timestamp);
 
 void LastSaw1(const char *ipaddress, unsigned char hashstr[EVP_MAX_MD_SIZE * 4], LastSeenRole role);
 void LastSaw(const char *ipaddress, unsigned char digest[EVP_MAX_MD_SIZE + 1], LastSeenRole role);

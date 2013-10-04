@@ -40,6 +40,7 @@
 RSA* LoadPublicKey(const char* filename);
 char* GetPubkeyDigest(const char* pubkey);
 int PrintDigest(const char* pubkey);
+int TrustKeyWithIP(const char *ip, const char *pubkey);
 int TrustKey(const char* pubkey);
 bool ShowHost(const char *hostkey, const char *address, bool incoming, const KeyHostSeen *quality, void *ctx);
 void ShowLastSeenHosts();
