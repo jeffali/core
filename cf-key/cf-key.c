@@ -130,23 +130,23 @@ int main(int argc, char *argv[])
 
         if (tmp != NULL)
         {
-            if (!strncmp(trust_key_arg, "host:", 5) || 
-                !strncmp(trust_key_arg, "hub:", 4))
+            if (!strncmp(trust_key_arg, "export:", 7) || 
+                !strncmp(trust_key_arg, "import:", 7))
             {
                 /* TODO: Validate ip address first (ipv6 or ipv4) */
                 char ip[CF_MAXVARSIZE];
                 tmp = strchr(tmp + 1, ':');
-                if (!strncmp(trust_key_arg, "host:", 5))
+                if (!strncmp(trust_key_arg, "export:", 7))
                 {
-                    strncpy(ip, trust_key_arg + 5, tmp - trust_key_arg - 5);
-                    ip[tmp - trust_key_arg - 5] = '\0';
+                    strncpy(ip, trust_key_arg + 7, tmp - trust_key_arg - 7);
+                    ip[tmp - trust_key_arg - 7] = '\0';
                     printf("ip = %s, path=%s\n", ip, tmp + 1);
                     return TrustKeyWithIP(ip, tmp + 1, true);
                 }
-                if (!strncmp(trust_key_arg, "hub:", 4))
+                if (!strncmp(trust_key_arg, "import:", 7))
                 {
-                    strncpy(ip, trust_key_arg + 4, tmp - trust_key_arg - 4);
-                    ip[tmp - trust_key_arg - 4] = '\0';
+                    strncpy(ip, trust_key_arg + 7, tmp - trust_key_arg - 7);
+                    ip[tmp - trust_key_arg - 7] = '\0';
                     printf("ip = %s, path=%s\n", ip, tmp +1);
                     return TrustKeyWithIP(ip, tmp + 1, false);
                 }
