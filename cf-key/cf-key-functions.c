@@ -111,7 +111,7 @@ int PrintDigest(const char* pubkey)
     return 0; /* OK exitcode */
 }
 
-int TrustKeyWithIP(const char *ip, const char* pubkey)
+int TrustKeyWithIP(const char *ip, const char* pubkey, bool hostmode)
 {
     char *digeststr = GetPubkeyDigest(pubkey);
     char outfilename[CF_BUFSIZE];
@@ -126,7 +126,7 @@ int TrustKeyWithIP(const char *ip, const char* pubkey)
 
     if (ok == true)
     {
-        UpdateLastSawHost(digeststr, ip, true, time(NULL));
+        UpdateLastSawHost(digeststr, ip, hostmode, time(NULL));
     }
 
     free(digeststr);
