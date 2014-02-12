@@ -170,7 +170,8 @@ void CloseAllDBExit()
                 Log(LOG_LEVEL_ERR,
                     "Database %s refcount is still not zero (%d), forcing CloseDB()!",
                     db_handles[i].filename, db_handles[i].refcount);
-                DBPrivCloseDBCommit(db_handles[i].priv);
+                DBPrivCommit(db_handles[i].priv);
+                DBPrivCloseDB(db_handles[i].priv);
             }
         }
     }
@@ -260,14 +261,20 @@ void CloseDBCommit(DBHandle *handle)
 {
     pthread_mutex_lock(&handle->lock);
 
+printf("commie0\n");
+    DBPrivCommit(handle->priv);
+printf("commie1\n");
     if (handle->refcount < 1)
     {
+printf("commie2\n");
         Log(LOG_LEVEL_ERR, "Trying to close database %s which is not open", handle->filename);
     }
     else if (--handle->refcount == 0)
     {
-        DBPrivCloseDBCommit(handle->priv);
+printf("commie3\n");
+        DBPrivCloseDB(handle->priv);
     }
+printf("commie4\n");
 
     pthread_mutex_unlock(&handle->lock);
 }

@@ -83,7 +83,19 @@ DBPriv *DBPrivOpenDB(const char *dbpath)
               dbpath, mdb_strerror(rc));
         goto err;
     }
-    rc = mdb_env_open(db->env, dbpath, MDB_NOSUBDIR, 0644);
+#if 0
+    if (dbid != dbid_locks)
+    {
+        rc = mdb_env_open(db->env, dbpath, MDB_NOSUBDIR, 0644);
+    }
+    else
+    {
+#endif
+        rc = mdb_env_open(db->env, dbpath, MDB_NOSUBDIR|MDB_NOSYNC, 0644);
+        //rc = mdb_env_open(db->env, dbpath, MDB_NOSUBDIR, 0644);
+#if 0
+    }
+#endif
     if (rc)
     {
         Log(LOG_LEVEL_ERR, "Could not open database %s: %s",
@@ -112,14 +124,13 @@ DBPriv *DBPrivOpenDB(const char *dbpath)
         goto err;
     }
     db->txn = NULL;
-
+printf("openie env=%p,txn=%p\n", db->env, db->txn);
     return db;
 
 err:
     if (db->env)
     {
         mdb_env_close(db->env);
-        db->txn = NULL;
     }
     free(db);
     return NULL;
@@ -127,32 +138,33 @@ err:
 
 void DBPrivCloseDB(DBPriv *db)
 {
+printf("envie0\n");
     if (db->env)
     {
+printf("envie1(close) env=%p txn=%p\n", db->env, db->txn);
         mdb_env_close(db->env);
         db->txn = NULL;
     }
+printf("envie2\n");
     free(db);
 }
 
-void DBPrivCloseDBCommit(DBPriv *db)
+void DBPrivCommit(DBPriv *db)
 {
     if (db->txn)
     {
+printf("commie yoti env=%p,txn=%p\n",db->env,db->txn);
         int rc;
         rc = mdb_txn_commit(db->txn);
         if (rc)
         {
             Log(LOG_LEVEL_ERR, "Could not commit database dbi : %s",
                   mdb_strerror(rc));
-            db->txn = NULL;
-            goto err;
         }
-        mdb_env_close(db->env);
         db->txn = NULL;
+printf("commie yoti rc=%d\n", rc);
     }
-err:
-    free(db);
+printf("commie noti\n");
 }
 
 bool DBPrivHasKey(DBPriv *db, const void *key, int key_size)
@@ -300,22 +312,27 @@ bool DBPrivWrite(DBPriv *db, const void *key, int key_size, const void *value, i
 bool DBPrivWriteNoCommit(DBPriv *db, const void *key, int key_size, const void *value, int value_size)
 {
     MDB_val mkey, data;
-    MDB_txn *txn;
     int rc;
 printf("aaaaa0\n");
     /* If there's an open cursor, use its txn */
     if (db->mc)
     {
 printf("aaaaa1\n");
-        txn = mdb_cursor_txn(db->mc);
-        db->txn = txn;
+        db->txn = mdb_cursor_txn(db->mc);
         rc = MDB_SUCCESS;
     }
     else if (db->txn == NULL)
     {
-        rc = mdb_txn_begin(db->env, NULL, 0, &txn);
-printf("aaaaa2 rc=%d\n", rc);
-        db->txn = txn;
+
+        rc = mdb_txn_begin(db->env, NULL, 0, &db->txn);
+printf("aaaaa2 rc=%d env=%p txn=%p\n", rc, db->env, db->txn);
+        rc = mdb_open(db->txn, NULL, 0, &db->dbi);
+        if (rc)
+        {
+            Log(LOG_LEVEL_ERR, "Could not open database dbi : %s",
+                  mdb_strerror(rc));
+            
+        }
     }
     else
     {
@@ -335,6 +352,7 @@ printf("aaaaa3\n");
         {
             if (rc == MDB_SUCCESS)
             {
+printf("aaaaa3succ env=%p txn=%p\n", db->env, db->txn);
 #if 0
                 rc = mdb_txn_commit(txn);
                 if (rc)
@@ -347,7 +365,7 @@ printf("aaaaa3\n");
             {
 printf("aaaaa4\n");
                 Log(LOG_LEVEL_ERR, "Could not write: %s", mdb_strerror(rc));
-                mdb_txn_abort(txn);
+                mdb_txn_abort(db->txn);
                 db->txn = NULL;
             }
         }
