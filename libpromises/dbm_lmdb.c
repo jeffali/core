@@ -39,6 +39,7 @@ struct DBPriv_
 {
     MDB_env *env;
     MDB_dbi dbi;
+    MDB_txn *txn;
     MDB_cursor *mc;
 };
 
@@ -110,7 +111,7 @@ DBPriv *DBPrivOpenDB(const char *dbpath)
               dbpath, mdb_strerror(rc));
         goto err;
     }
-    txn = NULL;
+    db->txn = NULL;
 
     return db;
 
@@ -118,6 +119,7 @@ err:
     if (db->env)
     {
         mdb_env_close(db->env);
+        db->txn = NULL;
     }
     free(db);
     return NULL;
@@ -128,7 +130,28 @@ void DBPrivCloseDB(DBPriv *db)
     if (db->env)
     {
         mdb_env_close(db->env);
+        db->txn = NULL;
     }
+    free(db);
+}
+
+void DBPrivCloseDBCommit(DBPriv *db)
+{
+    if (db->txn)
+    {
+        int rc;
+        rc = mdb_txn_commit(db->txn);
+        if (rc)
+        {
+            Log(LOG_LEVEL_ERR, "Could not commit database dbi : %s",
+                  mdb_strerror(rc));
+            db->txn = NULL;
+            goto err;
+        }
+        mdb_env_close(db->env);
+        db->txn = NULL;
+    }
+err:
     free(db);
 }
 
@@ -232,11 +255,13 @@ bool DBPrivWrite(DBPriv *db, const void *key, int key_size, const void *value, i
     if (db->mc)
     {
         txn = mdb_cursor_txn(db->mc);
+        db->txn = txn;
         rc = MDB_SUCCESS;
     }
     else
     {
         rc = mdb_txn_begin(db->env, NULL, 0, &txn);
+        db->txn = txn;
     }
     if (rc == MDB_SUCCESS)
     {
@@ -255,11 +280,13 @@ bool DBPrivWrite(DBPriv *db, const void *key, int key_size, const void *value, i
                 {
                     Log(LOG_LEVEL_ERR, "Could not commit: %s", mdb_strerror(rc));
                 }
+                db->txn = NULL;
             }
             else
             {
                 Log(LOG_LEVEL_ERR, "Could not write: %s", mdb_strerror(rc));
                 mdb_txn_abort(txn);
+                db->txn = NULL;
             }
         }
     }
@@ -267,6 +294,69 @@ bool DBPrivWrite(DBPriv *db, const void *key, int key_size, const void *value, i
     {
         Log(LOG_LEVEL_ERR, "Could not create write txn: %s", mdb_strerror(rc));
     }
+    return rc == MDB_SUCCESS;
+}
+
+bool DBPrivWriteNoCommit(DBPriv *db, const void *key, int key_size, const void *value, int value_size)
+{
+    MDB_val mkey, data;
+    MDB_txn *txn;
+    int rc;
+printf("aaaaa0\n");
+    /* If there's an open cursor, use its txn */
+    if (db->mc)
+    {
+printf("aaaaa1\n");
+        txn = mdb_cursor_txn(db->mc);
+        db->txn = txn;
+        rc = MDB_SUCCESS;
+    }
+    else if (db->txn == NULL)
+    {
+        rc = mdb_txn_begin(db->env, NULL, 0, &txn);
+printf("aaaaa2 rc=%d\n", rc);
+        db->txn = txn;
+    }
+    else
+    {
+printf("aaaaa2x\n");
+        rc = MDB_SUCCESS;
+    }
+    if (rc == MDB_SUCCESS)
+    {
+printf("aaaaa3\n");
+        mkey.mv_data = (void *)key;
+        mkey.mv_size = key_size;
+        data.mv_data = (void *)value;
+        data.mv_size = value_size;
+        rc = mdb_put(db->txn, db->dbi, &mkey, &data, 0);
+        /* don't commit here if there's a cursor */
+        if (!db->mc)
+        {
+            if (rc == MDB_SUCCESS)
+            {
+#if 0
+                rc = mdb_txn_commit(txn);
+                if (rc)
+                {
+                    Log(LOG_LEVEL_ERR, "Could not commit: %s", mdb_strerror(rc));
+                }
+#endif
+            }
+            else
+            {
+printf("aaaaa4\n");
+                Log(LOG_LEVEL_ERR, "Could not write: %s", mdb_strerror(rc));
+                mdb_txn_abort(txn);
+                db->txn = NULL;
+            }
+        }
+    }
+    else
+    {
+        Log(LOG_LEVEL_ERR, "Could not create write txn: %s", mdb_strerror(rc));
+    }
+printf("aaaaa5\n");
     return rc == MDB_SUCCESS;
 }
 

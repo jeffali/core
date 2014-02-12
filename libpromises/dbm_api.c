@@ -170,7 +170,7 @@ void CloseAllDBExit()
                 Log(LOG_LEVEL_ERR,
                     "Database %s refcount is still not zero (%d), forcing CloseDB()!",
                     db_handles[i].filename, db_handles[i].refcount);
-                DBPrivCloseDB(db_handles[i].priv);
+                DBPrivCloseDBCommit(db_handles[i].priv);
             }
         }
     }
@@ -256,6 +256,22 @@ void CloseDB(DBHandle *handle)
     pthread_mutex_unlock(&handle->lock);
 }
 
+void CloseDBCommit(DBHandle *handle)
+{
+    pthread_mutex_lock(&handle->lock);
+
+    if (handle->refcount < 1)
+    {
+        Log(LOG_LEVEL_ERR, "Trying to close database %s which is not open", handle->filename);
+    }
+    else if (--handle->refcount == 0)
+    {
+        DBPrivCloseDBCommit(handle->priv);
+    }
+
+    pthread_mutex_unlock(&handle->lock);
+}
+
 /*****************************************************************************/
 
 bool ReadComplexKeyDB(DBHandle *handle, const char *key, int key_size,
@@ -283,6 +299,11 @@ bool ReadDB(DBHandle *handle, const char *key, void *dest, int destSz)
 bool WriteDB(DBHandle *handle, const char *key, const void *src, int srcSz)
 {
     return DBPrivWrite(handle->priv, key, strlen(key) + 1, src, srcSz);
+}
+
+bool WriteDBNoCommit(DBHandle *handle, const char *key, const void *src, int srcSz)
+{
+    return DBPrivWriteNoCommit(handle->priv, key, strlen(key) + 1, src, srcSz);
 }
 
 bool HasKeyDB(DBHandle *handle, const char *key, int key_size)
