@@ -41,6 +41,7 @@ struct DBPriv_
     MDB_dbi dbi;
     MDB_txn *txn;
     MDB_cursor *mc;
+    dbid    bid;
 };
 
 struct DBCursorPriv_
@@ -119,7 +120,8 @@ DBPriv *DBPrivOpenDB(const char *dbpath, dbid id)
         goto err;
     }
     db->txn = NULL;
-printf("openie env=%p,txn=%p\n", db->env, db->txn);
+    db->bid = id;
+printf("openie env=%p,txn=%p bid=%d\n", db->env, db->txn, id);
     return db;
 
 err:
@@ -136,7 +138,7 @@ void DBPrivCloseDB(DBPriv *db)
 printf("envie0\n");
     if (db->env)
     {
-printf("envie1(close) env=%p txn=%p\n", db->env, db->txn);
+printf("envie1(close) env=%p txn=%p bid=%d\n", db->env, db->txn, db->bid);
         mdb_env_close(db->env);
         db->txn = NULL;
     }
@@ -148,7 +150,7 @@ void DBPrivCommit(DBPriv *db)
 {
     if (db->txn)
     {
-printf("commie yoti env=%p,txn=%p\n",db->env,db->txn);
+printf("commie yoti env=%p,txn=%p bid=%d\n",db->env,db->txn,db->bid);
         int rc;
         rc = mdb_txn_commit(db->txn);
         if (rc)
@@ -320,7 +322,7 @@ printf("aaaaa1\n");
     {
 
         rc = mdb_txn_begin(db->env, NULL, 0, &db->txn);
-printf("aaaaa2 rc=%d env=%p txn=%p\n", rc, db->env, db->txn);
+printf("aaaaa2 rc=%d env=%p txn=%p bid=%d\n", rc, db->env, db->txn, db->bid);
         rc = mdb_open(db->txn, NULL, 0, &db->dbi);
         if (rc)
         {
@@ -347,7 +349,7 @@ printf("aaaaa3\n");
         {
             if (rc == MDB_SUCCESS)
             {
-printf("aaaaa3succ env=%p txn=%p\n", db->env, db->txn);
+printf("aaaaa3succ env=%p txn=%p bid=%d\n", db->env, db->txn, db->bid);
 #if 0
                 rc = mdb_txn_commit(txn);
                 if (rc)
