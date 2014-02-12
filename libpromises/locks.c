@@ -869,8 +869,10 @@ void PurgeLocks(void)
         if (now - entry.time < SECONDS_PER_WEEK * 4)
         {
             Log(LOG_LEVEL_VERBOSE, "No lock purging scheduled");
+/*
             CloseLock(dbp);
             return;
+*/
         }
     }
 
@@ -881,10 +883,19 @@ void PurgeLocks(void)
         CloseLock(dbp);
         return;
     }
+#ifdef LMDB
+    FILE *fp;
+    if (fp = fopen("/tmp/walo.txt.bak", "w") == NULL)
+    {
+printf("cannot backup file\n");
+    }
+#endif
 
     while (NextDB(dbcp, &key, &ksize, (void *) &entry, &vsize))
     {
 #ifdef LMDB
+        fwrite(&key,ksize,1,fp);
+printf("coucou backup\n");
         if (key[0] == 'X')
         {
             continue;
@@ -903,6 +914,9 @@ void PurgeLocks(void)
             DBCursorDeleteEntry(dbcp);
         }
     }
+#ifdef LMDB
+    fclose(fp);
+#endif
 
     entry.time = now;
     DeleteDBCursor(dbcp);
