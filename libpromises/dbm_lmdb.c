@@ -90,7 +90,7 @@ DBPriv *DBPrivOpenDB(const char *dbpath, dbid id)
     }
     else
     {
-        rc = mdb_env_open(db->env, dbpath, MDB_NOSUBDIR|MDB_NOSYNC, 0644);
+        rc = mdb_env_open(db->env, dbpath, MDB_NOSUBDIR, 0644);
     }
     if (rc)
     {
@@ -423,13 +423,12 @@ bool DBPrivDelete(DBPriv *db, const void *key, int key_size)
 DBCursorPriv *DBPrivOpenCursor(DBPriv *db)
 {
     DBCursorPriv *cursor = NULL;
-    MDB_txn *txn;
     int rc;
 
-    rc = mdb_txn_begin(db->env, NULL, 0, &txn);
+    rc = mdb_txn_begin(db->env, NULL, 0, &db->txn);
     if (rc == MDB_SUCCESS)
     {
-        rc = mdb_cursor_open(txn, db->dbi, &db->mc);
+        rc = mdb_cursor_open(db->txn, db->dbi, &db->mc);
         if (rc == MDB_SUCCESS)
         {
             cursor = xcalloc(1, sizeof(DBCursorPriv));
@@ -439,7 +438,7 @@ DBCursorPriv *DBPrivOpenCursor(DBPriv *db)
         else
         {
             Log(LOG_LEVEL_ERR, "Could not open cursor: %s", mdb_strerror(rc));
-            mdb_txn_abort(txn);
+            mdb_txn_abort(db->txn);
         }
         /* txn remains with cursor */
     }
@@ -524,9 +523,8 @@ bool DBPrivWriteCursorEntry(DBCursorPriv *cursor, const void *value, int value_s
     return rc == MDB_SUCCESS;
 }
 
-void DBPrivCloseCursor(DBCursorPriv *cursor)
+void DBPrivCloseCursor(DBPriv *db, DBCursorPriv *cursor)
 {
-    MDB_txn *txn;
     int rc;
 
     if (cursor->curkv)
@@ -540,13 +538,14 @@ void DBPrivCloseCursor(DBCursorPriv *cursor)
     }
 
     cursor->db->mc = NULL;
-    txn = mdb_cursor_txn(cursor->mc);
+    db->txn = mdb_cursor_txn(cursor->mc);
     mdb_cursor_close(cursor->mc);
-    rc = mdb_txn_commit(txn);
+    rc = mdb_txn_commit(db->txn);
     if (rc)
     {
         Log(LOG_LEVEL_ERR, "Could not commit cursor txn: %s", mdb_strerror(rc));
     }
+    db->txn = NULL;
     free(cursor);
 }
 

@@ -84,7 +84,7 @@ bool NewDBCursor(CF_DB *dbp, CF_DBC **dbcp);
 bool NextDB(CF_DBC *dbcp, char **key, int *ksize, void **value, int *vsize);
 bool DBCursorDeleteEntry(CF_DBC *cursor);
 bool DBCursorWriteEntry(CF_DBC *cursor, const void *value, int value_size);
-bool DeleteDBCursor(CF_DBC *dbcp);
+bool DeleteDBCursor(CF_DB *dbp, CF_DBC *dbcp);
 
 char *DBIdToPath(const char *workdir, dbid id);
 

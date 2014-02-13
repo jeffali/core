@@ -267,7 +267,7 @@ printf("commie1\n");
     if (handle->refcount < 1)
     {
 printf("commie2\n");
-        Log(LOG_LEVEL_ERR, "Trying to close database %s which is not open", handle->filename);
+        Log(LOG_LEVEL_ERR, "Trying to close database %s which is not open while commiting", handle->filename);
     }
     else if (--handle->refcount == 0)
     {
@@ -357,9 +357,9 @@ bool DBCursorWriteEntry(DBCursor *cursor, const void *value, int value_size)
     return DBPrivWriteCursorEntry(cursor->cursor, value, value_size);
 }
 
-bool DeleteDBCursor(DBCursor *cursor)
+bool DeleteDBCursor(DBHandle *handle, DBCursor *cursor)
 {
-    DBPrivCloseCursor(cursor->cursor);
+    DBPrivCloseCursor(handle->priv, cursor->cursor);
     free(cursor);
     return true;
 }

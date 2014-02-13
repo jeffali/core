@@ -335,7 +335,7 @@ void PurgeHashes(EvalContext *ctx, char *path, Attributes attr, const Promise *p
         }
     }
 
-    DeleteDBCursor(dbcp);
+    DeleteDBCursor(dbp, dbcp);
     CloseDB(dbp);
 }
 

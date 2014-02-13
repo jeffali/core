@@ -134,7 +134,7 @@ Item *ListPersistentClasses()
         }
     }
 
-    DeleteDBCursor(dbcp);
+    DeleteDBCursor(dbp, dbcp);
     CloseDB(dbp);
 
     if (LogGetGlobalLevel() >= LOG_LEVEL_VERBOSE)

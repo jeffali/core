@@ -919,7 +919,7 @@ printf("coucou backup\n");
 #endif
 
     entry.time = now;
-    DeleteDBCursor(dbcp);
+    DeleteDBCursor(dbp, dbcp);
 
     WriteDB(dbp, "lock_horizon", &entry, sizeof(entry));
     CloseLock(dbp);

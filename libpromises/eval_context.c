@@ -566,7 +566,7 @@ void EvalContextHeapPersistentLoadAll(EvalContext *ctx)
         }
     }
 
-    DeleteDBCursor(dbcp);
+    DeleteDBCursor(dbp, dbcp);
     CloseDB(dbp);
 
     Banner("Loaded persistent memory");

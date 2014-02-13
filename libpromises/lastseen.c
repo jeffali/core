@@ -329,7 +329,7 @@ bool IsLastSeenCoherent(void)
         }
     }
 
-    DeleteDBCursor(cursor);
+    DeleteDBCursor(db, cursor);
     CloseDB(db);
 
     if (ListsCompare(ahosts, khosts) == false)
@@ -541,7 +541,7 @@ bool ScanLastSeenQuality(LastSeenQualityCallback callback, void *ctx)
         }
     }
 
-    DeleteDBCursor(cursor);
+    DeleteDBCursor(db, cursor);
     CloseDB(db);
 
     return true;
@@ -578,7 +578,7 @@ int LastSeenHostKeyCount(void)
                 count++;
             }
 
-            DeleteDBCursor(dbcp);
+            DeleteDBCursor(dbp, dbcp);
         }
 
         CloseDB(dbp);

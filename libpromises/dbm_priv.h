@@ -70,7 +70,7 @@ bool DBPrivAdvanceCursor(DBCursorPriv *cursor, void **key, int *key_size,
                      void **value, int *value_size);
 bool DBPrivDeleteCursorEntry(DBCursorPriv *cursor);
 bool DBPrivWriteCursorEntry(DBCursorPriv *cursor, const void *value, int value_size);
-void DBPrivCloseCursor(DBCursorPriv *cursor);
+void DBPrivCloseCursor(DBPriv *db, DBCursorPriv *cursor);
 
 /**
  * @brief Check a database file for consistency

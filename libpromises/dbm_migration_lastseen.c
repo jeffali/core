@@ -167,7 +167,7 @@ static bool LastseenMigrationVersion0(DBHandle *db)
         }
     }
 
-    if (DeleteDBCursor(cursor) == false)
+    if (DeleteDBCursor(db, cursor) == false)
     {
         Log(LOG_LEVEL_ERR, "LastseenMigrationVersion0: Unable to close cursor");
         errors = true;
