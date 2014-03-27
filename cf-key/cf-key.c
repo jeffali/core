@@ -118,14 +118,14 @@ int main(int argc, char *argv[])
 
     if (REMOVEKEYS)
     {
-        if (FORCEREMOVAL)
+        int status = RemoveKeys(remove_keys_host, !FORCEREMOVAL);
+        if (FORCEREMOVAL && (status == 0 || status == 1))
         {
-            return RemoveKeys(remove_keys_host, false);
+            Log (LOG_LEVEL_VERBOSE,
+                "Forced removal of entry '%s' was successful",
+                remove_keys_host);
         }
-        else
-        {
-            return RemoveKeys(remove_keys_host, true);
-        }
+        return status;
     }
 
     if(LICENSE_INSTALL)
