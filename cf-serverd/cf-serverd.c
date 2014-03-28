@@ -28,30 +28,6 @@
 #include <server_transform.h>
 #include <loading.h>
 
-static int UpdateLastSeenMaxReaders(int maxreaders)
-{
-#ifdef LMDB
-#include <lmdb.h>
-    int rc;
-    char workbuf[CF_BUFSIZE];
-    MDB_env *env;
-
-    if (maxreaders > 504L)
-    {
-        rc = mdb_env_create(&env);
-        //if(rc) return report_error(rc);
-
-        rc = mdb_env_set_maxreaders(env, maxreaders);
-        //if(rc) return report_error(rc);
-
-        snprintf(workbuf, CF_BUFSIZE, "%s%ccf_lastseen.lmdb", GetWorkDir(), FILE_SEPARATOR);
-        rc = mdb_env_open(env, workbuf, MDB_NOSUBDIR, 0644);
-        //if(rc) return report_error(rc);
-        mdb_env_close(env);
-    }
-#endif
-    return 0;
-}
 
 int main(int argc, char *argv[])
 {

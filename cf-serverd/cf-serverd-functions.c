@@ -363,7 +363,16 @@ void StartServer(EvalContext *ctx, Policy **policy, GenericAgentConfig *config)
             }
             ThreadUnlock(cft_server_children);
         }
-
+#ifdef LMDB
+        if (LSD_MAXREADERS < CFD_MAXPROCESSES)
+        {
+            int rc = UpdateLastSeenMaxReaders(CFD_MAXPROCESSES);
+            if (rc == 0)
+            {
+                LSD_MAXREADERS = CFD_MAXPROCESSES;
+            }
+        }
+#endif
         /* Check whether we have established peering with a hub */
         if (CollectCallHasPending())
         {
@@ -606,6 +615,31 @@ static void DeleteAuthList(Auth **list, Auth **list_tail)
 
     *list = NULL;
     *list_tail = NULL;
+}
+
+int UpdateLastSeenMaxReaders(int maxreaders)
+{
+#ifdef LMDB
+#include <lmdb.h>
+    int rc;
+    char workbuf[CF_BUFSIZE];
+    MDB_env *env;
+
+    if (maxreaders > 504L)
+    {
+        rc = mdb_env_create(&env);
+        //if(rc) return report_error(rc);
+
+        rc = mdb_env_set_maxreaders(env, maxreaders);
+        //if(rc) return report_error(rc);
+
+        snprintf(workbuf, CF_BUFSIZE, "%s%ccf_lastseen.lmdb", GetWorkDir(), FILE_SEPARATOR);
+        rc = mdb_env_open(env, workbuf, MDB_NOSUBDIR, 0644);
+        //if(rc) return report_error(rc);
+        mdb_env_close(env);
+    }
+#endif
+    return 0;
 }
 
 void CheckFileChanges(EvalContext *ctx, Policy **policy, GenericAgentConfig *config)
