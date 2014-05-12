@@ -56,7 +56,7 @@ typedef struct DB_txn_
     /******** Specific to the thread **********/
     bool       write_txn;
     MDB_txn    *txn;
-    MDB_cursor *ctxn;
+    DBCursorPriv *cursor;
 } DB_txn;
 
 #ifndef NDEBUG
@@ -135,6 +135,41 @@ static int GetWriteTransaction(DBPriv *db, MDB_txn **txn)
     return rc;
 }
 
+static int GetTransactionCursor(DBPriv *db, DBCursorPriv **cur)
+{
+    DB_txn *db_txn = pthread_getspecific(db->txn_key);
+    int rc = MDB_SUCCESS;
+#if 0
+
+    if (!db_txn)
+    {
+        db_txn = xcalloc(1, sizeof(DB_txn));
+        pthread_setspecific(db->txn_key, db_txn);
+    }
+
+    if (db_txn->txn && !db_txn->write_txn)
+    {
+        mdb_txn_commit(db_txn->txn);
+        db_txn->txn = NULL;
+    }
+
+    if (!db_txn->txn)
+    {
+        rc = mdb_txn_begin(db->env, NULL, 0, &db_txn->txn);
+        if (rc == MDB_SUCCESS)
+        {
+            db_txn->write_txn = true;
+        }
+        else
+        {
+            Log(LOG_LEVEL_ERR, "Unable to open write transaction: %s", mdb_strerror(rc));
+        }
+    }
+#endif
+    *cur = db_txn->cursor;
+
+    return rc;
+}
 static void AbortTransaction(DBPriv *db)
 {
     DB_txn *db_txn = pthread_getspecific(db->txn_key);
@@ -516,10 +551,11 @@ static DBCursorPriv *DBPrivOpenCursorInternal(DBPriv *db, bool write)
 {
     ASSERT_CURSOR_NOT_ACTIVE();
 
-    DBCursorPriv *cursor = NULL;
+    //DBCursorPriv *cursor = NULL;
     MDB_txn *txn;
     int rc;
     MDB_cursor *mc;
+    DB_txn *db_txn = NULL;
 
     if (write)
     {
@@ -534,14 +570,17 @@ static DBCursorPriv *DBPrivOpenCursorInternal(DBPriv *db, bool write)
         rc = mdb_cursor_open(txn, db->dbi, &mc);
         if (rc == MDB_SUCCESS)
         {
-            cursor = xcalloc(1, sizeof(DBCursorPriv));
-            cursor->db = db;
-            cursor->mc = mc;
+            db_txn = pthread_getspecific(db->txn_key);
+            //TODO: Check db_txn is not null
+            //TODO: Free cursor if NOT NULL
+            db_txn->cursor = xcalloc(1, sizeof(DBCursorPriv));
+            db_txn->cursor->db = db;
+            db_txn->cursor->mc = mc;
         }
         else
         {
             Log(LOG_LEVEL_ERR, "Could not open cursor: %s", mdb_strerror(rc));
-            mdb_txn_abort(txn);
+            AbortTransaction(db);
         }
         /* txn remains with cursor */
     }
@@ -555,7 +594,7 @@ static DBCursorPriv *DBPrivOpenCursorInternal(DBPriv *db, bool write)
     pthread_setspecific(db->cursor_active_key, (const void *)0x1);
 #endif
 
-    return cursor;
+    return db_txn->cursor;
 }
 
 DBCursorPriv *DBPrivOpenCursor(DBPriv *db)
