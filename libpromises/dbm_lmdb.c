@@ -593,13 +593,14 @@ static DBCursorPriv *DBPrivOpenCursorInternal(DBPriv *db, bool write)
     // We use dummy pointer, we just need to know that it's not null.
     pthread_setspecific(db->cursor_active_key, (const void *)0x1);
 #endif
+printf("dbxo=%p,curo=%p,rc=%d\n",db_txn,db_txn->cursor,rc);
 
     return db_txn->cursor;
 }
 
 DBCursorPriv *DBPrivOpenCursor(DBPriv *db)
 {
-    return DBPrivOpenCursorInternal(db, false);
+    return DBPrivOpenCursorInternal(db, true);
 }
 
 DBCursorPriv *DBPrivOpenWriteCursor(DBPriv *db)
@@ -613,6 +614,8 @@ bool DBPrivAdvanceCursor(DBCursorPriv *cursor, void **key, int *key_size,
     MDB_val mkey, data;
     int rc;
     bool retval = false;
+
+    DB_txn *db_txn = pthread_getspecific(cursor->db->txn_key);
 
     if (cursor->curkv)
     {
@@ -656,7 +659,9 @@ bool DBPrivAdvanceCursor(DBCursorPriv *cursor, void **key, int *key_size,
 
 bool DBPrivDeleteCursorEntry(DBCursorPriv *cursor)
 {
+    DB_txn *db_txn = pthread_getspecific(cursor->db->txn_key);
     int rc = mdb_cursor_get(cursor->mc, &cursor->delkey, NULL, MDB_GET_CURRENT);
+printf("dbxd=%p,curd=%p,rc=%d\n",db_txn,cursor,rc);
     if (rc == MDB_SUCCESS)
     {
         cursor->pending_delete = true;
@@ -668,6 +673,7 @@ bool DBPrivWriteCursorEntry(DBCursorPriv *cursor, const void *value, int value_s
 {
     MDB_val data;
     int rc;
+    DB_txn *db_txn = pthread_getspecific(cursor->db->txn_key);
 
     cursor->pending_delete = false;
     data.mv_data = (void *)value;
@@ -677,6 +683,7 @@ bool DBPrivWriteCursorEntry(DBCursorPriv *cursor, const void *value, int value_s
     {
         Log(LOG_LEVEL_ERR, "Could not write cursor entry: %s", mdb_strerror(rc));
     }
+printf("dbxi=%p,curi=%p,rc=%d\n",db_txn,cursor,rc);
     return rc == MDB_SUCCESS;
 }
 
@@ -684,6 +691,7 @@ void DBPrivCloseCursor(DBCursorPriv *cursor)
 {
     MDB_txn *txn;
     int rc;
+    DB_txn *db_txn = pthread_getspecific(cursor->db->txn_key);
 
     if (cursor->curkv)
     {
