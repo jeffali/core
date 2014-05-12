@@ -64,6 +64,7 @@ check_PROGRAMS = \
 	sequence_test \
 	db_test \
 	db_concurrent_test \
+	db_concurrent2_test \
 	lastseen_test \
 	lastseen_migration_test \
 	dbm_migration_bundles_test \
@@ -228,6 +229,9 @@ db_test_LDADD = libdb.la
 
 db_concurrent_test_SOURCES = db_concurrent_test.c
 db_concurrent_test_LDADD = libdb.la
+
+db_concurrent2_test_SOURCES = db_concurrent2_test.c
+db_concurrent2_test_LDADD = libdb.la
 
 lastseen_test_SOURCES = lastseen_test.c ../../libpromises/item_lib.c  ../../libpromises/lastseen.c ../../libutils/statistics.c
 lastseen_test_LDADD = libdb.la ../../libpromises/libpromises.la
