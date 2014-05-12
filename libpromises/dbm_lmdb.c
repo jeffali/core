@@ -290,7 +290,7 @@ bool DBPrivHasKey(DBPriv *db, const void *key, int key_size)
     int rc;
     // FIXME: distinguish between "entry not found" and "error occured"
 
-    rc = mdb_txn_begin(db->env, NULL, MDB_RDONLY, &txn);
+    rc = GetReadTransaction(db, &txn);
     if (rc == MDB_SUCCESS)
     {
         mkey.mv_data = (void *)key;
@@ -298,7 +298,8 @@ bool DBPrivHasKey(DBPriv *db, const void *key, int key_size)
         rc = mdb_get(txn, db->dbi, &mkey, &data);
         if (rc && rc != MDB_NOTFOUND)
         {
-            Log(LOG_LEVEL_ERR, "Could not read: %s", mdb_strerror(rc));
+            Log(LOG_LEVEL_ERR, "Could not read (check for key): %s", mdb_strerror(rc));
+            AbortTransaction(db);
         }
         mdb_txn_abort(txn);
     }
@@ -320,7 +321,7 @@ int DBPrivGetValueSize(DBPriv *db, const void *key, int key_size)
 
     data.mv_size = 0;
 
-    rc = mdb_txn_begin(db->env, NULL, MDB_RDONLY, &txn);
+    rc = GetReadTransaction(db, &txn);
     if (rc == MDB_SUCCESS)
     {
         mkey.mv_data = (void *)key;
@@ -328,13 +329,14 @@ int DBPrivGetValueSize(DBPriv *db, const void *key, int key_size)
         rc = mdb_get(txn, db->dbi, &mkey, &data);
         if (rc && rc != MDB_NOTFOUND)
         {
-            Log(LOG_LEVEL_ERR, "Could not read: %s", mdb_strerror(rc));
+            Log(LOG_LEVEL_ERR, "Could not fetch value size: %s", mdb_strerror(rc));
         }
         mdb_txn_abort(txn);
     }
     else
     {
         Log(LOG_LEVEL_ERR, "Could not create read txn: %s", mdb_strerror(rc));
+        AbortTransaction(db);
     }
 
     return data.mv_size;
@@ -349,7 +351,8 @@ bool DBPrivRead(DBPriv *db, const void *key, int key_size, void *dest, int dest_
     int rc;
     bool ret = false;
 
-    rc = mdb_txn_begin(db->env, NULL, MDB_RDONLY, &txn);
+    //TODO: reopen txn if it is a write transaction ??
+    rc = GetReadTransaction(db, &txn);
     if (rc == MDB_SUCCESS)
     {
         mkey.mv_data = (void *)key;
@@ -366,7 +369,8 @@ bool DBPrivRead(DBPriv *db, const void *key, int key_size, void *dest, int dest_
         }
         else if (rc != MDB_NOTFOUND)
         {
-            Log(LOG_LEVEL_ERR, "Could not read: %s", mdb_strerror(rc));
+            Log(LOG_LEVEL_ERR, "Could not read entry: %s", mdb_strerror(rc));
+            AbortTransaction(db);
         }
         mdb_txn_abort(txn);
     }
