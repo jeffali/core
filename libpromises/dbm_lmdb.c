@@ -512,7 +512,7 @@ bool DBPrivDelete(DBPriv *db, const void *key, int key_size)
     return rc == MDB_SUCCESS;
 }
 
-DBCursorPriv *DBPrivOpenCursor(DBPriv *db)
+static DBCursorPriv *DBPrivOpenCursorInternal(DBPriv *db, bool write)
 {
     ASSERT_CURSOR_NOT_ACTIVE();
 
@@ -521,7 +521,14 @@ DBCursorPriv *DBPrivOpenCursor(DBPriv *db)
     int rc;
     MDB_cursor *mc;
 
-    rc = mdb_txn_begin(db->env, NULL, 0, &txn);
+    if (write)
+    {
+        rc = GetWriteTransaction(db, &txn);
+    }
+    else
+    {
+        rc = GetReadTransaction(db, &txn);
+    }
     if (rc == MDB_SUCCESS)
     {
         rc = mdb_cursor_open(txn, db->dbi, &mc);
@@ -549,6 +556,16 @@ DBCursorPriv *DBPrivOpenCursor(DBPriv *db)
 #endif
 
     return cursor;
+}
+
+DBCursorPriv *DBPrivOpenCursor(DBPriv *db)
+{
+    return DBPrivOpenCursorInternal(db, false);
+}
+
+DBCursorPriv *DBPrivOpenWriteCursor(DBPriv *db)
+{
+    return DBPrivOpenCursorInternal(db, true);
 }
 
 bool DBPrivAdvanceCursor(DBCursorPriv *cursor, void **key, int *key_size,
