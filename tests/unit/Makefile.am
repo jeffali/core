@@ -63,6 +63,7 @@ check_PROGRAMS = \
 	xml_writer_test \
 	sequence_test \
 	db_test \
+	db_concurrent_test \
 	lastseen_test \
 	lastseen_migration_test \
 	dbm_migration_bundles_test \

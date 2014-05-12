@@ -343,9 +343,8 @@ bool DBPrivHasKey(DBPriv *db, const void *key, int key_size)
         if (rc && rc != MDB_NOTFOUND)
         {
             Log(LOG_LEVEL_ERR, "Could not read (check for key): %s", mdb_strerror(rc));
-            AbortTransaction(db);
         }
-        mdb_txn_abort(txn);
+        AbortTransaction(db);
     }
     else
     {
@@ -375,7 +374,7 @@ int DBPrivGetValueSize(DBPriv *db, const void *key, int key_size)
         {
             Log(LOG_LEVEL_ERR, "Could not fetch value size: %s", mdb_strerror(rc));
         }
-        mdb_txn_abort(txn);
+        AbortTransaction(db);
     }
     else
     {
@@ -414,9 +413,8 @@ bool DBPrivRead(DBPriv *db, const void *key, int key_size, void *dest, int dest_
         else if (rc != MDB_NOTFOUND)
         {
             Log(LOG_LEVEL_ERR, "Could not read entry: %s", mdb_strerror(rc));
-            AbortTransaction(db);
         }
-        mdb_txn_abort(txn);
+        AbortTransaction(db);
     }
     else
     {
