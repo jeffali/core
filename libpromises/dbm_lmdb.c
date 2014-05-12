@@ -38,6 +38,7 @@
 
 struct DBPriv_
 {
+    /******** Global to the thread ************/
     MDB_env *env;
     MDB_dbi dbi;
 #ifndef NDEBUG
@@ -46,8 +47,16 @@ struct DBPriv_
     // it is destroyed.
     pthread_key_t cursor_active_key;
 #endif
-    MDB_txn *wtxn;
+    pthread_key_t txn_key;
+    MDB_txn    *wtxn;
 };
+
+typedef struct DB_txn_
+{
+    /******** Specific to the thread **********/
+    MDB_txn    *wtxn;
+    MDB_cursor *ctxn;
+} DB_txn;
 
 #ifndef NDEBUG
 #define ASSERT_CURSOR_NOT_ACTIVE() assert(pthread_getspecific(db->cursor_active_key) == NULL)
@@ -82,8 +91,17 @@ DBPriv *DBPrivOpenDB(const char *dbpath, dbid id)
 {
     DBPriv *db = xcalloc(1, sizeof(DBPriv));
     db->wtxn = NULL;
+
     MDB_txn *txn = NULL;
     int rc;
+    rc = pthread_key_create(&db->txn_key, NULL);
+    if (rc)
+    {
+        Log(LOG_LEVEL_ERR, "Could not create transaction key. (pthread_key_create: '%s')",
+            GetErrorStrFromCode(rc));
+        free(db);
+        return NULL;
+    }
 
     rc = mdb_env_create(&db->env);
     if (rc)
@@ -158,6 +176,7 @@ err:
     {
         mdb_env_close(db->env);
     }
+pthread_key_delete(db->txn_key);
     free(db);
     if (rc == MDB_INVALID)
     {
@@ -173,6 +192,7 @@ void DBPrivCloseDB(DBPriv *db)
         mdb_env_close(db->env);
         db->wtxn = NULL;
     }
+pthread_key_delete(db->txn_key);
     free(db);
 }
 
