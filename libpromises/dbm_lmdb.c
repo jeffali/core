@@ -143,6 +143,15 @@ static void AbortTransaction(DBPriv *db)
     db_txn->write_txn = false;
 }
 
+static int CommitTransaction(DBPriv *db)
+{
+    DB_txn *db_txn = pthread_getspecific(db->txn_key);
+    int rc = mdb_txn_commit(db_txn->txn);
+    db_txn->txn = NULL;
+    db_txn->write_txn = false;
+    return rc;
+}
+
 const char *DBPrivGetFileExtension(void)
 {
     return "lmdb";
@@ -387,7 +396,7 @@ bool DBPrivWrite(DBPriv *db, const void *key, int key_size, const void *value, i
 
     MDB_val mkey, data;
     MDB_txn *txn;
-    int rc = mdb_txn_begin(db->env, NULL, 0, &txn);
+    int rc = GetWriteTransaction(db, &txn);
     if (rc == MDB_SUCCESS)
     {
         mkey.mv_data = (void *)key;
@@ -397,7 +406,7 @@ bool DBPrivWrite(DBPriv *db, const void *key, int key_size, const void *value, i
         rc = mdb_put(txn, db->dbi, &mkey, &data, 0);
         if (rc == MDB_SUCCESS)
         {
-            rc = mdb_txn_commit(txn);
+            rc = CommitTransaction(db);
             if (rc)
             {
                 Log(LOG_LEVEL_ERR, "Could not commit: %s", mdb_strerror(rc));
@@ -406,7 +415,7 @@ bool DBPrivWrite(DBPriv *db, const void *key, int key_size, const void *value, i
         else
         {
             Log(LOG_LEVEL_ERR, "Could not write: %s", mdb_strerror(rc));
-            mdb_txn_abort(txn);
+            AbortTransaction(db);
         }
     }
     else
@@ -471,7 +480,7 @@ bool DBPrivDelete(DBPriv *db, const void *key, int key_size)
 
     MDB_val mkey;
     MDB_txn *txn;
-    int rc = mdb_txn_begin(db->env, NULL, 0, &txn);
+    int rc = GetWriteTransaction(db, &txn);
     if (rc == MDB_SUCCESS)
     {
         mkey.mv_data = (void *)key;
@@ -479,7 +488,7 @@ bool DBPrivDelete(DBPriv *db, const void *key, int key_size)
         rc = mdb_del(txn, db->dbi, &mkey, NULL);
         if (rc == MDB_SUCCESS)
         {
-            rc = mdb_txn_commit(txn);
+            rc = CommitTransaction(db);
             if (rc)
             {
                 Log(LOG_LEVEL_ERR, "Could not commit: %s", mdb_strerror(rc));
@@ -488,12 +497,12 @@ bool DBPrivDelete(DBPriv *db, const void *key, int key_size)
         else if (rc == MDB_NOTFOUND)
         {
             Log(LOG_LEVEL_DEBUG, "Entry not found: %s", mdb_strerror(rc));
-            mdb_txn_abort(txn);
+            AbortTransaction(db);
         }
         else
         {
             Log(LOG_LEVEL_ERR, "Could not delete: %s", mdb_strerror(rc));
-            mdb_txn_abort(txn);
+            AbortTransaction(db);
         }
     }
     else
