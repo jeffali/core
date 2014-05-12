@@ -54,8 +54,8 @@ struct DBPriv_
 typedef struct DB_txn_
 {
     /******** Specific to the thread **********/
-    bool       w;
-    MDB_txn    *wtxn;
+    bool       write_txn;
+    MDB_txn    *txn;
     MDB_cursor *ctxn;
 } DB_txn;
 
@@ -75,6 +75,73 @@ struct DBCursorPriv_
 };
 
 /******************************************************************************/
+static int GetReadTransaction(DBPriv *db, MDB_txn **txn)
+{
+    DB_txn *db_txn = pthread_getspecific(db->txn_key);
+    int rc = MDB_SUCCESS;
+
+    if (!db_txn)
+    {
+        db_txn = xcalloc(1, sizeof(DB_txn));
+        pthread_setspecific(db->txn_key, db_txn);
+    }
+
+    if (!db_txn->txn)
+    {
+        rc = mdb_txn_begin(db->env, NULL, MDB_RDONLY, &db_txn->txn);
+        if (rc != MDB_SUCCESS)
+        {
+            Log(LOG_LEVEL_ERR, "Unable to open read transaction: %s", mdb_strerror(rc));
+        }
+    }
+
+    *txn = db_txn->txn;
+
+    return rc;
+}
+
+static int GetWriteTransaction(DBPriv *db, MDB_txn **txn)
+{
+    DB_txn *db_txn = pthread_getspecific(db->txn_key);
+    int rc = MDB_SUCCESS;
+
+    if (!db_txn)
+    {
+        db_txn = xcalloc(1, sizeof(DB_txn));
+        pthread_setspecific(db->txn_key, db_txn);
+    }
+
+    if (db_txn->txn && !db_txn->write_txn)
+    {
+        mdb_txn_commit(db_txn->txn);
+        db_txn->txn = NULL;
+    }
+
+    if (!db_txn->txn)
+    {
+        rc = mdb_txn_begin(db->env, NULL, 0, &db_txn->txn);
+        if (rc == MDB_SUCCESS)
+        {
+            db_txn->write_txn = true;
+        }
+        else
+        {
+            Log(LOG_LEVEL_ERR, "Unable to open write transaction: %s", mdb_strerror(rc));
+        }
+    }
+
+    *txn = db_txn->txn;
+
+    return rc;
+}
+
+static void AbortTransaction(DBPriv *db)
+{
+    DB_txn *db_txn = pthread_getspecific(db->txn_key);
+    mdb_txn_abort(db_txn->txn);
+    db_txn->txn = NULL;
+    db_txn->write_txn = false;
+}
 
 const char *DBPrivGetFileExtension(void)
 {
