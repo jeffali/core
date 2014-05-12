@@ -54,6 +54,7 @@ struct DBPriv_
 typedef struct DB_txn_
 {
     /******** Specific to the thread **********/
+    bool       w;
     MDB_txn    *wtxn;
     MDB_cursor *ctxn;
 } DB_txn;
