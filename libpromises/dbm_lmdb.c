@@ -186,6 +186,16 @@ static int CommitTransaction(DBPriv *db)
     return rc;
 }
 
+static int CommitCursorTransaction(DBCursorPriv *cursor)
+{
+    DB_txn *db_txn = pthread_getspecific(cursor->db->txn_key);
+    int rc = mdb_txn_commit(db_txn->txn);
+    db_txn->txn = NULL;
+    db_txn->write_txn = false;
+    free(db_txn->cursor);
+    return rc;
+}
+
 const char *DBPrivGetFileExtension(void)
 {
     return "lmdb";
@@ -634,7 +644,8 @@ void DBPrivCloseCursor(DBCursorPriv *cursor)
 
     txn = mdb_cursor_txn(cursor->mc);
     mdb_cursor_close(cursor->mc);
-    rc = mdb_txn_commit(txn);
+    //rc = mdb_txn_commit(txn);
+    rc = CommitCursorTransaction(cursor);
     if (rc)
     {
         Log(LOG_LEVEL_ERR, "Could not commit cursor txn: %s", mdb_strerror(rc));
@@ -642,7 +653,7 @@ void DBPrivCloseCursor(DBCursorPriv *cursor)
 #ifndef NDEBUG
     pthread_setspecific(cursor->db->cursor_active_key, NULL);
 #endif
-    free(cursor);
+    //free(cursor);
 }
 
 char *DBPrivDiagnose(const char *dbpath)
