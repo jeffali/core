@@ -937,7 +937,7 @@ void PurgeLocks(void)
     LockData entry;
     time_t now = time(NULL);
 
-    /* Write DB Cursor (Separate it) */
+    /* Write DB Cursor (Separate it) */ //Done into three parts (easy)
     CF_DB *dbp = OpenLock();
 
     if(!dbp)
@@ -956,8 +956,15 @@ void PurgeLocks(void)
             return;
         }
     }
+    CloseLock(dbp);
 
     Log(LOG_LEVEL_VERBOSE, "Looking for stale locks to purge");
+
+    dbp = OpenLock();
+    if(!dbp)
+    {
+        return;
+    }
 
     if (!NewDBCursor(dbp, &dbcp))
     {
@@ -989,7 +996,13 @@ void PurgeLocks(void)
 
     entry.time = now;
     DeleteDBCursor(dbcp);
+    CloseLock(dbp);
 
+    dbp = OpenLock();
+    if(!dbp)
+    {
+        return;
+    }
     WriteDB(dbp, "lock_horizon", &entry, sizeof(entry));
     CloseLock(dbp);
 }
