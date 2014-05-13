@@ -547,6 +547,7 @@ void EvalContextHeapPersistentLoadAll(EvalContext *ctx)
     void *info_p;
     int info_size = 0;
 
+    /* Write DB Cursor */
     while (NextDB(dbcp, (char **)&key, &key_size, &info_p, &info_size))
     {
         Log(LOG_LEVEL_DEBUG, "Found key persistent class key '%s'", key);

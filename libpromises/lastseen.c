@@ -256,6 +256,7 @@ bool IsLastSeenCoherent(void)
     DBCursor *cursor;
     bool res = true;
 
+    /* Read-only DB Cursor */
     if (!OpenDB(&db, dbid_lastseen))
     {
         Log(LOG_LEVEL_ERR, "Unable to open lastseen database");
@@ -485,6 +486,7 @@ bool ScanLastSeenQuality(LastSeenQualityCallback callback, void *ctx)
     DBHandle *db;
     DBCursor *cursor;
 
+    /* Read-only DB Cursor (Separate it) */
     if (!OpenDB(&db, dbid_lastseen))
     {
         Log(LOG_LEVEL_ERR, "Unable to open lastseen database");
@@ -572,6 +574,7 @@ int LastSeenHostKeyCount(void)
 
     int count = 0;
 
+    /* Read-only DB Cursor */
     if (OpenDB(&dbp, dbid_lastseen))
     {
         memset(&entry, 0, sizeof(entry));

@@ -52,6 +52,7 @@ bool DBMigrate(DBHandle *db, dbid id)
 {
     const DBMigrationFunction *plan = dbm_migration_plans[id];
 
+#ifndef LMDB
     if (plan)
     {
         size_t step_version = 0;
@@ -66,6 +67,6 @@ bool DBMigrate(DBHandle *db, dbid id)
             }
         }
     }
-
+#endif
     return true;
 }

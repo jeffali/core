@@ -111,6 +111,7 @@ Item *ListPersistentClasses()
 
     CF_DB *dbp;
     CF_DBC *dbcp;
+    /* Write DB Cursor */
     if (!OpenDB(&dbp, dbid_state))
     {
         Log(LOG_LEVEL_ERR, "Unable to open state database");

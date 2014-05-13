@@ -300,6 +300,7 @@ PromiseResult PurgeHashes(EvalContext *ctx, char *path, Attributes attr, const P
     char *key;
     void *value;
 
+    /* Write DB Cursor */
     if (!OpenDB(&dbp,dbid_checksums))
     {
         return PROMISE_RESULT_NOOP;

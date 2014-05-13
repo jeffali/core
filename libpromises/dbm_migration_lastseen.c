@@ -51,6 +51,7 @@ static bool LastseenMigrationVersion0(DBHandle *db)
     bool errors = false;
     DBCursor *cursor;
 
+    /* Write DB Cursor (Separate it) */
     if (!NewDBCursor(db, &cursor))
     {
         return false;

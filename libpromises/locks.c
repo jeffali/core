@@ -937,6 +937,7 @@ void PurgeLocks(void)
     LockData entry;
     time_t now = time(NULL);
 
+    /* Write DB Cursor (Separate it) */
     CF_DB *dbp = OpenLock();
 
     if(!dbp)
