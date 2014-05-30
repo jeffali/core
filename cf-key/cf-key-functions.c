@@ -122,9 +122,13 @@ int TrustKey(const char* pubkey)
         return 1; /* ERROR exitcode */
 
     snprintf(outfilename, CF_BUFSIZE, "%s/ppkeys/root-%s.pub", CFWORKDIR, digeststr);
-    free(digeststr);
 
     ok = CopyRegularFileDisk(pubkey, outfilename);
+    if (ok)
+    {
+        InitializeLastseenTrust(digeststr);
+    }
+    free(digeststr);
 
     return (ok? 0 : 1);
 }

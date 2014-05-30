@@ -58,5 +58,5 @@ int LastSeenHostKeyCount(void);
 bool IsLastSeenCoherent(void);
 int RemoveKeysFromLastSeen(const char *input, bool must_be_coherent,
                            char *equivalent);
-
+void InitializeLastseenTrust(const char *hostkey);
 #endif

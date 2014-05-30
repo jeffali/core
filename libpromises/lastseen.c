@@ -103,7 +103,6 @@ void LastSaw(const char *ipaddress, const char *digest, LastSeenRole role)
 }
 
 /*****************************************************************************/
-
 void UpdateLastSawHost(const char *hostkey, const char *address,
                        bool incoming, time_t timestamp)
 {
@@ -146,6 +145,25 @@ void UpdateLastSawHost(const char *hostkey, const char *address,
     snprintf(address_key, CF_BUFSIZE, "a%s", address);
 
     WriteDB(db, address_key, hostkey, strlen(hostkey) + 1);
+
+    CloseDB(db);
+}
+
+/*****************************************************************************/
+void InitializeLastseenTrust(const char *hostkey)
+{
+    DBHandle *db = NULL;
+    if (!OpenDB(&db, dbid_lastseen))
+    {
+        Log(LOG_LEVEL_ERR, "Unable to open last seen db");
+        return;
+    }
+
+    char key[CF_BUFSIZE];
+    snprintf(key, CF_BUFSIZE, "qo%s", hostkey);
+    WriteDB(db, key, "", 1);
+    snprintf(key, CF_BUFSIZE, "qi%s", hostkey);
+    WriteDB(db, key, "", 1);
 
     CloseDB(db);
 }
